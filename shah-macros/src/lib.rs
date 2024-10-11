@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2, TokenTree};
-use quote::{format_ident, quote};
+use quote::quote;
 use quote_into::quote_into;
 use syn::{Field, ItemStruct, Meta, Type};
 

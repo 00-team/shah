@@ -1,0 +1,13 @@
+[package]
+name = "example-db"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+shah = { path = "../shah" }
+log = "0.4.22"
+
+# [lints.rust]
+# dead_code = "allow"
+# unused = "allow"

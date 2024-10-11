@@ -1,0 +1,277 @@
+use std::{
+    fmt::Debug,
+    fs::File,
+    io::{ErrorKind, Read, Seek, SeekFrom, Write},
+    marker::PhantomData,
+    os::unix::fs::FileExt,
+    // slice::{from_raw_parts, from_raw_parts_mut},
+};
+
+use crate::{error::PlutusError, Binary, Gene, GeneId};
+
+// const PAGE_SIZE: u8 = 32;
+// const REQUEST_SIZE: u16 = 40960; // 4096 * 10
+// const SNAKE_MAX_LENGTH: u16 = 32768; // 4096 * 8
+const ITER_EXHAUSTION: u8 = 250;
+
+pub struct EntityMetadata {
+    pub version: u32,
+    pub size: u32,
+    pub fields: String,
+}
+
+#[repr(u8)]
+pub enum EntityFlag {
+    ALIVE = (1 << 0),
+    EDITED = (1 << 1),
+    PRIVATE = (1 << 2),
+}
+
+pub struct EntityCount {
+    pub alive: u64,
+    pub total: u64,
+}
+
+macro_rules! flag {
+    ($flag:path, $name:ident, $set:ident) => {
+        fn $name(&self) -> bool {
+            self.get_flag($flag as u8)
+        }
+        fn $set(&mut self, $name: bool) -> &mut Self {
+            self.set_flag($flag as u8, $name)
+        }
+    };
+}
+
+pub trait Entity {
+    fn gene(&self) -> &Gene;
+    fn flags(&self) -> &u8;
+
+    fn gene_mut(&mut self) -> &mut Gene;
+    fn flags_mut(&mut self) -> &mut u8;
+
+    fn get_flag(&self, flag: u8) -> bool {
+        (*self.flags() & flag) == flag
+    }
+
+    fn set_flag(&mut self, flag: u8, value: bool) -> &mut Self {
+        if value {
+            *self.flags_mut() |= flag;
+        } else {
+            *self.flags_mut() &= !flag;
+        }
+        self
+    }
+
+    flag! {EntityFlag::ALIVE, alive, set_alive}
+    flag! {EntityFlag::EDITED, edited, set_edited}
+    flag! {EntityFlag::PRIVATE, private, set_private}
+}
+
+#[derive(Debug)]
+pub struct EntityDb<T>
+where
+    T: Default + Entity + Debug + Clone + Binary,
+{
+    pub file: File,
+    _e: PhantomData<T>,
+    pub live: u64,
+    pub dead: u64,
+    pub dead_list: [GeneId; 4096],
+}
+
+impl<T> EntityDb<T>
+where
+    T: Entity + Debug + Clone + Default + Binary,
+{
+    pub fn new(name: &'static str) -> Result<Self, PlutusError> {
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(format!("data/{name}.bin"))?;
+
+        let db = Self {
+            live: 0,
+            dead: 0,
+            dead_list: [0; 4096],
+            file,
+            _e: PhantomData::<T>,
+        };
+
+        Ok(db)
+    }
+
+    pub fn update_population(&mut self) -> Result<(), PlutusError> {
+        // let db = self.db();
+        self.live = 0;
+        self.dead = 0;
+        self.dead_list.fill(0);
+        let db_size = self.file.seek(SeekFrom::End(0))?;
+        let mut entity = T::default();
+        let buf = entity.as_binary_mut();
+
+        if db_size < T::N {
+            self.file.seek(SeekFrom::Start(T::N - 1))?;
+            self.file.write_all(&[0])?;
+            return Ok(());
+        }
+
+        if db_size == T::N {
+            return Ok(());
+        }
+
+        self.live = (db_size / T::N) - 1;
+
+        self.file.seek(SeekFrom::Start(T::N))?;
+        loop {
+            match self.file.read_exact(buf) {
+                Ok(_) => {}
+                Err(e) => match e.kind() {
+                    ErrorKind::UnexpectedEof => break,
+                    _ => Err(e)?,
+                },
+            }
+            {
+                let entity = T::from_binary(buf);
+                log::info!("entity: {entity:?}");
+                if !entity.alive() {
+                    log::info!("dead: {entity:?}");
+                    self.add_dead(entity.gene());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn get(
+        &mut self, gene: &Gene, entity: &mut T,
+    ) -> Result<(), PlutusError> {
+        if gene.id == 0 {
+            return Err(PlutusError::ZeroGeneId);
+        }
+
+        self.file.seek(SeekFrom::Start(gene.id))?;
+        self.file.read_exact(entity.as_binary_mut())?;
+
+        let og = entity.gene();
+
+        if gene.pepper != og.pepper {
+            return Err(PlutusError::BadGenePepper);
+        }
+
+        if gene.iter != og.iter {
+            return Err(PlutusError::BadGeneIter);
+        }
+
+        Ok(())
+    }
+
+    pub fn seek_add(&mut self) -> Result<u64, PlutusError> {
+        let pos = self.file.seek(SeekFrom::End(0))?;
+        if pos == 0 {
+            self.file.seek(SeekFrom::Start(T::N))?;
+            return Ok(T::N);
+        }
+
+        let offset = pos % T::N;
+        if offset != 0 {
+            log::warn!(
+                "{}:{} seek_add bad offset: {}",
+                file!(),
+                line!(),
+                offset
+            );
+            return Ok(self.file.seek(SeekFrom::Current(-(offset as i64)))?);
+        }
+
+        Ok(pos)
+    }
+
+    pub fn new_gene(&mut self) -> Result<Gene, PlutusError> {
+        let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
+        crate::utils::getrandom(&mut gene.pepper);
+        gene.server = 69;
+        gene.iter = 0;
+
+        if gene.id != 0 {
+            let mut og = Gene::default();
+            // let mut og = [0u8; size_of::<Gene>()];
+            self.file.read_exact_at(og.as_binary_mut(), gene.id * T::N)?;
+            if og.iter >= ITER_EXHAUSTION {
+                gene.id = self.seek_add()? / T::N;
+            } else {
+                gene.iter = og.iter + 1;
+                self.file.seek(SeekFrom::Current(-(Gene::N as i64)))?;
+            }
+        } else {
+            gene.id = self.seek_add()? / T::N;
+        }
+
+        Ok(gene)
+    }
+
+    pub fn add(&mut self, entity: &mut T) -> Result<(), PlutusError> {
+        entity.set_alive(true);
+        if entity.gene().id == 0 {
+            entity.gene_mut().clone_from(&self.new_gene()?);
+        }
+
+        let id = entity.gene().id;
+        self.file.write_all_at(entity.as_binary_mut(), id * T::N)?;
+        self.live += 1;
+
+        Ok(())
+    }
+
+    pub fn count(&mut self) -> Result<EntityCount, PlutusError> {
+        let db_size = self.file.seek(SeekFrom::End(0))?;
+        let total = db_size / T::N - 1;
+        Ok(EntityCount { total, alive: self.live })
+    }
+
+    pub fn take_dead_id(&mut self) -> GeneId {
+        if self.dead == 0 {
+            return 0;
+        }
+
+        for dead in self.dead_list.iter_mut() {
+            if *dead != 0 {
+                let id = *dead;
+                *dead = 0;
+                self.dead -= 1;
+                return id;
+            }
+        }
+
+        log::warn!("invalid state of dead list");
+        self.dead = 0;
+        0
+    }
+
+    pub fn add_dead(&mut self, gene: &Gene) {
+        self.live -= 1;
+        if self.dead as usize >= self.dead_list.len()
+            || gene.iter >= ITER_EXHAUSTION
+        {
+            return;
+        }
+
+        let mut set = false;
+        for slot in self.dead_list.iter_mut() {
+            if *slot == gene.id {
+                log::warn!("{gene:?} already exists in dead list");
+                return;
+            }
+
+            if !set && *slot == 0 {
+                *slot = gene.id;
+                set = true;
+                self.dead += 1;
+            }
+        }
+    }
+
+    // pub fn set(&mut self, entity: &mut T) -> Result<(), PlutusError> {}
+}

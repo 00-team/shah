@@ -1,0 +1,8 @@
+[workspace]
+members = ["shah", "shah-macros", "example-db", "example-client"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license-file = "./LICENSE"
+repository = "https://github.com/g00je/plutus/"

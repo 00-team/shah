@@ -1,0 +1,22 @@
+[package]
+name = "shah-macros"
+version = "0.0.1"
+edition.workspace = true
+license-file.workspace = true
+description = "shah db macros"
+repository.workspace = true
+publish = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0.72", features = ["full", "extra-traits"] }
+quote = "1.0.36"
+quote_into = "0.2.0"
+proc-macro2 = "1.0.86"
+# proc-macro-crate = "3.1.0"
+
+# [lints.rust]
+# dead_code = "allow"
+# unused = "allow"

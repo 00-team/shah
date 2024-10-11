@@ -1,0 +1,16 @@
+[package]
+name = "shah"
+version = "0.0.1"
+edition.workspace = true
+license-file.workspace = true
+publish = true
+description = "custom database"
+repository.workspace = true
+
+[dependencies]
+shah-macros = "0.0.1"
+log = "0.4.22"
+
+# [lints.rust]
+# dead_code = "allow"
+# unused = "allow"

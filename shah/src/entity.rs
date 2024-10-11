@@ -7,7 +7,8 @@ use std::{
     // slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-use crate::{error::PlutusError, Binary, Gene, GeneId};
+use crate::error::SystemError;
+use crate::{Binary, Gene, GeneId};
 
 // const PAGE_SIZE: u8 = 32;
 // const REQUEST_SIZE: u16 = 40960; // 4096 * 10
@@ -84,7 +85,7 @@ impl<T> EntityDb<T>
 where
     T: Entity + Debug + Clone + Default + Binary,
 {
-    pub fn new(name: &'static str) -> Result<Self, PlutusError> {
+    pub fn new(name: &'static str) -> Result<Self, SystemError> {
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -102,7 +103,7 @@ where
         Ok(db)
     }
 
-    pub fn update_population(&mut self) -> Result<(), PlutusError> {
+    pub fn update_population(&mut self) -> Result<(), SystemError> {
         // let db = self.db();
         self.live = 0;
         self.dead = 0;
@@ -147,9 +148,9 @@ where
 
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), PlutusError> {
+    ) -> Result<(), SystemError> {
         if gene.id == 0 {
-            return Err(PlutusError::ZeroGeneId);
+            return Err(SystemError::ZeroGeneId);
         }
 
         self.file.seek(SeekFrom::Start(gene.id))?;
@@ -158,17 +159,17 @@ where
         let og = entity.gene();
 
         if gene.pepper != og.pepper {
-            return Err(PlutusError::BadGenePepper);
+            return Err(SystemError::BadGenePepper);
         }
 
         if gene.iter != og.iter {
-            return Err(PlutusError::BadGeneIter);
+            return Err(SystemError::BadGeneIter);
         }
 
         Ok(())
     }
 
-    pub fn seek_add(&mut self) -> Result<u64, PlutusError> {
+    pub fn seek_add(&mut self) -> Result<u64, SystemError> {
         let pos = self.file.seek(SeekFrom::End(0))?;
         if pos == 0 {
             self.file.seek(SeekFrom::Start(T::N))?;
@@ -189,7 +190,7 @@ where
         Ok(pos)
     }
 
-    pub fn new_gene(&mut self) -> Result<Gene, PlutusError> {
+    pub fn new_gene(&mut self) -> Result<Gene, SystemError> {
         let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
         crate::utils::getrandom(&mut gene.pepper);
         gene.server = 69;
@@ -212,7 +213,7 @@ where
         Ok(gene)
     }
 
-    pub fn add(&mut self, entity: &mut T) -> Result<(), PlutusError> {
+    pub fn add(&mut self, entity: &mut T) -> Result<(), SystemError> {
         entity.set_alive(true);
         if entity.gene().id == 0 {
             entity.gene_mut().clone_from(&self.new_gene()?);
@@ -225,7 +226,7 @@ where
         Ok(())
     }
 
-    pub fn count(&mut self) -> Result<EntityCount, PlutusError> {
+    pub fn count(&mut self) -> Result<EntityCount, SystemError> {
         let db_size = self.file.seek(SeekFrom::End(0))?;
         let total = db_size / T::N - 1;
         Ok(EntityCount { total, alive: self.live })
@@ -273,5 +274,5 @@ where
         }
     }
 
-    // pub fn set(&mut self, entity: &mut T) -> Result<(), PlutusError> {}
+    // pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {}
 }

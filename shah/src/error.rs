@@ -1,12 +1,7 @@
-use std::array::TryFromSliceError;
-
-// use shah_macros::model;
-
 #[crate::model]
-/// shah error for sending
 #[derive(Debug)]
 pub struct ErrorCode {
-    scope: u16,
+    pub scope: u16,
     pub code: u16,
 }
 
@@ -24,10 +19,9 @@ impl ErrorCode {
     }
 }
 
-/// shah error code
 #[derive(Debug)]
 #[shah_macros::enum_code]
-pub enum PlutusError {
+pub enum SystemError {
     NotFound,
     Forbidden,
     RateLimited,
@@ -41,35 +35,20 @@ pub enum PlutusError {
     BadApiIndex,
 }
 
-impl From<TryFromSliceError> for PlutusError {
-    fn from(_: TryFromSliceError) -> Self {
-        Self::Database
-    }
-}
+// impl From<TryFromSliceError> for SystemError {
+//     fn from(_: TryFromSliceError) -> Self {
+//         Self::Database
+//     }
+// }
 
-impl From<std::io::Error> for PlutusError {
+impl From<std::io::Error> for SystemError {
     fn from(value: std::io::Error) -> Self {
         Self::Io { reason: value.to_string() }
     }
 }
 
-impl From<PlutusError> for ErrorCode {
-    fn from(value: PlutusError) -> Self {
+impl From<SystemError> for ErrorCode {
+    fn from(value: SystemError) -> Self {
         Self::shah(value)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::ErrorCode;
-//
-//     #[test]
-//     fn test_error() {
-//         // let err = ErrorCode::shah(69u16);
-//         // let val = err.as_u32();
-//         // let bin: [u8; ErrorCode::SIZE] = err.into();
-//         //
-//         // assert_eq!(bin, val.to_le_bytes());
-//         // assert_eq!(bin, [1, 0, 69, 0]);
-//     }
-// }

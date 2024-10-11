@@ -1,26 +1,12 @@
 #![allow(dead_code, unused)]
 
-use crate::{Api, Binary};
+use crate::{Api, Binary, OrderHead, ReplyHead};
 use std::{
     fmt::Debug,
     io::{self, ErrorKind},
     os::unix::net::UnixDatagram,
     time::{Duration, Instant},
 };
-
-#[crate::model]
-struct OrderHead {
-    size: u32,
-    api: u16,
-    _pad: [u8; 2],
-}
-
-#[crate::model]
-struct ReplyHead {
-    size: u32,
-    error: u32,
-    elapsed: u64,
-}
 
 pub fn run<T: Debug>(
     path: &str, state: &mut T, routes: &[&[Api<T>]],

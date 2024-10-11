@@ -36,7 +36,6 @@ fn crate_ident() -> syn::Ident {
 
 #[proc_macro_attribute]
 pub fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
-    // println!("code: {code}");
     let mut item = syn::parse_macro_input!(code as ItemStruct);
     for attr in item.attrs.iter() {
         if let Meta::List(meta) = &attr.meta {
@@ -56,7 +55,6 @@ pub fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }
     }
     item.attrs.push(syn::parse_quote! { #[repr(C)] });
-    // let crate_ident = crate_ident();
 
     let ident = item.ident.clone();
     let mut asspad = TokenStream2::new();
@@ -122,30 +120,6 @@ pub fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }}
     }
 
-    // quote_into! {default_impl +=
-    //     impl ::core::default::Default for #ident {
-    //         #[inline]
-    //         fn default() -> #ident {
-    //             #ident {#{
-    //                 item.fields.iter().for_each(|f| {
-    //                     let fi = &f.ident;
-    //                     match &f.ty {
-    //                         Type::Path(_) => {
-    //                             quote_into!(default_impl += #fi: ::core::default::Default::default(),)
-    //                         },
-    //                         Type::Array(a) => {
-    //                             let len = &a.len;
-    //                             let at = &path(&a.elem).path.segments[0].ident;
-    //                             quote_into!(default_impl += #fi: [<#at>::default(), #len],)
-    //                         }
-    //                         t => {panic!("unknow type: {t:#?}")}
-    //                     }
-    //                 })
-    //             }}
-    //         }
-    //     }
-    // }
-
     quote! {
         #item
 
@@ -157,79 +131,6 @@ pub fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                 #default_impl
             }
         }
-
-        // impl #ident {
-        //     const SIZE: usize = ::core::mem::size_of::<#ident>();
-        //
-        //     fn from_bytes(value: [u8; <#ident>::SIZE]) -> Self {
-        //         unsafe { ::core::mem::transmute(value) }
-        //     }
-        //
-        //     fn into_bytes(&self) -> [u8; <#ident>::SIZE] {
-        //         unsafe {
-        //             ::core::slice::from_raw_parts(
-        //                 self as *const #ident as *const u8,
-        //                 <#ident>::SIZE,
-        //             )
-        //         }
-        //         .try_into()
-        //         .unwrap()
-        //     }
-        // }
     }
     .into()
-}
-
-#[proc_macro]
-pub fn tuple_bytes_impl(_: TokenStream) -> TokenStream {
-    // const ABC: &'static str = "ABCDEFGHIJKLMNOP";
-    const ABC: &str = "ABC";
-    let mut s = TokenStream2::new();
-
-    for i in 0..ABC.len() {
-        let iter = ABC.chars().map(|c| format_ident!("{c}")).take(i + 1);
-        let mut out = TokenStream2::new();
-        let mut total_size = TokenStream2::new();
-        iter.clone().enumerate().for_each(|(j, c)| {
-            quote_into!(out += #c,);
-            quote_into!(total_size += <#c>::SIZE);
-            if j < i {
-                quote_into!(total_size += +);
-            }
-        });
-
-        quote_into! {s +=
-            // #[allow(unused_parens)]
-            impl<#{iter.clone().for_each(|c|
-                quote_into!(s += #c: crate::FromBytes,) )
-            }> crate::FromBytes for (#out) {
-                const SIZE: usize = #total_size;
-                type Error = crate::error::Error;
-
-                fn from_bytes(value: &[u8]) -> core::result::Result<Self, Self::Error> {
-                    if value.len() != #total_size {
-                        println!("invalid value size: {} must be {}", value.len(), #total_size);
-                        return Err(Self::Error::shah(crate::error::PlutusError::Args));
-                    }
-
-                    Ok((#{
-                        for (j, c) in iter.clone().enumerate() {
-                            if j == 0 {
-                                quote_into!(s += <#c>::from_bytes(&value[0..<#c>::SIZE]).map_err(Into::into)?,);
-                            } else {
-                                let mut prev = TokenStream2::new();
-                                iter.clone().take(j).enumerate().for_each(|(k, c)| {
-                                    quote_into!(prev += <#c>::SIZE);
-                                    if k < j - 1 { quote_into!(prev += +); }
-                                });
-                                quote_into!(s += <#c>::from_bytes(&value[#prev..#prev + <#c>::SIZE]).map_err(Into::into)?,);
-                            }
-                        }
-                    }))
-                }
-            }
-        };
-    }
-
-    s.into()
 }

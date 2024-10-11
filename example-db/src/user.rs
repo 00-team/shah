@@ -1,4 +1,4 @@
-mod db {
+pub(crate) mod db {
     use shah::entity::{Entity, EntityDb};
     use shah::Binary;
     use shah::Gene;
@@ -40,9 +40,8 @@ mod api {
     use shah::{ErrorCode, Gene};
 
     pub(crate) fn user_get(
-        state: &mut State, (gene, ): (&Gene, ), (user, ): (&mut User,),
+        state: &mut State, (gene,): (&Gene,), (user,): (&mut User,),
     ) -> Result<(), ErrorCode> {
-
         state.users.get(gene, user)?;
 
         log::debug!("in user::user_get ");

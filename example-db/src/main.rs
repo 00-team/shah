@@ -11,43 +11,10 @@ fn main() {
     let routes = [user::ROUTES.as_slice(), post::ROUTES.as_slice()];
 
     let mut state =
-        models::State { users: user::setup(), posts: post::setup() };
+        models::State { users: user::db::setup(), posts: post::setup() };
 
     shah::server::run(SOCK_PATH, &mut state, &routes)
         .expect("could not init server");
-
-    // let mut order = [0u8; 1024 * 64];
-    // let mut reply = [0u8; 1024 * 64];
-    //
-    // order.iter_mut().enumerate().for_each(|(i, x)| *x = i as u8);
-    //
-
-    // log::debug!("routes: {routes:#?}");
-    // let route = &routes[0][0];
-    // let res = (route.caller)(
-    //     &state,
-    //     &order[0..route.input_size],
-    //     &mut reply[0..route.output_size],
-    // );
-    // log::debug!("route: {route:#?}");
-    // // let res = (routes[0][0].caller)(&state, &order, &mut reply);
-    // log::debug!("res: {res:?}")
-
-    // api::router(0, &state, &order, &mut reply);
-
-    // server::init(db).expect("server init error");
-
-    // let mut main_buffer = [0u8; 4096];
-    // let user_slice = &mut main_buffer[0..User::SIZE];
-    // let (head, user, rest) = unsafe { user_slice.align_to_mut::<User>() };
-    // assert!(head.is_empty() && rest.is_empty(), "data did not align");
-    // let user = &mut user[0];
-    //
-    // let mut db = user::setup();
-    // db.update_population();
-    // // db.add(user);
-    // log::debug!("user size: {}", User::S);
-    // log::debug!("db: live: {} | dead: {}", db.live, db.dead);
 }
 
 struct SimpleLogger;

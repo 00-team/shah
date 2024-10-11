@@ -6,3 +6,6 @@ resolver = "2"
 edition = "2021"
 license-file = "./LICENSE"
 repository = "https://github.com/g00je/plutus/"
+readme = "./README"
+keywords = ["database", "shah", "custom-database"]
+categories = ["database"]

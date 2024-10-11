@@ -5,6 +5,9 @@ edition.workspace = true
 license-file.workspace = true
 description = "shah db macros"
 repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 publish = true
 
 [lib]

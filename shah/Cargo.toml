@@ -3,9 +3,12 @@ name = "shah"
 version = "0.0.1"
 edition.workspace = true
 license-file.workspace = true
+readme.workspace = true
 publish = true
 description = "custom database"
 repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 shah-macros = "0.0.1"

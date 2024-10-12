@@ -42,12 +42,17 @@ pub fn run<T: Debug>(
         let order_head = OrderHead::from_binary(order_head);
         let order_body = &order_body[..order_size - OrderHead::S];
 
-        let [scope, api] = order_head.api.to_le_bytes();
-        let (scope, api) = (scope as usize, api as usize);
-        let route = match routes.get(scope).and_then(|v| v.get(api)) {
+        let route = match routes
+            .get(order_head.scope as usize)
+            .and_then(|v| v.get(order_head.route as usize))
+        {
             Some(v) => v,
             None => {
-                log::warn!("invalid api index: [{scope}, {api}]");
+                log::warn!(
+                    "invalid api index: [{}, {}]",
+                    order_head.scope,
+                    order_head.route
+                );
                 continue;
             }
         };

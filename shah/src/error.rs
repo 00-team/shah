@@ -6,7 +6,7 @@ pub struct ErrorCode {
 }
 
 impl ErrorCode {
-    pub(crate) fn shah<T: Into<u16>>(code: T) -> Self {
+    pub(crate) fn system<T: Into<u16>>(code: T) -> Self {
         Self { scope: 1, code: code.into() }
     }
 
@@ -20,13 +20,13 @@ impl ErrorCode {
 }
 
 #[derive(Debug)]
-#[shah_macros::enum_code]
+#[repr(u16)]
 pub enum SystemError {
-    NotFound,
+    NotFound = 0,
     Forbidden,
     RateLimited,
     Database,
-    Io { reason: String },
+    Io,
     Args,
     ZeroGeneId,
     BadGenePepper,
@@ -35,20 +35,38 @@ pub enum SystemError {
     BadApiIndex,
 }
 
-// impl From<TryFromSliceError> for SystemError {
-//     fn from(_: TryFromSliceError) -> Self {
-//         Self::Database
-//     }
-// }
-
 impl From<std::io::Error> for SystemError {
     fn from(value: std::io::Error) -> Self {
-        Self::Io { reason: value.to_string() }
+        log::warn!("io error: {value}");
+        Self::Io
     }
 }
 
 impl From<SystemError> for ErrorCode {
     fn from(value: SystemError) -> Self {
-        Self::shah(value)
+        Self::system(value as u16)
+    }
+}
+
+impl From<u16> for SystemError {
+    fn from(value: u16) -> Self {
+        unsafe { core::mem::transmute(value) }
+    }
+}
+
+#[derive(Debug)]
+pub enum ClientError<T> {
+    Unknown,
+    System(SystemError),
+    User(T),
+}
+
+impl<T: From<u16>> From<ErrorCode> for ClientError<T> {
+    fn from(value: ErrorCode) -> Self {
+        match value.scope {
+            1 => ClientError::System(value.code.into()),
+            2 => ClientError::User(value.code.into()),
+            _ => ClientError::Unknown,
+        }
     }
 }

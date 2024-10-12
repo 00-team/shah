@@ -5,7 +5,7 @@ pub mod models;
 pub mod server;
 pub(crate) mod utils;
 
-pub use crate::binary::Binary;
+pub use crate::binary::{Binary, FromBytes};
 pub use crate::error::{ErrorCode, ClientError};
 pub use models::*;
 

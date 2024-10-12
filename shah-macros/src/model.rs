@@ -3,6 +3,8 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use quote_into::quote_into;
 
+use crate::crate_ident;
+
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
     for attr in item.attrs.iter() {
@@ -26,6 +28,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
     let ident = item.ident.clone();
     let mut asspad = TokenStream2::new();
+    let ci = crate_ident();
 
     let fields_len = item.fields.len();
     item.fields
@@ -97,6 +100,13 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
             #[inline]
             fn default() -> #ident {
                 #default_impl
+            }
+        }
+
+        impl #ci::FromBytes for #ident {
+            fn from_bytes(data: &[u8]) -> Self {
+                let data: [u8; <Self as #ci::Binary>::S] = data.try_into().unwrap();
+                unsafe { core::mem::transmute(data) }
             }
         }
     }

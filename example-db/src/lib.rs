@@ -1,5 +1,3 @@
-mod models;
-mod user;
-mod post;
-
-pub use user::*;
+pub mod models;
+pub mod user;
+pub mod post;

@@ -1,4 +1,4 @@
-pub(crate) mod db {
+pub mod db {
     use shah::entity::{Entity, EntityDb};
     use shah::Binary;
     use shah::Gene;
@@ -33,12 +33,9 @@ pub(crate) mod db {
     }
 }
 
-trait Ggez {}
-
 #[shah::api(scope = 0, api = crate::models::ExampleApi, error = crate::models::ExampleError)]
 mod api {
-    use super::Ggez;
-    use super::User;
+    use super::db::User;
     use crate::models::State;
     use shah::{ErrorCode, Gene};
 
@@ -55,6 +52,3 @@ mod api {
         Ok(())
     }
 }
-
-pub use api::*;
-pub use db::*;

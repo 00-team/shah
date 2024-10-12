@@ -1,9 +1,11 @@
 use shah::{entity::EntityDb, ErrorCode};
 
+use crate::{post::Post, user::db::User};
+
 #[derive(Debug)]
 pub struct State {
-    pub users: EntityDb<crate::user::User>,
-    pub posts: EntityDb<crate::post::Post>,
+    pub users: EntityDb<User>,
+    pub posts: EntityDb<Post>,
 }
 
 pub type ExampleApi = shah::Api<State>;

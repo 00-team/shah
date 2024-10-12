@@ -1,28 +1,25 @@
-use core::panic;
-
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
+use syn::punctuated::Punctuated;
 
 use crate::crate_ident;
 
+type Args = Punctuated<syn::MetaNameValue, syn::Token![,]>;
+
 pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
-    let original = code.clone();
     let mut s = TokenStream2::new();
     let api_mod = syn::parse_macro_input!(code as syn::ItemMod);
     if api_mod.content.is_none() {
-        return original;
+        return quote! {
+            pub(crate) mod api {}
+            pub mod client {}
+        }
+        .into();
     }
-
-    let attr = syn::parse_macro_input!(args as syn::Meta);
-    let api_struct = match attr {
-        syn::Meta::Path(p) => p.clone(),
-        _ => panic!("invalid macro args. :/"),
-    };
-
-    let api_mod_idnet = &api_mod.ident;
-    quote_into!(s+= mod #api_mod_idnet);
+    let attrs = syn::parse_macro_input!(args with Args::parse_terminated);
+    let ApiArgs { api_scope, api_struct, user_error } = parse_args(attrs);
 
     let ci = crate_ident();
     let content = api_mod.content.unwrap().1;
@@ -30,6 +27,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         syn::Item::Fn(f) => Some(&f.sig),
         _ => None,
     });
+    let api_uses = content.iter().filter(|i| matches!(i, syn::Item::Use(_)));
 
     #[derive(Debug)]
     struct Func {
@@ -99,7 +97,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         funcs.push(func);
     }
 
-    quote_into! {s += {#{
+    quote_into! {s += pub(crate) mod api {#{
         for item in content.iter() {
             quote_into! {s += #item};
         }
@@ -158,8 +156,95 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 },}
             }
         }];};
+    }}};
 
+    quote_into! {s += pub mod client {#{
+        for item in api_uses {
+            quote_into! {s += #item};
+        }
+
+        for (route, Func { ident, inp, out, .. }) in funcs.iter().enumerate() {
+            let inputs = inp.iter().enumerate().map(|(i, t)| (format_ident!("iv{i}"), t));
+            // let outputs = out.iter().enumerate().map(|(i, t)| (format_ident!("ov{i}"), t));
+
+            let mut input_size = TokenStream2::new();
+            quote_into!(input_size += 0);
+            inp.iter().for_each(|t| quote_into!(input_size += + <#t as #ci::Binary>::S));
+
+            let mut out_before = TokenStream2::new();
+            quote_into! {out_before += 0};
+            let mut output_result = TokenStream2::new();
+            for t in out.iter() {
+                quote_into! {output_result += <#t as #ci::FromBytes>::from_bytes(&result[#out_before..#out_before + <#t as #ci::Binary>::S]),};
+                quote_into! {out_before += + <#t as #ci::Binary>::S};
+            }
+
+
+            quote_into! {s +=
+                pub fn #ident(
+                    taker: impl #ci::Taker,
+                    #{inputs.clone().for_each(|(i, t)| quote_into!(s += #i: #t, ))}
+                ) -> Result<(#{out.iter().for_each(|t| quote_into!(s += #t,))}), #ci::ClientError<#user_error>> {
+                // ) -> Result<(), #ci::ClientError<#user_error>> {
+                    let mut order = [0u8; #input_size + <#ci::OrderHead as #ci::Binary>::S];
+                    let (order_head, order_body) = order.split_at_mut(<#ci::OrderHead as #ci::Binary>::S);
+                    let order_head = <#ci::OrderHead as #ci::Binary>::from_binary_mut(order_head);
+                    order_head.scope = #api_scope as u8;
+                    order_head.route = #route as u8;
+                    order_head.size = #input_size as u32;
+
+                    let result = taker.take(&order)?;
+                    Ok((#output_result))
+                }
+            }
+        }
     }}};
 
     s.into()
+}
+
+struct ApiArgs {
+    api_struct: syn::Path,
+    user_error: syn::Path,
+    api_scope: syn::LitInt,
+}
+
+fn parse_args(args: Args) -> ApiArgs {
+    let mut api_struct: Option<syn::Path> = None;
+    let mut user_error: Option<syn::Path> = None;
+    let mut api_scope: Option<syn::LitInt> = None;
+
+    for meta in args.iter() {
+        let key = meta.path.segments[0].ident.to_string();
+        match key.as_str() {
+            "scope" => {
+                if let syn::Expr::Lit(lit) = &meta.value {
+                    if let syn::Lit::Int(int) = &lit.lit {
+                        api_scope = Some(int.clone());
+                    }
+                }
+            }
+            "api" => {
+                if let syn::Expr::Path(path) = &meta.value {
+                    api_struct = Some(path.path.clone());
+                }
+            }
+            "error" => {
+                if let syn::Expr::Path(path) = &meta.value {
+                    user_error = Some(path.path.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if api_struct.is_none() || api_scope.is_none() || user_error.is_none() {
+        panic!("invalid attrs. api = <Path>, scope = usize, error = UserError")
+    }
+
+    ApiArgs {
+        api_struct: api_struct.unwrap(),
+        user_error: user_error.unwrap(),
+        api_scope: api_scope.unwrap(),
+    }
 }

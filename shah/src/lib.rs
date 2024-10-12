@@ -22,6 +22,7 @@ pub struct Api<T> {
     pub caller: fn(&mut T, &[u8], &mut [u8]) -> Result<(), ErrorCode>,
 }
 
+/// Order Taker
 pub trait Taker {
     fn take(&self, order: &[u8]) -> Result<&[u8], ErrorCode>;
 }

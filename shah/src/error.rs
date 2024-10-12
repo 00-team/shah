@@ -17,6 +17,17 @@ impl ErrorCode {
     pub fn as_u32(&self) -> u32 {
         ((self.code as u32) << 16) | self.scope as u32
     }
+
+    pub fn from_u32(err: u32) -> Self {
+        Self { code: (err >> 16) as u16, scope: err as u16 }
+    }
+}
+
+impl From<std::io::Error> for ErrorCode {
+    fn from(value: std::io::Error) -> Self {
+        log::warn!("client io error: {value}");
+        Self::system(SystemError::Io as u16)
+    }
 }
 
 #[derive(Debug)]

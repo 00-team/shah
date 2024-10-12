@@ -44,6 +44,7 @@ pub enum SystemError {
     BadGeneIter,
     BadInputLength,
     BadApiIndex,
+    GeneIdNotInDatabase,
 }
 
 impl From<std::io::Error> for SystemError {

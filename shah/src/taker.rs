@@ -27,6 +27,8 @@ impl Taker {
     }
 
     pub fn take(&mut self, order: &[u8]) -> Result<(), ErrorCode> {
+        self.reply[0..ReplyHead::S].fill(0);
+
         self.conn.send(order)?;
         self.conn.recv(&mut self.reply)?;
 

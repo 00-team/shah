@@ -103,12 +103,16 @@ where
         Ok(db)
     }
 
+    pub fn db_size(&mut self) -> std::io::Result<u64> {
+        Ok(self.file.seek(SeekFrom::End(0))?)
+    }
+
     pub fn update_population(&mut self) -> Result<(), SystemError> {
         // let db = self.db();
         self.live = 0;
         self.dead = 0;
         self.dead_list.fill(0);
-        let db_size = self.file.seek(SeekFrom::End(0))?;
+        let db_size = self.db_size()?;
         let mut entity = T::default();
         let buf = entity.as_binary_mut();
 
@@ -146,23 +150,40 @@ where
         Ok(())
     }
 
-    pub fn get(
-        &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), SystemError> {
-        if gene.id == 0 {
+    pub fn seek_id(&mut self, id: GeneId) -> Result<(), SystemError> {
+        if id == 0 {
+            log::warn!("gene id is zero");
             return Err(SystemError::ZeroGeneId);
         }
 
-        self.file.seek(SeekFrom::Start(gene.id))?;
+        let db_size = self.db_size()?;
+        let pos = id * T::N;
+
+        if pos > db_size - T::N {
+            log::warn!("invalid position: {pos}/{db_size}");
+            return Err(SystemError::GeneIdNotInDatabase);
+        }
+
+        self.file.seek(SeekFrom::Start(pos))?;
+
+        Ok(())
+    }
+
+    pub fn get(
+        &mut self, gene: &Gene, entity: &mut T,
+    ) -> Result<(), SystemError> {
+        self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
         let og = entity.gene();
 
         if gene.pepper != og.pepper {
+            log::warn!("bad gene {:?} != {:?}", gene.pepper, og.pepper);
             return Err(SystemError::BadGenePepper);
         }
 
         if gene.iter != og.iter {
+            log::warn!("bad iter {:?} != {:?}", gene.iter, og.iter);
             return Err(SystemError::BadGeneIter);
         }
 
@@ -227,7 +248,7 @@ where
     }
 
     pub fn count(&mut self) -> Result<EntityCount, SystemError> {
-        let db_size = self.file.seek(SeekFrom::End(0))?;
+        let db_size = self.db_size()?;
         let total = db_size / T::N - 1;
         Ok(EntityCount { total, alive: self.live })
     }

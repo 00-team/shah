@@ -42,11 +42,13 @@ mod api {
     pub(crate) fn user_get(
         state: &mut State, (gene,): (&Gene,), (user,): (&mut User,),
     ) -> Result<(), ErrorCode> {
-        state.users.get(gene, user)?;
-
         log::debug!("in user::user_get ");
         log::debug!("state.users.file: {:?}", state.users.file);
         log::debug!("inp: {:?}", gene);
+        log::debug!("out: {:?}", user);
+
+        state.users.get(gene, user)?;
+
         log::debug!("out: {:?}", user);
 
         Ok(())

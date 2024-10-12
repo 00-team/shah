@@ -1,17 +1,13 @@
-use shah::{Binary, Gene, Taker};
+use example_db::user::client::user_get;
+use shah::{Gene, Taker};
 
 fn main() {
-    // let taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock");
-    //
-    let user_gene = Gene { id: 12, iter: 19, pepper: [12, 99, 7], ..Default::default() };
-    println!("gene: {user_gene:?}");
+    let mut taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock")
+        .expect("could not init taker");
 
-    // let result = example_db::user::client::user_get(&mut taker, &user_gene);
-
-    let mut buf = [0u8; 30];
-    buf[..Gene::S].clone_from_slice(user_gene.as_binary());
-
-    println!("buf: {buf:?}");
+    let user_gene = Gene { id: 1, iter: 0, pepper: [89, 128, 108], ..Default::default() };
+    let result = user_get(&mut taker, &user_gene);
+    println!("result: {result:#?}");
 
     // println!("result: {result:?}");
 }

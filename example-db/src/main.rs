@@ -2,13 +2,13 @@ mod models;
 mod post;
 mod user;
 
-const SOCK_PATH: &str = "/tmp/shah.example.sock";
+const SOCK_PATH: &str = "/tmp/shah.sock";
 
 fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    let routes = [user::ROUTES.as_slice(), post::ROUTES.as_slice()];
+    let routes = [user::api::ROUTES.as_slice(), post::api::ROUTES.as_slice()];
 
     let mut state =
         models::State { users: user::db::setup(), posts: post::setup() };

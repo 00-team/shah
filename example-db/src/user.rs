@@ -33,10 +33,13 @@ pub(crate) mod db {
     }
 }
 
-#[shah::api(ExampleApi)]
+trait Ggez {}
+
+#[shah::api(scope = 0, api = crate::models::ExampleApi, error = crate::models::ExampleError)]
 mod api {
+    use super::Ggez;
     use super::User;
-    use crate::models::{ExampleApi, State};
+    use crate::models::State;
     use shah::{ErrorCode, Gene};
 
     pub(crate) fn user_get(

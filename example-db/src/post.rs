@@ -33,7 +33,7 @@ mod db {
     }
 }
 
-#[shah::api(crate::models::ExampleApi)]
+#[shah::api(scope = 1, api = crate::models::ExampleApi, error = crate::models::ExampleError)]
 mod api {
     use super::db::Post;
     use crate::models::State;

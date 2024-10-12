@@ -22,6 +22,10 @@ impl Taker {
         ReplyHead::from_binary(&self.reply[0..ReplyHead::S])
     }
 
+    pub fn reply_body<'a>(&'a self, size: usize) -> &'a [u8] {
+        &self.reply[ReplyHead::S..ReplyHead::S + size]
+    }
+
     pub fn take(&mut self, order: &[u8]) -> Result<(), ErrorCode> {
         self.conn.send(order)?;
         self.conn.recv(&mut self.reply)?;

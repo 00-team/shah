@@ -13,7 +13,8 @@ pub struct Gene {
 #[derive(Debug)]
 pub struct OrderHead {
     pub size: u32,
-    pub api: u16,
+    pub scope: u8,
+    pub route: u8,
     _pad: [u8; 2],
 }
 

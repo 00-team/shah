@@ -29,4 +29,8 @@ pub trait Binary: Sized {
     }
 }
 
+pub trait FromBytes {
+    fn from_bytes(data: &[u8]) -> Self;
+}
+
 impl<T: Sized> Binary for T {}

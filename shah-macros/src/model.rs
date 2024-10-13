@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
+use quote::{format_ident, quote};
 use quote_into::quote_into;
 
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
@@ -106,6 +106,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
     let mut ssi = TokenStream2::new();
     for f in str_fields.iter() {
+        let set_ident = format_ident!("set_{f}");
         quote_into! {ssi +=
             pub fn #f<'a>(&'a self) -> &'a str {
                 let value = self.#f.split(|c| *c == 0).next().unwrap();
@@ -116,6 +117,11 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                     },
                     Ok(v) => v,
                 }
+            }
+
+            pub fn #set_ident(&mut self, value: &str) {
+                let max = self.#f.len();
+                self.#f[..value.len().min(max)].clone_from_slice(value.as_bytes())
             }
         };
     }

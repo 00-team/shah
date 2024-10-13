@@ -3,8 +3,6 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use quote_into::quote_into;
 
-use crate::crate_ident;
-
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
     for attr in item.attrs.iter() {
@@ -28,7 +26,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
     let ident = item.ident.clone();
     let mut asspad = TokenStream2::new();
-    let ci = crate_ident();
+    // let ci = crate::crate_ident();
 
     let mut str_fields = Vec::<syn::Ident>::new();
     item.fields.iter_mut().for_each(|f| {
@@ -106,6 +104,22 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }}
     }
 
+    let mut ssi = TokenStream2::new();
+    for f in str_fields.iter() {
+        quote_into! {ssi +=
+            pub fn #f<'a>(&'a self) -> &'a str {
+                let value = self.#f.split(|c| *c == 0).next().unwrap();
+                match core::str::from_utf8(value) {
+                    Err(e) => match core::str::from_utf8(&value[..e.valid_up_to()]) {
+                        Ok(v) => v,
+                        Err(_) => "",
+                    },
+                    Ok(v) => v,
+                }
+            }
+        };
+    }
+
     quote! {
         #item
 
@@ -116,6 +130,10 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
             fn default() -> #ident {
                 #default_impl
             }
+        }
+
+        impl #ident {
+            #ssi
         }
 
         // impl #ci::FromBytes for #ident {

@@ -115,7 +115,6 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         }
 
         for Func { api_ident, ident, state, inp, out, ret } in funcs.iter() {
-            println!("func: {ident} -> {ret}");
             let mut output_var = TokenStream2::new();
             for (i, t) in out.iter().enumerate() {
                 let vid = format_ident!("ov{}", i);
@@ -140,33 +139,38 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 quote_into! {inp_before += + <#t as #ci::Binary>::S};
             }
 
+            let mut out_size = TokenStream2::new();
+            quote_into!(out_size += 0);
+            out.iter().for_each(|t| quote_into! {out_size += + <#t as #ci::Binary>::S });
+
             quote_into! {s +=
-                pub(crate) fn #api_ident(state: #state, inp: &[u8], out: &mut [u8]) -> Result<(), #ci::ErrorCode> {
+                pub(crate) fn #api_ident(state: #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
                     let input = (#input_var);
                     #output_var
-                    #ident(state, input, output)
+                    let res = #ident(state, input, output)?;
+                    #{if *ret {
+                        quote_into!(s += Ok(res))
+                    } else {
+                        quote_into!(s += Ok(#out_size))
+                    }}
                 }
             };
         }
 
         let routes_len = funcs.len();
         quote_into! {s += pub(crate) const ROUTES: [#api_struct; #routes_len] = [#{
-            for Func { api_ident, ident, inp, out, .. } in funcs.iter() {
+            for Func { api_ident, ident, inp, .. } in funcs.iter() {
                 let mut inp_size = TokenStream2::new();
                 quote_into!(inp_size += 0);
                 inp.iter().for_each(|t| quote_into! {inp_size += + <#t as #ci::Binary>::S });
-
-                let mut out_size = TokenStream2::new();
-                quote_into!(out_size += 0);
-                out.iter().for_each(|t| quote_into! {out_size += + <#t as #ci::Binary>::S });
 
                 let name = ident.to_string();
 
                 quote_into! {s += #api_struct {
                     name: #name,
                     caller: #api_ident,
-                    input_size: #inp_size,
-                    output_size: #out_size,
+                    input_min: #inp_size,
+                    input_max: #inp_size,
                 },}
             }
         }];};

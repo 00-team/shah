@@ -59,14 +59,11 @@ pub fn run<T: Debug>(
 
         log::debug!("route: {route:#?}");
 
-        if route.input_min > order_body.len()
-            || route.input_max < order_body.len()
-        {
+        if route.input_size != order_body.len() {
             log::warn!(
-                "{} <= {} <= {}",
-                route.input_min,
+                "invalid input size: {} != {}",
                 order_body.len(),
-                route.input_max,
+                route.input_size,
             );
             continue;
         }

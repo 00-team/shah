@@ -19,7 +19,6 @@ extern crate self as shah;
 #[derive(Debug)]
 pub struct Api<T> {
     pub name: &'static str,
-    pub input_min: usize,
-    pub input_max: usize,
+    pub input_size: usize,
     pub caller: fn(&mut T, &[u8], &mut [u8]) -> Result<usize, ErrorCode>,
 }

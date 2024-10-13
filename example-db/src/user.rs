@@ -67,6 +67,14 @@ mod api {
     pub(crate) fn user_list(
         state: &mut State, inp: (&GeneId,), out: (&mut [User; 32],),
     ) -> Result<usize, ErrorCode> {
-        Ok(12)
+        Ok(0)
+    }
+
+    pub(crate) fn user_test(
+        state: &mut State, inp: (&u8, &u16, &[u8; 4096]), _: (),
+    ) -> Result<(), ErrorCode> {
+        log::debug!("user_test: inp: {inp:?}");
+
+        Ok(())
     }
 }

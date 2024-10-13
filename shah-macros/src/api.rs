@@ -62,20 +62,13 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                     func.state = Some(tr.clone());
                 }
                 syn::Type::Tuple(tt) => {
-                    let len = tt.elems.len();
-                    tt.elems.iter().enumerate().for_each(|(i, t)| {
+                    tt.elems.iter().for_each(|t| {
                         if let syn::Type::Reference(ty) = t {
                             match &(*ty.elem) {
                                 syn::Type::Path(_) => {}
                                 syn::Type::Array(_) => {}
                                 syn::Type::Slice(_) => {
-                                    if i != len - 1 {
-                                        panic!("slice must always be at the end of input or output")
-                                    }
-
-                                    if inp_done {
-                                        panic!("output value cannot be a slice")
-                                    }
+                                    panic!("dynamic data (aka slice) is not supported")
                                 }
                                 el => panic!(
                                     "invalid type: {}",
@@ -131,12 +124,12 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 }
             });}
 
-            let mut inp_before = TokenStream2::new();
-            quote_into! {inp_before += 0};
+            let mut bf = TokenStream2::new();
+            quote_into! {bf += 0};
             let mut input_var = TokenStream2::new();
             for t in inp.iter() {
-                quote_into! {input_var += <#t as #ci::Binary>::from_binary(&inp[#inp_before..#inp_before + <#t as #ci::Binary>::S]),};
-                quote_into! {inp_before += + <#t as #ci::Binary>::S};
+                quote_into! {input_var += <#t as #ci::Binary>::from_binary(&inp[#bf..#bf + <#t as #ci::Binary>::S]),};
+                quote_into! {bf += + <#t as #ci::Binary>::S};
             }
 
             let mut out_size = TokenStream2::new();
@@ -160,17 +153,18 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         let routes_len = funcs.len();
         quote_into! {s += pub(crate) const ROUTES: [#api_struct; #routes_len] = [#{
             for Func { api_ident, ident, inp, .. } in funcs.iter() {
-                let mut inp_size = TokenStream2::new();
-                quote_into!(inp_size += 0);
-                inp.iter().for_each(|t| quote_into! {inp_size += + <#t as #ci::Binary>::S });
+                let mut input_size = TokenStream2::new();
+                quote_into!(input_size += 0);
+
+                for t in inp.iter() {
+                    quote_into! {input_size += + <#t as #ci::Binary>::S }
+                }
 
                 let name = ident.to_string();
-
                 quote_into! {s += #api_struct {
                     name: #name,
                     caller: #api_ident,
-                    input_min: #inp_size,
-                    input_max: #inp_size,
+                    input_size: #input_size,
                 },}
             }
         }];};
@@ -187,7 +181,9 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
             let mut input_size = TokenStream2::new();
             quote_into!(input_size += 0);
-            inp.iter().for_each(|t| quote_into!(input_size += + <#t as #ci::Binary>::S));
+            for t in inp.iter() {
+                quote_into!(input_size += + <#t as #ci::Binary>::S);
+            }
 
             let mut bf = TokenStream2::new();
             quote_into! {bf += 0};
@@ -217,7 +213,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                     let order_head = <#ci::OrderHead as #ci::Binary>::from_binary_mut(order_head);
                     order_head.scope = #api_scope as u8;
                     order_head.route = #route as u8;
-                    order_head.size = #input_size as u32;
+                    order_head.size = (#input_size) as u32;
 
                     #input_result
 

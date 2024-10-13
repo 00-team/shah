@@ -43,6 +43,7 @@ mod api {
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),
     ) -> Result<(), ErrorCode> {
         out.clone_from(inp);
+        out.gene.id = 0;
         state.users.add(out)?;
         Ok(())
     }

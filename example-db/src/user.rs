@@ -37,7 +37,15 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{ErrorCode, Gene};
+    use shah::{ErrorCode, Gene, GeneId};
+
+    pub(crate) fn user_add(
+        state: &mut State, (inp,): (&User,), (out,): (&mut User,),
+    ) -> Result<(), ErrorCode> {
+        out.clone_from(inp);
+        state.users.add(out)?;
+        Ok(())
+    }
 
     pub(crate) fn user_get(
         state: &mut State, (gene,): (&Gene,), (user,): (&mut User,),
@@ -55,7 +63,7 @@ mod api {
     }
 
     pub(crate) fn user_list(
-        state: &mut State, inp: (&u64,), out: (&mut [User; 32],),
+        state: &mut State, inp: (&GeneId,), out: (&mut [User; 32],),
     ) -> Result<usize, ErrorCode> {
         Ok(12)
     }

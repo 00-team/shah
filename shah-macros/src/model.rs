@@ -120,8 +120,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
             }
 
             pub fn #set_ident(&mut self, value: &str) {
-                let max = self.#f.len();
-                self.#f[..value.len().min(max)].clone_from_slice(value.as_bytes())
+                let len = value.len().min(self.#f.len());
+                self.#f[..len].clone_from_slice(&value.as_bytes()[..len])
             }
         };
     }

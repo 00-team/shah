@@ -59,22 +59,26 @@ pub fn run<T: Debug>(
 
         log::debug!("route: {route:#?}");
 
-        if route.input_size != order_body.len() {
+        if route.input_min > order_body.len()
+            || route.input_max < order_body.len()
+        {
             log::warn!(
-                "invalid order body size: {} != {}",
+                "{} <= {} <= {}",
+                route.input_min,
                 order_body.len(),
-                route.input_size
+                route.input_max,
             );
             continue;
         }
 
         let (reply_head, reply_body) = reply.split_at_mut(ReplyHead::S);
         let reply_head = ReplyHead::from_binary_mut(reply_head);
-        let reply_body = &mut reply_body[..route.output_size];
+        // let reply_body = &mut reply_body[..route.output_size];
 
         match (route.caller)(state, order_body, reply_body) {
-            Ok(_) => {
-                reply_head.size = route.output_size as u32;
+            Ok(output_size) => {
+                reply_head.error = 0;
+                reply_head.size = output_size as u32;
             }
             Err(e) => {
                 reply_head.error = e.as_u32();

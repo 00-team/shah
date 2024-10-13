@@ -36,6 +36,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         state: Option<syn::TypeReference>,
         inp: Vec<syn::Type>,
         out: Vec<syn::Type>,
+        ret: bool,
     }
     let mut funcs = Vec::<Func>::with_capacity(api_funcs.clone().count());
 
@@ -46,6 +47,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             state: None,
             inp: Default::default(),
             out: Default::default(),
+            ret: returns_output_size(&sig.output),
         };
         let mut inp_done = false;
 
@@ -60,11 +62,21 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                     func.state = Some(tr.clone());
                 }
                 syn::Type::Tuple(tt) => {
-                    tt.elems.iter().for_each(|t| {
+                    let len = tt.elems.len();
+                    tt.elems.iter().enumerate().for_each(|(i, t)| {
                         if let syn::Type::Reference(ty) = t {
                             match &(*ty.elem) {
                                 syn::Type::Path(_) => {}
                                 syn::Type::Array(_) => {}
+                                syn::Type::Slice(_) => {
+                                    if i != len - 1 {
+                                        panic!("slice must always be at the end of input or output")
+                                    }
+
+                                    if inp_done {
+                                        panic!("output value cannot be a slice")
+                                    }
+                                }
                                 el => panic!(
                                     "invalid type: {}",
                                     el.to_token_stream()
@@ -102,10 +114,12 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             quote_into! {s += #item};
         }
 
-        for Func { api_ident, ident, state, inp, out } in funcs.iter() {
+        for Func { api_ident, ident, state, inp, out, ret } in funcs.iter() {
+            println!("func: {ident} -> {ret}");
             let mut output_var = TokenStream2::new();
             for (i, t) in out.iter().enumerate() {
                 let vid = format_ident!("ov{}", i);
+
                 quote_into! {output_var +=
                     let (#vid, out) = out.split_at_mut(<#t as #ci::Binary>::S);
                     let #vid = <#t as #ci::Binary>::from_binary_mut(#vid);
@@ -259,4 +273,29 @@ fn parse_args(args: Args) -> ApiArgs {
         user_error: user_error.unwrap(),
         api_scope: api_scope.unwrap(),
     }
+}
+
+fn returns_output_size(rt: &syn::ReturnType) -> bool {
+    if let syn::ReturnType::Type(_, t) = rt {
+        if let syn::Type::Path(p) = &(**t) {
+            let args = &p.path.segments[0].arguments;
+            if let syn::PathArguments::AngleBracketed(a) = args {
+                if let syn::GenericArgument::Type(t) = &a.args[0] {
+                    if let syn::Type::Tuple(tp) = t {
+                        if tp.elems.len() == 0 {
+                            return false;
+                        }
+                    }
+
+                    if let syn::Type::Path(p) = t {
+                        if p.to_token_stream().to_string() == "usize" {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    panic!("return type of an api must be Result<(), ErrorCode> or Result<usize, ErrorCode>")
 }

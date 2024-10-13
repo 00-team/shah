@@ -30,6 +30,21 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut asspad = TokenStream2::new();
     let ci = crate_ident();
 
+    let mut str_fields = Vec::<syn::Ident>::new();
+    item.fields.iter_mut().for_each(|f| {
+        for attr in f.attrs.iter_mut() {
+            match &attr.meta {
+                syn::Meta::Path(p) => {
+                    if p.segments[0].ident == "str" {
+                        str_fields.push(f.ident.clone().unwrap());
+                    }
+                }
+                _ => {}
+            }
+        }
+        f.attrs.clear();
+    });
+
     let fields_len = item.fields.len();
     item.fields
         .iter()
@@ -103,12 +118,12 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
             }
         }
 
-        impl #ci::FromBytes for #ident {
-            fn from_bytes(data: &[u8]) -> Self {
-                let data: [u8; <Self as #ci::Binary>::S] = data.try_into().unwrap();
-                unsafe { core::mem::transmute(data) }
-            }
-        }
+        // impl #ci::FromBytes for #ident {
+        //     fn from_bytes(data: &[u8]) -> Self {
+        //         let data: [u8; <Self as #ci::Binary>::S] = data.try_into().unwrap();
+        //         unsafe { core::mem::transmute(data) }
+        //     }
+        // }
     }
     .into()
 }

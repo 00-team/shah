@@ -8,6 +8,7 @@ pub mod db {
     pub struct User {
         pub gene: Gene,
         pub flags: u64,
+        #[str]
         pub name: [u8; 12],
         pub age: u32,
     }

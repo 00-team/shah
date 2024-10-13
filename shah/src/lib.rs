@@ -6,7 +6,7 @@ pub mod server;
 mod taker;
 pub(crate) mod utils;
 
-pub use crate::binary::{Binary, FromBytes};
+pub use crate::binary::*;
 pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;

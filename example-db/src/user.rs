@@ -53,4 +53,10 @@ mod api {
 
         Ok(())
     }
+
+    pub(crate) fn user_list(
+        state: &mut State, inp: (&u64,), out: (&mut [User; 32],),
+    ) -> Result<usize, ErrorCode> {
+        Ok(12)
+    }
 }

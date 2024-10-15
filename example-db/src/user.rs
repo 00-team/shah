@@ -1,32 +1,17 @@
 pub mod db {
-    use shah::entity::{Entity, EntityDb};
-    use shah::Binary;
+    use shah::entity::EntityDb;
     use shah::Gene;
+    use shah::{Binary, Entity};
 
     #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy)]
+    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
         pub gene: Gene,
-        pub flags: u64,
+        pub flags: u8,
+        pub _pad: [u8; 7],
         #[str]
         pub name: [u8; 12],
         pub age: u32,
-    }
-
-    impl Entity for User {
-        fn gene(&self) -> &Gene {
-            &self.gene
-        }
-        fn flags(&self) -> &u8 {
-            &self.flags.as_binary()[0]
-        }
-
-        fn gene_mut(&mut self) -> &mut Gene {
-            &mut self.gene
-        }
-        fn flags_mut(&mut self) -> &mut u8 {
-            &mut self.flags.as_binary_mut()[0]
-        }
     }
 
     pub(crate) fn setup() -> EntityDb<User> {

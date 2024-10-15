@@ -11,7 +11,7 @@ pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;
 
-pub use shah_macros::{api, enum_code, model};
+pub use shah_macros::{api, enum_code, model, Entity};
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

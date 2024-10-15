@@ -1,28 +1,33 @@
-// incomplete entity processing all fields
-
 use proc_macro::TokenStream;
-use proc_macro2::Ident;
-
-const SPACE: &str = "\x1b[31m===================================\x1b[m";
+use proc_macro2::TokenStream as TokenStream2;
+use quote_into::quote_into;
 
 pub(crate) fn entity(_args: TokenStream, code: TokenStream) -> TokenStream {
-    println!("\n{SPACE}\nentity code: {code}\n");
+    let item = syn::parse_macro_input!(code as syn::ItemStruct);
+    let mut s = TokenStream2::new();
+    let ident = &item.ident;
 
-    //     static STATE: OnceLock<Config> = OnceLock::new();
-    //     STATE.get_or_init(|| Config {...});
-    let output = code.clone();
-    println!("{SPACE}");
-    let item = syn::parse_macro_input!(code as syn::ItemMod);
-    println!("{item:#?}");
-    output
-    // let organism = match Organism::try_from(item) {
-    //     Ok(o) => o,
-    //     Err(e) => panic!("{}:{} oragnis try from err: {e}", file!(), line!()),
-    // };
-    // println!("{SPACE}");
-    // println!("organism: {organism:#?}");
-    // println!("{SPACE}");
-    // code
+    quote_into! {s +=
+        #item
+
+        impl #ci::entity::Entity for #ident {
+            fn gene(&self) -> &Gene {
+                &self.gene
+            }
+            fn flags(&self) -> &u8 {
+                &self.flags.as_binary()[0]
+            }
+
+            fn gene_mut(&mut self) -> &mut Gene {
+                &mut self.gene
+            }
+            fn flags_mut(&mut self) -> &mut u8 {
+                &mut self.flags.as_binary_mut()[0]
+            }
+        }
+    };
+
+    s.into()
 }
 
 #[derive(Debug)]

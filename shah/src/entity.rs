@@ -10,7 +10,7 @@ use std::{
 use crate::error::SystemError;
 use crate::{Binary, Gene, GeneId};
 
-// const PAGE_SIZE: u8 = 32;
+const PAGE_SIZE: usize = 32;
 // const REQUEST_SIZE: u16 = 40960; // 4096 * 10
 // const SNAKE_MAX_LENGTH: u16 = 32768; // 4096 * 8
 const ITER_EXHAUSTION: u8 = 250;
@@ -299,5 +299,31 @@ where
         }
     }
 
-    // pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {}
+    pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {
+        let mut old_entity = T::default();
+        self.get(entity.gene(), &mut old_entity)?;
+        self.file.seek_relative(-(T::N as i64))?;
+        self.file.write_all(entity.as_binary())?;
+
+        if !entity.alive() {
+            self.add_dead(entity.gene());
+        }
+
+        Ok(())
+    }
+
+    pub fn list(
+        &mut self, page: u64, result: &mut [T; PAGE_SIZE],
+    ) -> Result<usize, SystemError> {
+        self.seek_id(page * PAGE_SIZE as u64 + 1)?;
+        let size = self.file.read(result.as_binary_mut())?;
+        let count = size / T::S;
+        if count != PAGE_SIZE {
+            for i in count..PAGE_SIZE {
+                result[i].as_binary_mut().fill(0);
+            }
+        }
+
+        Ok(count)
+    }
 }

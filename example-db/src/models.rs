@@ -15,6 +15,7 @@ pub type ExampleApi = shah::Api<State>;
 #[repr(u16)]
 pub enum ExampleError {
     UserNotFound,
+    BadPhone,
 }
 
 impl From<ExampleError> for ErrorCode {

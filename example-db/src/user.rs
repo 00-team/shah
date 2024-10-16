@@ -3,6 +3,8 @@ pub mod db {
     use shah::Gene;
     use shah::{Binary, Entity};
 
+    use crate::models::ExampleError;
+
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy)]
     pub struct SessionInfo {
@@ -35,11 +37,26 @@ pub mod db {
         pub photo: Gene,
         pub reviews: [u64; 3],
         #[str(set = false)]
-        pub phone: [u8; 12],
+        phone: [u8; 12],
         pub cc: u16,
         #[str]
         pub name: [u8; 50],
         pub sessions: [Session; 3],
+    }
+
+    impl User {
+        pub fn set_phone(&mut self, phone: &str) -> Result<(), ExampleError> {
+            if phone.len() != 11 || !phone.starts_with("09") {
+                return Err(ExampleError::BadPhone);
+            }
+            if phone.chars().any(|c| c < '0' || c > '9') {
+                return Err(ExampleError::BadPhone);
+            }
+
+            self.phone[..11].clone_from_slice(phone.as_bytes());
+
+            Ok(())
+        }
     }
 
     pub(crate) fn setup() -> EntityDb<User> {

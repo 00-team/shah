@@ -6,3 +6,4 @@ Cargo.lock
 old/
 data/
 .ignore*
+.ccls-cache/

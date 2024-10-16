@@ -9,16 +9,15 @@ fn main() {
         .expect("could not init taker");
 
     let mut old_user = User::default();
-    old_user.set_phone("12").expect("invalid phone");
-    old_user.set_name("my name 😂");
+    old_user.set_name("Ostad 007 🐧");
     println!("old user: {old_user:#?}");
-    let (new_user,) = user_add(&mut taker, &old_user).unwrap();
-    println!("new user: {new_user:#?}");
-    let new_user_gene = new_user.gene;
-
-    let (user,) =
-        user_get(&mut taker, &new_user_gene).expect("error getting user");
-    println!("user name: {:?} - {:?}", user.name, user.name());
+    // let (new_user,) = user_add(&mut taker, &old_user).unwrap();
+    // println!("new user: {new_user:#?}");
+    // let new_user_gene = new_user.gene;
+    //
+    // let (user,) =
+    //     user_get(&mut taker, &new_user_gene).expect("error getting user");
+    // println!("user name: {:?} - {:?}", user.name, user.name());
 
 
     // let name = name.split(|c| *c == 0).next().unwrap();

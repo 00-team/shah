@@ -8,10 +8,8 @@ fn main() {
     let mut taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock")
         .expect("could not init taker");
 
-    let mut old_user = User {
-        age: 69,
-        ..Default::default()
-    };
+    let mut old_user = User::default();
+    old_user.set_phone(value);
     old_user.set_name("my name  😂");
     println!("old user: {old_user:#?}");
     let (new_user,) = user_add(&mut taker, &old_user).unwrap();

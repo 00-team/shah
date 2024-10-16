@@ -4,14 +4,42 @@ pub mod db {
     use shah::{Binary, Entity};
 
     #[shah::model]
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    pub struct SessionInfo {
+        pub client: u8,
+        pub os: u8,
+        pub browser: u8,
+        pub device: u8,
+        pub client_version: u16,
+        pub os_version: u16,
+        pub browser_version: u16,
+        _pad: [u8; 2],
+    }
+
+    #[shah::model]
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    pub struct Session {
+        ip: [u8; 4],
+        info: SessionInfo,
+        timestamp: u64,
+        token: [u8; 64],
+    }
+
+    #[shah::model]
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
+        pub flags: u64,
         pub gene: Gene,
-        pub flags: u8,
-        pub _pad: [u8; 7],
+        pub agent: Gene,
+        pub review: Gene,
+        pub photo: Gene,
+        pub reviews: [u64; 3],
+        #[str(set = false)]
+        pub phone: [u8; 12],
+        pub cc: u16,
         #[str]
-        pub name: [u8; 12],
-        pub age: u32,
+        pub name: [u8; 50],
+        pub sessions: [Session; 3],
     }
 
     pub(crate) fn setup() -> EntityDb<User> {

@@ -1,5 +1,4 @@
 mod models;
-mod post;
 mod user;
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -8,10 +7,9 @@ fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    let routes = [user::api::ROUTES.as_slice(), post::api::ROUTES.as_slice()];
+    let routes = [user::api::ROUTES.as_slice()];
 
-    let mut state =
-        models::State { users: user::db::setup(), posts: post::setup() };
+    let mut state = models::State { users: user::db::setup() };
 
     shah::server::run(SOCK_PATH, &mut state, &routes)
         .expect("could not init server");
@@ -33,9 +31,10 @@ impl log::Log for SimpleLogger {
             log::Level::Error => ["\x1b[31m", "E", "Error"],
         };
         println!(
-            "[{}{}\x1b[0m]{{\x1b[32m{}\x1b[0m}}: {}",
+            "[{}{}\x1b[0m]{{{}{}\x1b[0m}}: {}",
             level[0],
             level[1],
+            level[0],
             record.target(),
             record.args()
         );

@@ -9,8 +9,8 @@ fn main() {
         .expect("could not init taker");
 
     let mut old_user = User::default();
-    old_user.set_phone(value);
-    old_user.set_name("my name  😂");
+    old_user.set_phone("12").expect("invalid phone");
+    old_user.set_name("my name 😂");
     println!("old user: {old_user:#?}");
     let (new_user,) = user_add(&mut taker, &old_user).unwrap();
     println!("new user: {new_user:#?}");

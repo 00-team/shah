@@ -60,7 +60,9 @@ pub mod db {
     }
 
     pub(crate) fn setup() -> EntityDb<User> {
-        EntityDb::<User>::new("user").expect("user db setup")
+        let mut db = EntityDb::<User>::new("user").expect("user db setup");
+        db.update_population().expect("user update pop err");
+        db
     }
 }
 
@@ -68,7 +70,7 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{ErrorCode, Gene, GeneId};
+    use shah::{entity::PAGE_SIZE, ErrorCode, Gene, GeneId};
 
     pub(crate) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),
@@ -95,16 +97,10 @@ mod api {
     }
 
     pub(crate) fn user_list(
-        state: &mut State, inp: (&GeneId,), out: (&mut [User; 32],),
+        state: &mut State, (page,): (&GeneId,),
+        (users,): (&mut [User; PAGE_SIZE],),
     ) -> Result<usize, ErrorCode> {
-        Ok(0)
-    }
-
-    pub(crate) fn user_test(
-        state: &mut State, inp: (&u8, &u16, &[u8; 4096]), _: (),
-    ) -> Result<(), ErrorCode> {
-        log::debug!("user_test: inp: {inp:?}");
-
-        Ok(())
+        let count = state.users.list(*page, users)?;
+        Ok(count * <User as shah::Binary>::S)
     }
 }

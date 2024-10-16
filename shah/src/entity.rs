@@ -10,7 +10,7 @@ use std::{
 use crate::error::SystemError;
 use crate::{Binary, Gene, GeneId};
 
-const PAGE_SIZE: usize = 32;
+pub const PAGE_SIZE: usize = 32;
 // const REQUEST_SIZE: u16 = 40960; // 4096 * 10
 // const SNAKE_MAX_LENGTH: u16 = 32768; // 4096 * 8
 const ITER_EXHAUSTION: u8 = 250;

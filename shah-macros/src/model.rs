@@ -195,7 +195,21 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
             let set_ident = format_ident!("set_{field}");
             quote_into! {ssi +=
                 pub fn #set_ident(&mut self, value: &str) {
-                    let len = value.len().min(self.#field.len());
+                    let vlen = value.len();
+                    let flen = self.#field.len();
+                    let len = if vlen > flen {
+                        let mut idx = flen;
+                        loop {
+                            if value.is_char_boundary(idx) {
+                                break idx;
+                            }
+                            idx -= 1;
+                            continue;
+                        }
+                    } else {
+                        vlen
+                    };
+                    // let len = value.len().min(self.#field.len());
                     self.#field[..len].clone_from_slice(&value.as_bytes()[..len])
                 }
             };

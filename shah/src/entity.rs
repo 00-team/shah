@@ -175,6 +175,10 @@ where
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
+        if !entity.alive() {
+            return Err(SystemError::EntityNotAlive);
+        }
+
         let og = entity.gene();
 
         if gene.pepper != og.pepper {

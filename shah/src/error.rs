@@ -45,6 +45,7 @@ pub enum SystemError {
     BadInputLength,
     BadApiIndex,
     GeneIdNotInDatabase,
+    EntityNotAlive,
 }
 
 impl From<std::io::Error> for SystemError {

@@ -10,19 +10,19 @@ pub struct Taker {
 
 impl Taker {
     pub fn init(server: &str, path: &str) -> std::io::Result<Self> {
-        let _ = std::fs::remove_file(&path);
-        let conn = UnixDatagram::bind(&path)?;
+        let _ = std::fs::remove_file(path);
+        let conn = UnixDatagram::bind(path)?;
         conn.connect(server)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
         Ok(Self { conn, reply: [0u8; 1024 * 64] })
     }
 
-    pub fn reply_head<'a>(&'a self) -> &'a ReplyHead {
+    pub fn reply_head(&self) -> &ReplyHead {
         ReplyHead::from_binary(&self.reply[0..ReplyHead::S])
     }
 
-    pub fn reply_body<'a>(&'a self, size: usize) -> &'a [u8] {
+    pub fn reply_body(&self, size: usize) -> &[u8] {
         &self.reply[ReplyHead::S..ReplyHead::S + size]
     }
 

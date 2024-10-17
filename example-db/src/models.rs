@@ -1,9 +1,6 @@
-use shah::{db::entity::EntityDb, ErrorCode};
+use shah::ErrorCode;
 
-use crate::{
-    phone::db::PhoneDb,
-    user::db::{User, UserDb},
-};
+use crate::{phone::db::PhoneDb, user::db::UserDb};
 
 #[derive(Debug)]
 pub struct State {

@@ -137,6 +137,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             out.iter().for_each(|t| quote_into! {out_size += + <#t as #ci::Binary>::S });
 
             quote_into! {s +=
+                #[allow(dead_code)]
                 pub(crate) fn #api_ident(state: #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
                     let input = (#input_var);
                     #output_var
@@ -170,7 +171,10 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         }];};
     }}};
 
-    quote_into! {s += pub mod client {#{
+    quote_into! {s += pub mod client {
+        #![allow(dead_code, unused_imports)]
+
+        #{
         for item in api_uses {
             quote_into! {s += #item};
         }

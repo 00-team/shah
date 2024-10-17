@@ -16,9 +16,10 @@ pub use shah_macros::{api, enum_code, model, Entity};
 #[allow(unused_extern_crates)]
 extern crate self as shah;
 
+type ApiCaller<T> = fn(&mut T, &[u8], &mut [u8]) -> Result<usize, ErrorCode>;
 #[derive(Debug)]
 pub struct Api<T> {
     pub name: &'static str,
     pub input_size: usize,
-    pub caller: fn(&mut T, &[u8], &mut [u8]) -> Result<usize, ErrorCode>,
+    pub caller: ApiCaller<T>,
 }

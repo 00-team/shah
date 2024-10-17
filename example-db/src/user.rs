@@ -51,7 +51,7 @@ pub mod db {
             if phone.len() != 11 || !phone.starts_with("09") {
                 return Err(ExampleError::BadPhone);
             }
-            if phone.chars().any(|c| c < '0' || c > '9') {
+            if phone.chars().any(|c| !c.is_ascii_digit()) {
                 return Err(ExampleError::BadPhone);
             }
 

@@ -83,13 +83,13 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                             Ok(v) => v,
                             Err(e) => panic!("error parsing key value: {e}"),
                         };
-                        let args = args.into_iter().filter_map(|a| {
+                        let args = args.into_iter().map(|a| {
                             if let syn::Expr::Path(p) = &(*a.left) {
                                 if let syn::Expr::Lit(lit) = &(*a.right) {
-                                    return Some((
+                                    return (
                                         p.path.segments[0].ident.clone(),
                                         lit.lit.clone(),
-                                    ));
+                                    );
                                 }
                             }
 

@@ -1,6 +1,4 @@
-use core::panic;
 use std::{
-    collections::HashMap,
     fmt::Debug,
     fs::{create_dir_all, File},
     io::{Seek, SeekFrom},
@@ -9,6 +7,7 @@ use std::{
 use crate::error::SystemError;
 
 pub trait TrieAbc {
+    #[allow(clippy::result_unit_err)]
     fn convert_char(&self, c: char) -> Result<usize, ()>;
 }
 
@@ -28,12 +27,6 @@ impl<const LEN: usize, T: Debug + TrieAbc> TrieConst<LEN, T> {
             .write(true)
             .create(true)
             .open(format!("data/{name}.trie-const.bin"))?;
-
-        // let abc = abc
-        //     .chars()
-        //     .enumerate()
-        //     .map(|(i, c)| (c, i))
-        //     .collect::<HashMap<char, usize>>();
 
         let db = Self { file, abc };
 

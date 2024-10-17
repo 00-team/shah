@@ -86,6 +86,8 @@ where
     T: Entity + Debug + Clone + Default + Binary,
 {
     pub fn new(name: &'static str) -> Result<Self, SystemError> {
+        std::fs::create_dir_all("data/")?;
+
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -104,7 +106,7 @@ where
     }
 
     pub fn db_size(&mut self) -> std::io::Result<u64> {
-        Ok(self.file.seek(SeekFrom::End(0))?)
+        self.file.seek(SeekFrom::End(0))
     }
 
     pub fn update_population(&mut self) -> Result<(), SystemError> {
@@ -319,8 +321,8 @@ where
         let size = self.file.read(result.as_binary_mut())?;
         let count = size / T::S;
         if count != PAGE_SIZE {
-            for i in count..PAGE_SIZE {
-                result[i].as_binary_mut().fill(0);
+            for item in result.iter_mut().skip(count) {
+                item.as_binary_mut().fill(0)
             }
         }
 

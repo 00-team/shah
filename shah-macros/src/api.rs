@@ -286,7 +286,7 @@ fn returns_output_size(rt: &syn::ReturnType) -> bool {
             if let syn::PathArguments::AngleBracketed(a) = args {
                 if let syn::GenericArgument::Type(t) = &a.args[0] {
                     if let syn::Type::Tuple(tp) = t {
-                        if tp.elems.len() == 0 {
+                        if tp.elems.is_empty() {
                             return false;
                         }
                     }

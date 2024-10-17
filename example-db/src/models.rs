@@ -1,4 +1,4 @@
-use shah::{entity::EntityDb, ErrorCode};
+use shah::{db::entity::EntityDb, ErrorCode};
 
 use crate::user::db::User;
 

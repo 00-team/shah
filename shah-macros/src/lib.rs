@@ -27,7 +27,7 @@ pub fn entity(code: TokenStream) -> TokenStream {
     let ci = crate_ident();
 
     quote! {
-        impl #ci::entity::Entity for #ident {
+        impl #ci::db::entity::Entity for #ident {
             fn gene(&self) -> &Gene {
                 &self.gene
             }

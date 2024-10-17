@@ -23,6 +23,12 @@ type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
+
+    match &item.fields {
+        syn::Fields::Named(_) => {}
+        _ => panic!("invalid struct type must be named"),
+    }
+
     for attr in item.attrs.iter() {
         if let syn::Meta::List(meta) = &attr.meta {
             let ident = meta.path.segments[0].ident.to_string();

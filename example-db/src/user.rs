@@ -5,6 +5,8 @@ pub mod db {
 
     use crate::models::ExampleError;
 
+    pub type UserDb = EntityDb<User>;
+
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy)]
     pub struct SessionInfo {
@@ -59,8 +61,8 @@ pub mod db {
         }
     }
 
-    pub(crate) fn setup() -> EntityDb<User> {
-        let mut db = EntityDb::<User>::new("user").expect("user db setup");
+    pub(crate) fn setup() -> UserDb {
+        let mut db = UserDb::new("user").expect("user db setup");
         db.update_population().expect("user update pop err");
         db
     }

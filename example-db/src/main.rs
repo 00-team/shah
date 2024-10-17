@@ -1,4 +1,5 @@
 mod models;
+mod phone;
 mod user;
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -9,7 +10,8 @@ fn main() {
 
     let routes = [user::api::ROUTES.as_slice()];
 
-    let mut state = models::State { users: user::db::setup() };
+    let mut state =
+        models::State { users: user::db::setup(), phone: phone::db::setup() };
 
     shah::server::run(SOCK_PATH, &mut state, &routes)
         .expect("could not init server");

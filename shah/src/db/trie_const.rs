@@ -1,3 +1,4 @@
+use core::panic;
 use std::{
     fmt::Debug,
     fs::{create_dir_all, File},
@@ -13,13 +14,18 @@ pub trait TrieAbc {
 
 type Pos = u32;
 #[derive(Debug)]
-pub struct TrieConst<const LEN: usize, T: Debug + TrieAbc> {
+pub struct TrieConst<const LEN: usize, const CACHE: usize, T: Debug + TrieAbc> {
     abc: T,
     file: File,
 }
 
-impl<const LEN: usize, T: Debug + TrieAbc> TrieConst<LEN, T> {
+impl<const LEN: usize, const CACHE: usize, T: Debug + TrieAbc>
+    TrieConst<LEN, CACHE, T>
+{
     pub fn new(name: &str, abc: T) -> Result<Self, SystemError> {
+        if CACHE > LEN {
+            panic!("invalid cache level must be below LEN: {LEN}");
+        }
         create_dir_all("data/")?;
 
         let file = std::fs::OpenOptions::new()

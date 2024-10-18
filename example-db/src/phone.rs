@@ -14,7 +14,7 @@ pub mod db {
     }
 
     // const PHONE_ABC: &str = "0123456789";
-    pub type PhoneDb = TrieConst<9, PhoneAbc>;
+    pub type PhoneDb = TrieConst<9, 2, PhoneAbc>;
 
     pub fn setup() -> PhoneDb {
         PhoneDb::new("phone", PhoneAbc).expect("phone setup err")

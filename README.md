@@ -2,6 +2,10 @@
 
 custom database engine
 
+## Todo
+
+-   [ ] custom bin command. enum for matching and executing
+
 ## Concept
 
 in your own project you have a create for your own code (e.g. website, game, ...)\

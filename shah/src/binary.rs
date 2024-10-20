@@ -1,4 +1,6 @@
-pub trait Binary: Sized {
+use std::fmt::Debug;
+
+pub trait Binary: Sized + Debug {
     const S: usize = core::mem::size_of::<Self>();
     const N: u64 = core::mem::size_of::<Self>() as u64;
 
@@ -20,12 +22,13 @@ pub trait Binary: Sized {
     }
 
     fn from_binary(data: &[u8]) -> &Self {
-        let (_, model, _) = unsafe { data.align_to::<Self>() };
-        &model[0]
+        unsafe { &*(data.as_ptr() as *const Self) }
     }
+
     fn from_binary_mut(data: &mut [u8]) -> &mut Self {
-        let (_, model, _) = unsafe { data.align_to_mut::<Self>() };
-        &mut model[0]
+        unsafe { &mut *(data.as_mut_ptr() as *mut Self) }
+        //let (_, model, _) = unsafe { data.align_to_mut::<Self>() };
+        //&mut model[0]
     }
 }
 
@@ -33,4 +36,4 @@ pub trait Binary: Sized {
 //     fn from_bytes(data: &[u8]) -> Self;
 // }
 
-impl<T: Sized> Binary for T {}
+impl<T: Sized + Debug> Binary for T {}

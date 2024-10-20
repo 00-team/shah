@@ -23,13 +23,6 @@ pub fn run<T: Debug>(
     let mut order = [0u8; 1024 * 64];
     let mut reply = [0u8; 1024 * 64];
 
-    // let (a, b) = order.split_at_mut(OrderHeader::S);
-    //
-    // let mut order_header = OrderHeader::default();
-    // let mut reply_header = ReplyHeader::default();
-
-    // let mut total_time = (0u128, 0u128);
-
     loop {
         let time = Instant::now();
         let (order_size, addr) = match server.recv_from(&mut order) {

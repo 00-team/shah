@@ -64,14 +64,19 @@ where
 
         create_dir_all("data/").expect("could not create the data directory");
         let path = PathBuf::from_str(&format!("data/{name}.trie-const.bin"))
-            .expect(&format!("could not create a path with name: {name}"));
+            .unwrap_or_else(|_| {
+                panic!("could not create a path with name: {name}")
+            });
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path)
-            .expect(&format!("could not open the database file: {path:?}"));
+            .unwrap_or_else(|_| {
+                panic!("could not open the database file: {path:?}")
+            });
 
         Self {
             file,
@@ -192,34 +197,36 @@ where
             pos = node[0];
         }
 
-        while !writing {
-            let ki = key.index[i];
-            self.file.seek(SeekFrom::Start(pos))?;
+        if !writing {
+            loop {
+                let ki = key.index[i];
+                self.file.seek(SeekFrom::Start(pos))?;
 
-            if i + 1 == INDEX {
-                self.file.read_exact(node_value.as_binary_mut())?;
-                let old_value = node_value[ki].clone();
-                node_value[ki] = val;
-                self.file.seek_relative(-(Self::VALUE_SIZE as i64))?;
-                self.file.write_all(node_value.as_binary())?;
-                return Ok(Some(old_value));
+                if i + 1 == INDEX {
+                    self.file.read_exact(node_value.as_binary_mut())?;
+                    let old_value = node_value[ki];
+                    node_value[ki] = val;
+                    self.file.seek_relative(-(Self::VALUE_SIZE as i64))?;
+                    self.file.write_all(node_value.as_binary())?;
+                    return Ok(Some(old_value));
+                }
+
+                self.file.read_exact(node.as_binary_mut())?;
+
+                i += 1;
+                if node[ki] != 0 {
+                    pos = node[ki];
+                    continue;
+                }
+
+                end_of_file = self.db_size()?;
+                node[ki] = end_of_file;
+
+                self.file.seek_relative(-(Self::NODE_SIZE as i64))?;
+                self.file.write_all(node.as_binary())?;
+                self.file.seek(SeekFrom::Start(end_of_file))?;
+                break;
             }
-
-            self.file.read_exact(node.as_binary_mut())?;
-
-            i += 1;
-            if node[ki] != 0 {
-                pos = node[ki];
-                continue;
-            }
-
-            end_of_file = self.db_size()?;
-            node[ki] = end_of_file;
-
-            self.file.seek_relative(-(Self::NODE_SIZE as i64))?;
-            self.file.write_all(node.as_binary())?;
-            self.file.seek(SeekFrom::Start(end_of_file))?;
-            break;
         }
 
         // loop over ramaning links for writing them

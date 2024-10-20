@@ -101,7 +101,7 @@ where
     }
 
     pub fn db_size(&mut self) -> std::io::Result<u64> {
-        Ok(self.file.seek(SeekFrom::End(0))?)
+        self.file.seek(SeekFrom::End(0))
     }
 
     pub fn convert_key(

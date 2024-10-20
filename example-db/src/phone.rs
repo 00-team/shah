@@ -17,7 +17,7 @@ pub mod db {
     }
 
     // const PHONE_ABC: &str = "0123456789";
-    pub type PhoneDb = TrieConst<10, 9, 2, PhoneAbc, Gene>;
+    pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
     pub fn setup() -> PhoneDb {
         PhoneDb::new("phone", PhoneAbc).setup()
@@ -27,7 +27,7 @@ pub mod db {
     mod tests {
         use super::PhoneAbc;
         use shah::{db::trie_const::TrieConst, Gene};
-        type PhoneDb = TrieConst<10, 9, 4, PhoneAbc, Gene>;
+        type PhoneDb = TrieConst<10, 5, 4, PhoneAbc, Gene>;
 
         #[test]
         fn phone_db() {
@@ -36,9 +36,9 @@ pub mod db {
             let mut db = db.setup();
 
             let mock_data = [
-                ("223334044", 2233, [3, 4, 0, 4, 4, 0, 0, 0, 0]),
-                ("183937071", 1839, [3, 7, 0, 7, 1, 0, 0, 0, 0]),
-                ("192236504", 1922, [3, 6, 5, 0, 4, 0, 0, 0, 0]),
+                ("223334044", 2233, [3, 4, 0, 4, 4]),
+                ("183937071", 1839, [3, 7, 0, 7, 1]),
+                ("192236504", 1922, [3, 6, 5, 0, 4]),
             ];
 
             for (i, (phone, cache, index)) in mock_data.iter().enumerate() {
@@ -56,5 +56,20 @@ pub mod db {
                 assert_eq!(db.get(&k).expect("get"), Some(b));
             }
         }
+    }
+}
+
+#[shah::api(api = crate::models::ExampleApi, scope = 1, error = crate::models::ExampleError)]
+pub mod api {
+    use shah::{ErrorCode, Gene};
+    use crate::models::State;
+
+    pub(crate) fn phone_add(
+        state: &mut State, (phone, gene): (&[u8; 12], &Gene), _: (),
+    ) -> Result<(), ErrorCode> {
+
+        println!("phone_add: {phone:?} -> {gene:?}");
+
+        Ok(())
     }
 }

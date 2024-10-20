@@ -1,17 +1,21 @@
-// use example_db::user::{
-//     client::{user_add, user_get},
-//     db::User,
-// };
-// use shah::Taker;
-
-use example_db::user::db::User;
+use example_db::phone;
+use shah::{Gene, Taker};
 
 fn main() {
-    let user = User::default();
-    println!("user: {user:#?}");
+    // let user = User::default();
+    // println!("user: {user:#?}");
 
-    // let mut taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock")
-    //     .expect("could not init taker");
+    let mut taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock")
+        .expect("could not init taker");
+
+    let phone = "09223334444\0";
+    let gene = Gene { id: 99, ..Default::default() };
+    let res = phone::client::phone_add(
+        &mut taker,
+        phone.as_bytes().try_into().unwrap(),
+        &gene,
+    );
+    println!("res: {res:?}");
 
     // let mut old_user = User::default();
     // old_user.set_name("Ostad 007 🐧");

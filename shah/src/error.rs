@@ -47,11 +47,13 @@ pub enum SystemError {
     GeneIdNotInDatabase,
     EntityNotAlive,
     BadTrieKey,
+    SeekOutOfRange,
 }
 
 impl From<std::io::Error> for SystemError {
     fn from(value: std::io::Error) -> Self {
-        log::warn!("io error: {value}");
+        println!("io error: {value} - {value:#?}");
+        log::warn!("io error: {value} - {value:#?}");
         Self::Io
     }
 }

@@ -120,7 +120,7 @@ where
 
         if db_size < T::N {
             self.file.seek(SeekFrom::Start(T::N - 1))?;
-            self.file.write_all(&[0])?;
+            self.file.write_all(&[0u8])?;
             return Ok(());
         }
 

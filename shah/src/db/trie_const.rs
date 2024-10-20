@@ -1,10 +1,13 @@
-use core::panic;
 use std::{
     fmt::Debug,
     fs::{create_dir_all, File},
-    io::{Seek, SeekFrom},
+    io::{Read, Seek, SeekFrom, Write},
+    marker::PhantomData,
+    path::PathBuf,
+    str::FromStr,
 };
 
+use crate::binary::Binary;
 use crate::error::SystemError;
 
 pub trait TrieAbc {
@@ -12,54 +15,230 @@ pub trait TrieAbc {
     fn convert_char(&self, c: char) -> Result<usize, ()>;
 }
 
-type Pos = u32;
 #[derive(Debug)]
-pub struct TrieConst<const LEN: usize, const CACHE: usize, T: Debug + TrieAbc> {
-    abc: T,
-    file: File,
+pub struct TrieConst<
+    const ABC_LEN: usize,
+    const LEN: usize,
+    const CACHE: usize,
+    Abc: TrieAbc,
+    Val: Binary + Default + Copy,
+> {
+    pub abc: Abc,
+    pub file: File,
+    pub path: PathBuf,
+    _val: PhantomData<Val>,
+    cache_len: u64,
 }
 
-impl<const LEN: usize, const CACHE: usize, T: Debug + TrieAbc>
-    TrieConst<LEN, CACHE, T>
+#[derive(Debug)]
+pub struct TrieConstKey<const LEN: usize> {
+    pub cache: u64,
+    pub index: [usize; LEN],
+}
+
+impl<const ABC_LEN: usize, const LEN: usize, const CACHE: usize, Abc, Val>
+    TrieConst<ABC_LEN, LEN, CACHE, Abc, Val>
+where
+    Val: Binary + Default + Copy + Debug,
+    Abc: TrieAbc,
 {
-    pub fn new(name: &str, abc: T) -> Result<Self, SystemError> {
-        if CACHE > LEN {
-            panic!("invalid cache level must be below LEN: {LEN}");
-        }
-        create_dir_all("data/")?;
+    /// size of file position which is 8 byes
+    const PS: u64 = core::mem::size_of::<u64>() as u64;
+
+    const VALUE_SIZE: u64 = Val::N * ABC_LEN as u64;
+    const NODE_SIZE: u64 = Self::PS * ABC_LEN as u64;
+    const MAX_SIZE: u64 = if Self::VALUE_SIZE > Self::NODE_SIZE {
+        Self::VALUE_SIZE
+    } else {
+        Self::NODE_SIZE
+    };
+
+    pub fn new(name: &str, abc: Abc) -> Self {
+        assert!(CACHE > 0, "TrieConst CACHE must be at least 1");
+        assert!(LEN > CACHE, "TrieConst CACHE must be less than LEN");
+
+        create_dir_all("data/").expect("could not create the data directory");
+        let path = PathBuf::from_str(&format!("data/{name}.trie-const.bin"))
+            .expect(&format!("could not create a path with name: {name}"));
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(format!("data/{name}.trie-const.bin"))?;
+            .open(&path)
+            .expect(&format!("could not open the database file: {path:?}"));
 
-        let db = Self { file, abc };
-
-        Ok(db)
+        Self {
+            file,
+            abc,
+            _val: PhantomData::<Val>,
+            path,
+            cache_len: ABC_LEN.pow(CACHE as u32) as u64,
+        }
     }
 
-    pub fn key_to_index(&self, key: &str) -> Result<[usize; LEN], SystemError> {
-        let mut index = [0usize; LEN];
-        let key = &key[..LEN];
+    pub fn setup(mut self) -> Self {
+        let db_size = self.db_size().expect("could not read db_size");
+        let cache_size = self.cache_len * Self::PS;
 
-        for (i, c) in key.chars().enumerate() {
+        if db_size == 0 {
+            self.file
+                .seek(SeekFrom::Start(cache_size - 1))
+                .expect("could not seek to the cache_size");
+
+            self.file.write_all(&[0u8]).expect("could not write &[0u8]");
+
+            return self;
+        }
+
+        assert!(db_size >= cache_size, "invalid trie-const caching");
+        self
+    }
+
+    pub fn db_size(&mut self) -> std::io::Result<u64> {
+        Ok(self.file.seek(SeekFrom::End(0))?)
+    }
+
+    pub fn convert_key(
+        &self, key: &str,
+    ) -> Result<TrieConstKey<LEN>, SystemError> {
+        assert_eq!(key.len(), LEN);
+
+        let mut trie_key = TrieConstKey::<LEN> { cache: 0, index: [0; LEN] };
+
+        let cache_key = &key[0..CACHE];
+        let index_key = &key[CACHE..];
+
+        for (i, c) in cache_key.chars().rev().enumerate() {
             let Ok(x) = self.abc.convert_char(c) else {
                 return Err(SystemError::BadTrieKey);
             };
-            index[i] = x;
+            trie_key.cache += (ABC_LEN.pow(i as u32) * x) as u64;
         }
 
-        Ok(index)
+        for (i, c) in index_key.chars().enumerate() {
+            let Ok(x) = self.abc.convert_char(c) else {
+                return Err(SystemError::BadTrieKey);
+            };
+            trie_key.index[i] = x;
+        }
+
+        Ok(trie_key)
     }
 
-    // pub fn db_size(&mut self) -> std::io::Result<u64> {
-    //     Ok(self.file.seek(SeekFrom::End(0))?)
-    // }
+    pub fn get(
+        &mut self, key: &TrieConstKey<LEN>,
+    ) -> Result<Option<Val>, SystemError> {
+        let mut pos = key.cache * Self::PS;
+        let mut node = [0u64; ABC_LEN];
+        let mut node_value = [Val::default(); ABC_LEN];
+        let db_size = self.db_size()?;
 
-    // pub fn setup(&mut self) -> Result<(), SystemError> {
-    //     let db_size = self.db_size();
-    //
-    //     Ok(())
-    // }
+        if db_size < pos + Self::MAX_SIZE {
+            return Ok(None);
+        }
+
+        self.file.seek(SeekFrom::Start(pos))?;
+        self.file.read_exact(node[0].as_binary_mut())?;
+        pos = node[0];
+        if pos == 0 {
+            return Ok(None);
+        }
+
+        for i in 0..(LEN - CACHE) {
+            self.file.seek(SeekFrom::Start(pos))?;
+
+            if i + 1 == LEN - CACHE {
+                self.file.read_exact(node_value.as_binary_mut())?;
+                return Ok(Some(node_value[key.index[i]]));
+            }
+
+            self.file.read_exact(node.as_binary_mut())?;
+            pos = node[key.index[i]];
+
+            if pos == 0 || db_size < pos + Self::MAX_SIZE {
+                return Ok(None);
+            }
+        }
+
+        unreachable!()
+    }
+
+    pub fn set(
+        &mut self, key: &TrieConstKey<LEN>, val: Val,
+    ) -> Result<Option<Val>, SystemError> {
+        let mut pos = key.cache * Self::PS;
+        let mut node = [0u64; ABC_LEN];
+        let mut node_value = [Val::default(); ABC_LEN];
+        let mut end_of_file = 0u64;
+        let mut writing = false;
+        let mut i = 0usize;
+
+        self.file.seek(SeekFrom::Start(pos))?;
+        self.file.read_exact(node[0].as_binary_mut())?;
+        if node[0] == 0 {
+            end_of_file = self.db_size()?;
+            node[0] = end_of_file;
+            self.file.seek(SeekFrom::Start(pos))?;
+            self.file.write_all(node[0].as_binary())?;
+            self.file.seek(SeekFrom::Start(end_of_file))?;
+            writing = true;
+        } else {
+            pos = node[0];
+        }
+
+        while !writing {
+            let ki = key.index[i];
+            self.file.seek(SeekFrom::Start(pos))?;
+
+            if i + 1 == LEN - CACHE {
+                self.file.read_exact(node_value.as_binary_mut())?;
+                let old_value = node_value[ki].clone();
+                node_value[ki] = val;
+                self.file.seek_relative(-(Self::VALUE_SIZE as i64))?;
+                self.file.write_all(node_value.as_binary())?;
+                return Ok(Some(old_value));
+            }
+
+            self.file.read_exact(node.as_binary_mut())?;
+
+            i += 1;
+            if node[ki] != 0 {
+                pos = node[ki];
+                continue;
+            }
+
+            end_of_file = self.db_size()?;
+            node[ki] = end_of_file;
+
+            self.file.seek_relative(-(Self::NODE_SIZE as i64))?;
+            self.file.write_all(node.as_binary())?;
+            self.file.seek(SeekFrom::Start(end_of_file))?;
+            break;
+        }
+
+        // loop over ramaning links for writing them
+        for n in i..(LEN - CACHE) {
+            let ki = key.index[n];
+
+            // every node after this will be written at the next block
+            // so we just imagine that this will be the next link position
+            end_of_file += Self::NODE_SIZE;
+
+            // check if where are at the end of our links
+            // then set the last value to user_id
+            // if we are not set the value to the next link
+            if n + 1 == LEN - CACHE {
+                node_value.as_binary_mut().fill(0);
+                node_value[ki] = val;
+                self.file.write_all(node_value.as_binary())?;
+            } else {
+                node.as_binary_mut().fill(0);
+                node[ki] = end_of_file;
+                self.file.write_all(node.as_binary())?;
+            }
+        }
+
+        Ok(None)
+    }
 }

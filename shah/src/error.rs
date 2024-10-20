@@ -6,7 +6,7 @@ pub struct ErrorCode {
 }
 
 impl ErrorCode {
-    pub(crate) fn system<T: Into<u16>>(code: T) -> Self {
+    pub fn system<T: Into<u16>>(code: T) -> Self {
         Self { scope: 1, code: code.into() }
     }
 

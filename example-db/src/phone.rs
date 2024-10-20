@@ -61,14 +61,22 @@ pub mod db {
 
 #[shah::api(api = crate::models::ExampleApi, scope = 1, error = crate::models::ExampleError)]
 pub mod api {
-    use shah::{ErrorCode, Gene};
-    use crate::models::State;
+    use crate::models::{MyErr, State};
+    use shah::Gene;
 
     pub(crate) fn phone_add(
-        state: &mut State, (phone, gene): (&[u8; 12], &Gene), _: (),
-    ) -> Result<(), ErrorCode> {
+        state: &mut State, inp: (&[u8; 12], &Gene),
+        out: (&mut [u8; 12], &mut Gene),
+    ) -> Result<(), MyErr> {
+        println!("phone_add: {inp:#?}");
 
-        println!("phone_add: {phone:?} -> {gene:?}");
+        let phone = core::str::from_utf8(&inp.0[..11])?;
+        let key = state.phone.convert_key(&phone[2..11])?;
+
+        let old = state.phone.set(&key, inp.1.clone())?.unwrap_or_default();
+
+        out.0.copy_from_slice(inp.0);
+        out.1.clone_from(&old);
 
         Ok(())
     }

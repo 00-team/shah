@@ -1,5 +1,5 @@
 use example_db::phone;
-use shah::{Gene, Taker};
+use shah::{Binary, Gene, Taker};
 
 fn main() {
     // let user = User::default();

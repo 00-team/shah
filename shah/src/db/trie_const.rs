@@ -18,7 +18,7 @@ pub trait TrieAbc {
 #[derive(Debug)]
 pub struct TrieConst<
     const ABC_LEN: usize,
-    const LEN: usize,
+    const INDEX: usize,
     const CACHE: usize,
     Abc: TrieAbc,
     Val: Binary + Default + Copy,
@@ -31,13 +31,18 @@ pub struct TrieConst<
 }
 
 #[derive(Debug)]
-pub struct TrieConstKey<const LEN: usize> {
+pub struct TrieConstKey<const INDEX: usize> {
     pub cache: u64,
-    pub index: [usize; LEN],
+    pub index: [usize; INDEX],
 }
 
-impl<const ABC_LEN: usize, const LEN: usize, const CACHE: usize, Abc, Val>
-    TrieConst<ABC_LEN, LEN, CACHE, Abc, Val>
+impl<
+        const ABC_LEN: usize,
+        const INDEX: usize,
+        const CACHE: usize,
+        Abc,
+        Val,
+    > TrieConst<ABC_LEN, INDEX, CACHE, Abc, Val>
 where
     Val: Binary + Default + Copy + Debug,
     Abc: TrieAbc,
@@ -55,7 +60,7 @@ where
 
     pub fn new(name: &str, abc: Abc) -> Self {
         assert!(CACHE > 0, "TrieConst CACHE must be at least 1");
-        assert!(LEN > CACHE, "TrieConst CACHE must be less than LEN");
+        assert!(INDEX > 0, "TrieConst INDEX must be at least 1");
 
         create_dir_all("data/").expect("could not create the data directory");
         let path = PathBuf::from_str(&format!("data/{name}.trie-const.bin"))
@@ -101,10 +106,10 @@ where
 
     pub fn convert_key(
         &self, key: &str,
-    ) -> Result<TrieConstKey<LEN>, SystemError> {
-        assert_eq!(key.len(), LEN);
+    ) -> Result<TrieConstKey<INDEX>, SystemError> {
+        assert_eq!(key.len(), CACHE + INDEX);
 
-        let mut trie_key = TrieConstKey::<LEN> { cache: 0, index: [0; LEN] };
+        let mut tkey = TrieConstKey::<INDEX> { cache: 0, index: [0; INDEX] };
 
         let cache_key = &key[0..CACHE];
         let index_key = &key[CACHE..];
@@ -113,21 +118,21 @@ where
             let Ok(x) = self.abc.convert_char(c) else {
                 return Err(SystemError::BadTrieKey);
             };
-            trie_key.cache += (ABC_LEN.pow(i as u32) * x) as u64;
+            tkey.cache += (ABC_LEN.pow(i as u32) * x) as u64;
         }
 
         for (i, c) in index_key.chars().enumerate() {
             let Ok(x) = self.abc.convert_char(c) else {
                 return Err(SystemError::BadTrieKey);
             };
-            trie_key.index[i] = x;
+            tkey.index[i] = x;
         }
 
-        Ok(trie_key)
+        Ok(tkey)
     }
 
     pub fn get(
-        &mut self, key: &TrieConstKey<LEN>,
+        &mut self, key: &TrieConstKey<INDEX>,
     ) -> Result<Option<Val>, SystemError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
@@ -145,10 +150,10 @@ where
             return Ok(None);
         }
 
-        for i in 0..(LEN - CACHE) {
+        for i in 0..INDEX {
             self.file.seek(SeekFrom::Start(pos))?;
 
-            if i + 1 == LEN - CACHE {
+            if i + 1 == INDEX {
                 self.file.read_exact(node_value.as_binary_mut())?;
                 return Ok(Some(node_value[key.index[i]]));
             }
@@ -165,7 +170,7 @@ where
     }
 
     pub fn set(
-        &mut self, key: &TrieConstKey<LEN>, val: Val,
+        &mut self, key: &TrieConstKey<INDEX>, val: Val,
     ) -> Result<Option<Val>, SystemError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
@@ -191,7 +196,7 @@ where
             let ki = key.index[i];
             self.file.seek(SeekFrom::Start(pos))?;
 
-            if i + 1 == LEN - CACHE {
+            if i + 1 == INDEX {
                 self.file.read_exact(node_value.as_binary_mut())?;
                 let old_value = node_value[ki].clone();
                 node_value[ki] = val;
@@ -218,7 +223,7 @@ where
         }
 
         // loop over ramaning links for writing them
-        for n in i..(LEN - CACHE) {
+        for n in i..INDEX {
             let ki = key.index[n];
 
             // every node after this will be written at the next block
@@ -228,7 +233,7 @@ where
             // check if where are at the end of our links
             // then set the last value to user_id
             // if we are not set the value to the next link
-            if n + 1 == LEN - CACHE {
+            if n + 1 == INDEX {
                 node_value.as_binary_mut().fill(0);
                 node_value[ki] = val;
                 self.file.write_all(node_value.as_binary())?;

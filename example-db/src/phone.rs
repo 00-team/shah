@@ -25,45 +25,36 @@ pub mod db {
 
     #[cfg(test)]
     mod tests {
-        use super::{PhoneAbc, PhoneDb};
-        use shah::Gene;
+        use super::PhoneAbc;
+        use shah::{db::trie_const::TrieConst, Gene};
+        type PhoneDb = TrieConst<10, 9, 4, PhoneAbc, Gene>;
 
         #[test]
-        fn phone_db() -> std::io::Result<()> {
+        fn phone_db() {
             let db = PhoneDb::new("tests.phone", PhoneAbc);
-            db.file.set_len(0)?;
+            db.file.set_len(0).expect("file truncate");
             let mut db = db.setup();
-            // return Ok(());
 
-            let mut val = Gene { id: 12, ..Default::default() };
+            let mock_data = [
+                ("223334044", 2233, [3, 4, 0, 4, 4, 0, 0, 0, 0]),
+                ("183937071", 1839, [3, 7, 0, 7, 1, 0, 0, 0, 0]),
+                ("192236504", 1922, [3, 6, 5, 0, 4, 0, 0, 0, 0]),
+            ];
 
-            let key = db.convert_key("223334044").unwrap();
-            assert_eq!(key.cache, 22);
-            assert_eq!(key.index, [3, 3, 3, 4, 0, 4, 4, 0, 0]);
+            for (i, (phone, cache, index)) in mock_data.iter().enumerate() {
+                let i = i as u64;
+                let a = Gene { id: i + 3, ..Default::default() };
+                let b = Gene { id: (i + 3) * 2, ..Default::default() };
+                let k = db.convert_key(phone).expect("convert key");
+                assert_eq!(k.cache, *cache);
+                assert_eq!(k.index, *index);
 
-            let res = db.get(&key);
-            assert!(matches!(res, Ok(None)), "first get");
-
-            let res = db.set(&key, val.clone());
-            assert!(matches!(res, Ok(None)), "first set");
-
-            let res = db.get(&key);
-            assert!(res.is_ok(), "second get");
-            let res = res.unwrap();
-            assert!(res.is_some(), "second get");
-            println!("res: {res:?}");
-
-            val.id = 69;
-
-            let old_val = db.set(&key, val.clone());
-            println!("old_val: {old_val:?}");
-
-            let res = db.get(&key);
-            println!("res: {res:?}");
-
-            // assert_eq!(index, [2, 2, 3, 3, 3, 4, 0, 4, 4]);
-
-            Ok(())
+                assert_eq!(db.get(&k).expect("get"), None);
+                assert_eq!(db.set(&k, a).expect("set"), None);
+                assert_eq!(db.get(&k).expect("get"), Some(a));
+                assert_eq!(db.set(&k, b).expect("set"), Some(a));
+                assert_eq!(db.get(&k).expect("get"), Some(b));
+            }
         }
     }
 }

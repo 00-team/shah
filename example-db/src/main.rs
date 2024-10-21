@@ -1,14 +1,14 @@
+mod detail;
+mod models;
+mod phone;
+mod user;
+
+use shah::Command;
 use std::{
     default,
     env::Args,
     io::{stdout, Write},
 };
-
-use shah::Command;
-
-mod models;
-mod phone;
-mod user;
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
 
@@ -25,8 +25,11 @@ fn main() {
 
     let routes = [user::api::ROUTES.as_slice(), phone::api::ROUTES.as_slice()];
 
-    let mut state =
-        models::State { users: user::db::setup(), phone: phone::db::setup() };
+    let mut state = models::State {
+        users: user::db::setup(),
+        phone: phone::db::setup(),
+        detail: detail::db::setup(),
+    };
 
     match shah::command() {
         Commands::Help => {

@@ -1,6 +1,6 @@
 use std::str::Utf8Error;
 
-use shah::{error::SystemError, ErrorCode};
+use shah::{db::snake::SnakeDb, error::SystemError, ErrorCode};
 
 use crate::{phone::db::PhoneDb, user::db::UserDb};
 
@@ -8,6 +8,7 @@ use crate::{phone::db::PhoneDb, user::db::UserDb};
 pub struct State {
     pub users: UserDb,
     pub phone: PhoneDb,
+    pub detail: SnakeDb,
 }
 
 pub type ExampleApi = shah::Api<State>;

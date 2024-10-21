@@ -1,13 +1,14 @@
 use std::{default, env::Args};
 
+use shah::Command;
+
 mod models;
 mod phone;
 mod user;
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
 
-#[shah::command]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Command)]
 enum Commands {
     #[default]
     Run,
@@ -19,27 +20,27 @@ enum Commands {
     },
 }
 
-impl Commands {
-    fn parse(mut args: Args) -> Commands {
-        let Some(cmd) = args.next() else { return Self::default() };
-
-        match cmd.as_str() {
-            "run" => Self::Run,
-            "do-action" => Self::DoAction,
-            "abc" => {
-                let Some(iv0) = args.next() else { return Self::default() };
-                Self::Abc(iv0.parse::<u8>().expect("invalid arg for abc != u8"))
-            }
-            "some-comm" => {
-                let mut id = u16::default();
-                let mut name = String::default();
-
-                Self::SomeComm { id, name }
-            }
-            _ => Self::default(),
-        }
-    }
-}
+// impl Commands {
+//     fn parse(mut args: Args) -> Commands {
+//         let Some(cmd) = args.next() else { return Self::default() };
+//
+//         match cmd.as_str() {
+//             "run" => Self::Run,
+//             "do-action" => Self::DoAction,
+//             "abc" => {
+//                 let Some(iv0) = args.next() else { return Self::default() };
+//                 Self::Abc(iv0.parse::<u8>().expect("invalid arg for abc != u8"))
+//             }
+//             "some-comm" => {
+//                 let mut id = u16::default();
+//                 let mut name = String::default();
+//
+//                 Self::SomeComm { id, name }
+//             }
+//             _ => Self::default(),
+//         }
+//     }
+// }
 
 fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");

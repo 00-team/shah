@@ -4,7 +4,8 @@ custom database engine
 
 ## Todo
 
--   [ ] custom bin command. enum for matching and executing
+-   [x] custom bin command. enum for matching and executing
+-   [ ] do a benchmark test https://www.youtube.com/watch?v=R7jBtnrUmYI
 
 ## Concept
 

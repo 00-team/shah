@@ -31,12 +31,10 @@ pub trait Command {
 
 pub fn command<T: Command + Default>() -> T {
     let mut args = std::env::args();
-    let command = loop {
+    loop {
         let Some(arg) = args.next() else { break T::default() };
         if arg == "-c" {
             break T::parse(args);
         }
-    };
-
-    command
+    }
 }

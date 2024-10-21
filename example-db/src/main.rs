@@ -33,7 +33,7 @@ fn main() {
 
     match shah::command() {
         Commands::Help => {
-            stdout().write(Commands::help().as_bytes());
+            stdout().write_all(Commands::help().as_bytes());
         }
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()

@@ -73,7 +73,7 @@ pub mod api {
         let phone = core::str::from_utf8(&inp.0[..11])?;
         let key = state.phone.convert_key(&phone[2..11])?;
 
-        let old = state.phone.set(&key, inp.1.clone())?.unwrap_or_default();
+        let old = state.phone.set(&key, *inp.1)?.unwrap_or_default();
 
         out.0.copy_from_slice(inp.0);
         out.1.clone_from(&old);

@@ -7,9 +7,9 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 
-#[proc_macro_attribute]
-pub fn command(args: TokenStream, code: TokenStream) -> TokenStream {
-    command::command(args, code)
+#[proc_macro_derive(Command)]
+pub fn command(code: TokenStream) -> TokenStream {
+    command::command(code)
 }
 
 #[proc_macro_attribute]

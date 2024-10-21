@@ -1,9 +1,11 @@
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
 
-pub(crate) fn command(args: TokenStream, code: TokenStream) -> TokenStream {
-    let org = code.clone();
+pub(crate) fn command(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::ItemEnum);
-    println!("item: {item:?}");
+    println!("item: {item:#?}");
 
-    org
+    let mut s = TokenStream2::new();
+
+    s.into()
 }

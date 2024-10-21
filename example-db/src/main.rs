@@ -23,8 +23,21 @@ impl Commands {
     fn parse(mut args: Args) -> Commands {
         let Some(cmd) = args.next() else { return Self::default() };
 
-        println!("parsing args: {args:?}");
-        Commands::default()
+        match cmd.as_str() {
+            "run" => Self::Run,
+            "do-action" => Self::DoAction,
+            "abc" => {
+                let Some(iv0) = args.next() else { return Self::default() };
+                Self::Abc(iv0.parse::<u8>().expect("invalid arg for abc != u8"))
+            }
+            "some-comm" => {
+                let mut id = u16::default();
+                let mut name = String::default();
+
+                Self::SomeComm { id, name }
+            }
+            _ => Self::default(),
+        }
     }
 }
 

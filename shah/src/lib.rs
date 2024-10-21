@@ -11,7 +11,7 @@ pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;
 
-pub use shah_macros::{api, command, enum_code, model, Entity};
+pub use shah_macros::{api, enum_code, model, Command, Entity};
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;
@@ -22,4 +22,9 @@ pub struct Api<T> {
     pub name: &'static str,
     pub input_size: usize,
     pub caller: ApiCaller<T>,
+}
+
+pub trait Command {
+    fn parse(args: std::env::Args) -> Self;
+    fn help() -> String;
 }

@@ -28,3 +28,15 @@ pub trait Command {
     fn parse(args: std::env::Args) -> Self;
     fn help() -> String;
 }
+
+pub fn command<T: Command + Default>() -> T {
+    let mut args = std::env::args();
+    let command = loop {
+        let Some(arg) = args.next() else { break T::default() };
+        if arg == "-c" {
+            break T::parse(args);
+        }
+    };
+
+    command
+}

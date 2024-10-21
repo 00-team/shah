@@ -5,7 +5,6 @@ use quote_into::quote_into;
 
 pub(crate) fn command(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::ItemEnum);
-    println!("item: {item:#?}");
 
     let mut s = TokenStream2::new();
     let ident = &item.ident;
@@ -74,6 +73,32 @@ pub(crate) fn command(code: TokenStream) -> TokenStream {
 
     quote_into!(b += _ => Self::default(),);
 
+    let mut h = TokenStream2::new();
+    quote_into!(h += let mut help = "list of commands:\n".to_string(););
+    for v in item.variants.iter() {
+        let ident = &v.ident;
+        let cmd = ident_to_command(ident);
+        quote_into! {h += help += "    --"; help += #cmd; };
+        match &v.fields {
+            syn::Fields::Unnamed(unf) => {
+                for syn::Field { ty, .. } in unf.unnamed.iter() {
+                    let ty = ty.to_token_stream().to_string();
+                    quote_into! {h += help += " <"; help += #ty; help += ">";}
+                }
+            }
+            syn::Fields::Named(nf) => {
+                for syn::Field { ident, ty, .. } in nf.named.iter() {
+                    let iv = ident.clone().unwrap().to_string();
+                    let ty = ty.to_token_stream().to_string();
+                    quote_into! {h += help += " --"; help += #iv; help += " <"; help += #ty; help += ">";}
+                }
+            }
+            _ => {}
+        }
+        quote_into!(h += help.push('\n'););
+    }
+    quote_into!(h += help.push('\n'); help);
+
     quote_into! {s +=
         impl shah::Command for #ident {
             fn parse(mut args: std::env::Args) -> Self {
@@ -85,7 +110,7 @@ pub(crate) fn command(code: TokenStream) -> TokenStream {
             }
 
             fn help() -> String {
-                "hi".to_string()
+                #h
             }
         }
     };

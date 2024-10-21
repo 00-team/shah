@@ -1,4 +1,8 @@
-use std::{default, env::Args};
+use std::{
+    default,
+    env::Args,
+    io::{stdout, Write},
+};
 
 use shah::Command;
 
@@ -11,61 +15,27 @@ const SOCK_PATH: &str = "/tmp/shah.sock";
 #[derive(Debug, Default, Command)]
 enum Commands {
     #[default]
+    Help,
     Run,
-    DoAction,
-    Abc(u8),
-    SomeComm {
-        id: u16,
-        name: String,
-    },
 }
-
-// impl Commands {
-//     fn parse(mut args: Args) -> Commands {
-//         let Some(cmd) = args.next() else { return Self::default() };
-//
-//         match cmd.as_str() {
-//             "run" => Self::Run,
-//             "do-action" => Self::DoAction,
-//             "abc" => {
-//                 let Some(iv0) = args.next() else { return Self::default() };
-//                 Self::Abc(iv0.parse::<u8>().expect("invalid arg for abc != u8"))
-//             }
-//             "some-comm" => {
-//                 let mut id = u16::default();
-//                 let mut name = String::default();
-//
-//                 Self::SomeComm { id, name }
-//             }
-//             _ => Self::default(),
-//         }
-//     }
-// }
 
 fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
-
-    let mut args = std::env::args();
-    println!("args: {args:?}");
-    let command = loop {
-        let Some(arg) = args.next() else { break Commands::default() };
-        if arg == "-c" {
-            break Commands::parse(args);
-        }
-    };
-
-    println!("command: {command:#?}");
-
-    return;
 
     let routes = [user::api::ROUTES.as_slice(), phone::api::ROUTES.as_slice()];
 
     let mut state =
         models::State { users: user::db::setup(), phone: phone::db::setup() };
 
-    shah::server::run(SOCK_PATH, &mut state, &routes)
-        .expect("could not init server");
+    match shah::command() {
+        Commands::Help => {
+            stdout().write(Commands::help().as_bytes());
+        }
+        Commands::Run => {
+            shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
+        }
+    }
 }
 
 struct SimpleLogger;

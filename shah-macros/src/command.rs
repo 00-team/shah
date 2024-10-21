@@ -74,11 +74,13 @@ pub(crate) fn command(code: TokenStream) -> TokenStream {
     quote_into!(b += _ => Self::default(),);
 
     let mut h = TokenStream2::new();
-    quote_into!(h += let mut help = "list of commands:\n".to_string(););
+    quote_into! {h +=
+        let mut help = "/path/to/bin -c <command>\nlist of commands:\n".to_string();
+    };
     for v in item.variants.iter() {
         let ident = &v.ident;
         let cmd = ident_to_command(ident);
-        quote_into! {h += help += "    --"; help += #cmd; };
+        quote_into! {h += help += "    "; help += #cmd; };
         match &v.fields {
             syn::Fields::Unnamed(unf) => {
                 for syn::Field { ty, .. } in unf.unnamed.iter() {

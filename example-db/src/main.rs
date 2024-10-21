@@ -1,12 +1,49 @@
+use std::{default, env::Args};
+
 mod models;
 mod phone;
 mod user;
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
 
+#[shah::command]
+#[derive(Debug, Default)]
+enum Commands {
+    #[default]
+    Run,
+    DoAction,
+    Abc(u8),
+    SomeComm {
+        id: u16,
+        name: String,
+    },
+}
+
+impl Commands {
+    fn parse(mut args: Args) -> Commands {
+        let Some(cmd) = args.next() else { return Self::default() };
+
+        println!("parsing args: {args:?}");
+        Commands::default()
+    }
+}
+
 fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
+
+    let mut args = std::env::args();
+    println!("args: {args:?}");
+    let command = loop {
+        let Some(arg) = args.next() else { break Commands::default() };
+        if arg == "-c" {
+            break Commands::parse(args);
+        }
+    };
+
+    println!("command: {command:#?}");
+
+    return;
 
     let routes = [user::api::ROUTES.as_slice(), phone::api::ROUTES.as_slice()];
 

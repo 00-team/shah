@@ -1,9 +1,16 @@
 mod api;
 mod enum_code;
 mod model;
+mod command;
 
 use proc_macro::TokenStream;
 use quote::quote;
+
+
+#[proc_macro_attribute]
+pub fn command(args: TokenStream, code: TokenStream) -> TokenStream {
+    command::command(args, code)
+}
 
 #[proc_macro_attribute]
 pub fn enum_code(args: TokenStream, code: TokenStream) -> TokenStream {

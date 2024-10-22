@@ -60,7 +60,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
     let mut str_fields = Vec::<StrField>::new();
     item.fields.iter_mut().for_each(|f| {
-        for attr in f.attrs.iter_mut() {
+        f.attrs.retain(|attr| {
+            // for (i, attr) in f.attrs.iter().enumerate() {
             match &attr.meta {
                 syn::Meta::Path(p) => {
                     if p.segments[0].ident == "str" {
@@ -69,6 +70,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                             get: true,
                             set: true,
                         });
+                        return false;
                     }
                 }
                 syn::Meta::List(l) => {
@@ -112,12 +114,14 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                         }
 
                         str_fields.push(sf);
+                        return false;
                     }
                 }
                 _ => {}
             }
-        }
-        f.attrs.clear();
+
+            true
+        })
     });
 
     let fields_len = item.fields.len();

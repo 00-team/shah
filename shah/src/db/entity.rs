@@ -79,7 +79,6 @@ where
     pub live: u64,
     pub dead: u64,
     pub dead_list: [GeneId; 4096],
-    setup_iter: Option<fn(&T)>,
 }
 
 impl<T> EntityDb<T>
@@ -101,23 +100,18 @@ where
             dead_list: [0; 4096],
             file,
             _e: PhantomData::<T>,
-            setup_iter: None,
         };
 
         Ok(db)
-    }
-
-    pub fn setup_iter(mut self, func: fn(&T)) -> Self {
-        self.setup_iter = Some(func);
-        self
     }
 
     pub fn db_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn setup(mut self) -> Result<Self, SystemError> {
-        // let db = self.db();
+    pub fn setup<F: FnMut(&T)>(
+        mut self, mut func: F,
+    ) -> Result<Self, SystemError> {
         self.live = 0;
         self.dead = 0;
         self.dead_list.fill(0);
@@ -154,9 +148,7 @@ where
                     self.add_dead(entity.gene());
                 }
 
-                if let Some(func) = self.setup_iter {
-                    func(entity)
-                }
+                func(entity)
             }
         }
 
@@ -312,7 +304,7 @@ where
         }
     }
 
-    pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {
+    pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
         let mut old_entity = T::default();
         self.get(entity.gene(), &mut old_entity)?;
         self.file.seek_relative(-(T::N as i64))?;

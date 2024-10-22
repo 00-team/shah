@@ -1,11 +1,10 @@
 mod api;
+mod command;
 mod enum_code;
 mod model;
-mod command;
 
 use proc_macro::TokenStream;
 use quote::quote;
-
 
 #[proc_macro_derive(Command)]
 pub fn command(code: TokenStream) -> TokenStream {
@@ -39,14 +38,14 @@ pub fn entity(code: TokenStream) -> TokenStream {
                 &self.gene
             }
             fn flags(&self) -> &u8 {
-                &self.flags.as_binary()[0]
+                &#ci::Binary::as_binary(&self.flags)[0]
             }
 
             fn gene_mut(&mut self) -> &mut Gene {
                 &mut self.gene
             }
             fn flags_mut(&mut self) -> &mut u8 {
-                &mut self.flags.as_binary_mut()[0]
+                &mut #ci::Binary::as_binary_mut(&mut self.flags)[0]
             }
         }
     }

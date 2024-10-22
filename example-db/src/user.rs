@@ -75,7 +75,7 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{db::entity::PAGE_SIZE, ErrorCode, Gene, GeneId};
+    use shah::{PAGE_SIZE, ErrorCode, Gene, GeneId};
 
     pub(crate) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),

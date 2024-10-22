@@ -1,9 +1,12 @@
+use core::panic;
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use quote_into::quote_into;
 use syn::parse::Parser;
 
+type KeyList = syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>;
 type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
@@ -43,62 +46,94 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         set: bool,
     }
 
+    struct FlagField {
+        field: syn::Ident,
+        flags: Vec<syn::Ident>,
+    }
+
+    let mut flag_fields = Vec::<FlagField>::new();
     let mut str_fields = Vec::<StrField>::new();
     item.fields.iter_mut().for_each(|f| {
         f.attrs.retain(|attr| {
             match &attr.meta {
                 syn::Meta::Path(p) => {
-                    if p.segments[0].ident == "str" {
-                        str_fields.push(StrField {
-                            field: f.ident.clone().unwrap(),
-                            get: true,
-                            set: true,
-                        });
-                        return false;
+                    match p.segments[0].ident.to_string().as_str() {
+                        "str" => {
+                            str_fields.push(StrField {
+                                field: f.ident.clone().unwrap(),
+                                get: true,
+                                set: true,
+                            });
+                            return false;
+                        }
+                        "flags" => {
+                            panic!("flags attr must have at least one flag")
+                        }
+                        _ => {}
                     }
                 }
                 syn::Meta::List(l) => {
-                    let parser = KeyVal::parse_terminated;
-                    if l.path.segments[0].ident == "str" {
-                        let mut sf = StrField {
-                            field: f.ident.clone().unwrap(),
-                            get: true,
-                            set: true,
-                        };
-                        let args = match parser.parse(l.tokens.clone().into()) {
-                            Ok(v) => v,
-                            Err(e) => panic!("error parsing key value: {e}"),
-                        };
-                        let args = args.into_iter().map(|a| {
-                            if let syn::Expr::Path(p) = &(*a.left) {
-                                if let syn::Expr::Lit(lit) = &(*a.right) {
-                                    return (
-                                        p.path.segments[0].ident.clone(),
-                                        lit.lit.clone(),
-                                    );
+                    match l.path.segments[0].ident.to_string().as_str() {
+                        "str" => {
+                            let parser = KeyVal::parse_terminated;
+                            let mut sf = StrField {
+                                field: f.ident.clone().unwrap(),
+                                get: true,
+                                set: true,
+                            };
+                            let args =
+                                match parser.parse(l.tokens.clone().into()) {
+                                    Ok(v) => v,
+                                    Err(e) => {
+                                        panic!("error parsing key value: {e}")
+                                    }
+                                };
+                            let args = args.into_iter().map(|a| {
+                                if let syn::Expr::Path(p) = &(*a.left) {
+                                    if let syn::Expr::Lit(lit) = &(*a.right) {
+                                        return (
+                                            p.path.segments[0].ident.clone(),
+                                            lit.lit.clone(),
+                                        );
+                                    }
+                                }
+
+                                panic!("invalid keyval args")
+                            });
+                            for (key, val) in args.into_iter() {
+                                let val = if let syn::Lit::Bool(b) = val {
+                                    b.value
+                                } else {
+                                    panic!("str args values must be bool")
+                                };
+
+                                if key == "set" {
+                                    sf.set = val;
+                                }
+
+                                if key == "get" {
+                                    sf.get = val;
                                 }
                             }
 
-                            panic!("invalid keyval args")
-                        });
-                        for (key, val) in args.into_iter() {
-                            let val = if let syn::Lit::Bool(b) = val {
-                                b.value
-                            } else {
-                                panic!("str args values must be bool")
+                            str_fields.push(sf);
+                            return false;
+                        }
+                        "flags" => {
+                            let parser = KeyList::parse_terminated;
+                            let keys = parser.parse(l.tokens.clone().into());
+                            let Ok(keys) = keys else {
+                                panic!("invalid #[flags] attr")
                             };
 
-                            if key == "set" {
-                                sf.set = val;
-                            }
+                            flag_fields.push(FlagField {
+                                field: f.ident.clone().unwrap(),
+                                flags: keys.iter().cloned().collect::<_>(),
+                            });
 
-                            if key == "get" {
-                                sf.get = val;
-                            }
+                            return false;
                         }
-
-                        str_fields.push(sf);
-                        return false;
+                        _ => {}
                     }
                 }
                 _ => {}
@@ -209,6 +244,27 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }
     }
 
+    let mut ffs = TokenStream2::new();
+    for FlagField { field, flags } in flag_fields.iter() {
+        for (i, f) in flags.iter().enumerate() {
+            let set = format_ident!("set_{f}");
+            quote_into! {ffs +=
+                fn #f(&self) -> bool {
+                    (self.#field & (1 << #i)) == (1 << #i)
+                }
+
+                fn #set(&mut self, #f: bool) -> &mut Self {
+                    if #f {
+                        self.#field |= (1 << #i);
+                    } else {
+                        self.#field &= !(1 << #i);
+                    }
+                    self
+                }
+            };
+        }
+    }
+
     quote! {
         #item
 
@@ -223,6 +279,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
         impl #ident {
             #ssi
+
+            #ffs
         }
 
         // impl #ci::FromBytes for #ident {

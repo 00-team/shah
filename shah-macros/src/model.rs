@@ -4,21 +4,6 @@ use quote::{format_ident, quote};
 use quote_into::quote_into;
 use syn::parse::Parser;
 
-// impl syn::parse::Parse for StrArgs {
-//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-//         let result = StrArgs {get: false, set: false};
-//         let key = input.parse().map(syn::Ident)?;
-//         if key == "get" {}
-//
-//
-//         Ok(Self {
-//             set: false,
-//             get: false
-//         })
-//     }
-// }
-//
-
 type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
@@ -61,7 +46,6 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut str_fields = Vec::<StrField>::new();
     item.fields.iter_mut().for_each(|f| {
         f.attrs.retain(|attr| {
-            // for (i, attr) in f.attrs.iter().enumerate() {
             match &attr.meta {
                 syn::Meta::Path(p) => {
                     if p.segments[0].ident == "str" {
@@ -119,7 +103,6 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                 }
                 _ => {}
             }
-
             true
         })
     });

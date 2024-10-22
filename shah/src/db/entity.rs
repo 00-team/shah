@@ -79,13 +79,14 @@ where
     pub live: u64,
     pub dead: u64,
     pub dead_list: [GeneId; 4096],
+    setup_iter: Option<fn(&T)>,
 }
 
 impl<T> EntityDb<T>
 where
     T: Entity + Debug + Clone + Default + Binary,
 {
-    pub fn new(name: &'static str) -> Result<Self, SystemError> {
+    pub fn new(name: &str) -> Result<Self, SystemError> {
         std::fs::create_dir_all("data/")?;
 
         let file = std::fs::OpenOptions::new()
@@ -100,16 +101,22 @@ where
             dead_list: [0; 4096],
             file,
             _e: PhantomData::<T>,
+            setup_iter: None,
         };
 
         Ok(db)
+    }
+
+    pub fn setup_iter(mut self, func: fn(&T)) -> Self {
+        self.setup_iter = Some(func);
+        self
     }
 
     pub fn db_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn update_population(&mut self) -> Result<(), SystemError> {
+    pub fn setup(mut self) -> Result<Self, SystemError> {
         // let db = self.db();
         self.live = 0;
         self.dead = 0;
@@ -121,11 +128,11 @@ where
         if db_size < T::N {
             self.file.seek(SeekFrom::Start(T::N - 1))?;
             self.file.write_all(&[0u8])?;
-            return Ok(());
+            return Ok(self);
         }
 
         if db_size == T::N {
-            return Ok(());
+            return Ok(self);
         }
 
         self.live = (db_size / T::N) - 1;
@@ -146,10 +153,14 @@ where
                     log::info!("dead: {entity:?}");
                     self.add_dead(entity.gene());
                 }
+
+                if let Some(func) = self.setup_iter {
+                    func(entity)
+                }
             }
         }
 
-        Ok(())
+        Ok(self)
     }
 
     pub fn seek_id(&mut self, id: GeneId) -> Result<(), SystemError> {

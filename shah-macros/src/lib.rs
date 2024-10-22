@@ -44,6 +44,10 @@ pub fn entity(code: TokenStream) -> TokenStream {
                 if flags_ident.is_some() {
                     panic!("only one entity_flags field is allowed")
                 }
+                let ty = f.ty.to_token_stream().to_string();
+                if ty != "u8" {
+                    panic!("#[entity_flags] must be u8: {ty} != u8")
+                }
                 flags_ident = f.ident.as_ref();
             }
         }
@@ -63,11 +67,11 @@ pub fn entity(code: TokenStream) -> TokenStream {
             }
 
             fn flags(&self) -> &u8 {
-                &(self.#flags_ident as u8)
+                &self.#flags_ident
             }
             
             fn flags_mut(&mut self) -> &mut u8 {
-                &mut (self.#flags_ident as u8)
+                &mut self.#flags_ident
             }
         }
     }

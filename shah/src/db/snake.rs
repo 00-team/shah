@@ -19,11 +19,15 @@ pub struct SnakeDead {
 #[shah::model]
 #[derive(Debug, Entity, Clone, Copy)]
 pub struct SnakeHead {
-    pub flags: u64,
     pub gene: Gene,
     pub capacity: u64,
     pub position: u64,
     pub length: u64,
+    #[entity_flags]
+    pub entity_flags: u8,
+    #[flags(free)]
+    pub flags: u8,
+    _pad: [u8; 6],
 }
 
 #[derive(Debug)]

@@ -43,7 +43,6 @@ pub mod db {
         pub cc: u16,
         #[entity_flags]
         pub entity_flags: u8,
-        #[entity_flags(1, 2)]
         pub flags: u8,
         #[str]
         pub name: [u8; 48],

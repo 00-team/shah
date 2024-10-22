@@ -13,6 +13,8 @@ pub use taker::Taker;
 
 pub use shah_macros::{api, enum_code, model, Command, Entity};
 
+pub const PAGE_SIZE: usize = 32;
+
 #[allow(unused_extern_crates)]
 extern crate self as shah;
 

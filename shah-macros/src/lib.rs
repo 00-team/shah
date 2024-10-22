@@ -6,7 +6,9 @@ mod model;
 use core::panic;
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{format_ident, quote, ToTokens};
+use quote_into::quote_into;
 
 #[proc_macro_derive(Command)]
 pub fn command(code: TokenStream) -> TokenStream {
@@ -57,6 +59,27 @@ pub fn entity(code: TokenStream) -> TokenStream {
         panic!("#[entity_flags] is not set for");
     }
 
+    const ENTITY_FLAGS: [&str; 3] = ["alive", "edited", "private"];
+    let mut f = TokenStream2::new();
+    for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
+        let get = format_ident!("{flag}");
+        let set = format_ident!("set_{flag}");
+        quote_into! {f +=
+            fn #get(&self) -> bool {
+                (self.#flags_ident & (1 << #i)) == (1 << #i)
+            }
+
+            fn #set(&mut self, value: bool) -> &mut Self {
+                if value {
+                    self.#flags_ident |= (1 << #i);
+                } else {
+                    self.#flags_ident &= !(1 << #i);
+                }
+                self
+            }
+        };
+    }
+
     quote! {
         impl #ci::db::entity::Entity for #ident {
             fn gene(&self) -> &Gene {
@@ -66,13 +89,7 @@ pub fn entity(code: TokenStream) -> TokenStream {
                 &mut self.gene
             }
 
-            fn flags(&self) -> &u8 {
-                &self.#flags_ident
-            }
-            
-            fn flags_mut(&mut self) -> &mut u8 {
-                &mut self.#flags_ident
-            }
+            #f
         }
     }
     .into()

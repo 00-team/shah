@@ -1,18 +1,13 @@
+use crate::error::SystemError;
+use crate::{Binary, Gene, GeneId, PAGE_SIZE};
 use std::{
     fmt::Debug,
     fs::File,
     io::{ErrorKind, Read, Seek, SeekFrom, Write},
     marker::PhantomData,
     os::unix::fs::FileExt,
-    // slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-use crate::error::SystemError;
-use crate::{Binary, Gene, GeneId};
-
-pub const PAGE_SIZE: usize = 32;
-// const REQUEST_SIZE: u16 = 40960; // 4096 * 10
-// const SNAKE_MAX_LENGTH: u16 = 32768; // 4096 * 8
 const ITER_EXHAUSTION: u8 = 250;
 
 pub struct EntityMetadata {
@@ -21,26 +16,15 @@ pub struct EntityMetadata {
     pub fields: String,
 }
 
-#[repr(usize)]
-pub enum EntityFlag {
-    ALIVE = (1 << 0),
-    EDITED = (1 << 1),
-    PRIVATE = (1 << 2),
-}
-
 pub struct EntityCount {
     pub alive: u64,
     pub total: u64,
 }
 
 macro_rules! flag {
-    ($flag:path, $name:ident, $set:ident) => {
-        fn $name(&self) -> bool {
-            self.get_flag($flag as u8)
-        }
-        fn $set(&mut self, $name: bool) -> &mut Self {
-            self.set_flag($flag as u8, $name)
-        }
+    ($name:ident, $set:ident) => {
+        fn $name(&self) -> bool;
+        fn $set(&mut self, $name: bool) -> &mut Self;
     };
 }
 
@@ -48,25 +32,9 @@ pub trait Entity {
     fn gene(&self) -> &Gene;
     fn gene_mut(&mut self) -> &mut Gene;
 
-    fn flags(&self) -> &u8;
-    fn flags_mut(&mut self) -> &mut u8;
-
-    fn get_flag(&self, flag: u8) -> bool {
-        (*self.flags() & flag) == flag
-    }
-
-    fn set_flag(&mut self, flag: u8, value: bool) -> &mut Self {
-        if value {
-            *self.flags_mut() |= flag;
-        } else {
-            *self.flags_mut() &= !flag;
-        }
-        self
-    }
-
-    flag! {EntityFlag::ALIVE, alive, set_alive}
-    flag! {EntityFlag::EDITED, edited, set_edited}
-    flag! {EntityFlag::PRIVATE, private, set_private}
+    flag! {alive, set_alive}
+    flag! {edited, set_edited}
+    flag! {private, set_private}
 }
 
 #[derive(Debug)]

@@ -46,10 +46,6 @@ pub fn entity(code: TokenStream) -> TokenStream {
                 if flags_ident.is_some() {
                     panic!("only one entity_flags field is allowed")
                 }
-                let ty = f.ty.to_token_stream().to_string();
-                if ty != "u8" {
-                    panic!("#[entity_flags] must be u8: {ty} != u8")
-                }
                 flags_ident = f.ident.as_ref();
             }
         }
@@ -62,15 +58,15 @@ pub fn entity(code: TokenStream) -> TokenStream {
     const ENTITY_FLAGS: [&str; 3] = ["alive", "edited", "private"];
     let mut f = TokenStream2::new();
     for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
-        let get = format_ident!("{flag}");
+        let fi = format_ident!("{flag}");
         let set = format_ident!("set_{flag}");
         quote_into! {f +=
-            fn #get(&self) -> bool {
+            fn #fi(&self) -> bool {
                 (self.#flags_ident & (1 << #i)) == (1 << #i)
             }
 
-            fn #set(&mut self, value: bool) -> &mut Self {
-                if value {
+            fn #set(&mut self, #fi: bool) -> &mut Self {
+                if #fi {
                     self.#flags_ident |= (1 << #i);
                 } else {
                     self.#flags_ident &= !(1 << #i);

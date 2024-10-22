@@ -24,10 +24,9 @@ pub struct SnakeHead {
     pub position: u64,
     pub length: u64,
     #[entity_flags]
-    pub entity_flags: u8,
+    pub entity_flags: u32,
     #[flags(free)]
-    pub flags: u8,
-    _pad: [u8; 6],
+    pub flags: u32,
 }
 
 #[derive(Debug)]

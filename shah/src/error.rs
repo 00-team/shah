@@ -48,6 +48,7 @@ pub enum SystemError {
     EntityNotAlive,
     BadTrieKey,
     SeekOutOfRange,
+    SnakeCapacityIsZero,
 }
 
 impl From<std::io::Error> for SystemError {

@@ -32,7 +32,7 @@ pub mod db {
     #[shah::model]
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
-        pub flags: u64,
+        // pub flags: u64,
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
@@ -41,8 +41,12 @@ pub mod db {
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
+        #[entity_flags]
+        pub entity_flags: u8,
+        #[entity_flags(1, 2)]
+        pub flags: u8,
         #[str]
-        pub name: [u8; 50],
+        pub name: [u8; 48],
         pub sessions: [Session; 3],
     }
 
@@ -63,7 +67,7 @@ pub mod db {
 
     pub(crate) fn setup() -> UserDb {
         let mut db = UserDb::new("user").expect("user db setup");
-        db.setup().expect("user update pop err")
+        db.setup(|_| {}).expect("user update pop err")
     }
 }
 

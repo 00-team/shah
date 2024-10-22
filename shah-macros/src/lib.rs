@@ -3,8 +3,10 @@ mod command;
 mod enum_code;
 mod model;
 
+use core::panic;
+
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 
 #[proc_macro_derive(Command)]
 pub fn command(code: TokenStream) -> TokenStream {
@@ -26,26 +28,46 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
     model::model(args, code)
 }
 
-#[proc_macro_derive(Entity)]
+#[proc_macro_derive(Entity, attributes(entity_flags))]
 pub fn entity(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::DeriveInput);
     let ident = &item.ident;
+    let mut flags_ident: Option<&syn::Ident> = None;
     let ci = crate_ident();
+
+    let syn::Data::Struct(data) = &item.data else {
+        panic!("Entity Trait is only ment for structs")
+    };
+    for f in &data.fields {
+        for a in &f.attrs {
+            if a.meta.to_token_stream().to_string() == "entity_flags" {
+                if flags_ident.is_some() {
+                    panic!("only one entity_flags field is allowed")
+                }
+                flags_ident = f.ident.as_ref();
+            }
+        }
+    }
+
+    if flags_ident.is_none() {
+        panic!("#[entity_flags] is not set for");
+    }
 
     quote! {
         impl #ci::db::entity::Entity for #ident {
             fn gene(&self) -> &Gene {
                 &self.gene
             }
-            fn flags(&self) -> &u8 {
-                &#ci::Binary::as_binary(&self.flags)[0]
-            }
-
             fn gene_mut(&mut self) -> &mut Gene {
                 &mut self.gene
             }
+
+            fn flags(&self) -> &u8 {
+                &(self.#flags_ident as u8)
+            }
+            
             fn flags_mut(&mut self) -> &mut u8 {
-                &mut #ci::Binary::as_binary_mut(&mut self.flags)[0]
+                &mut (self.#flags_ident as u8)
             }
         }
     }

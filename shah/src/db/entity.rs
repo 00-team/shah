@@ -21,7 +21,7 @@ pub struct EntityMetadata {
     pub fields: String,
 }
 
-#[repr(u8)]
+#[repr(usize)]
 pub enum EntityFlag {
     ALIVE = (1 << 0),
     EDITED = (1 << 1),
@@ -46,9 +46,9 @@ macro_rules! flag {
 
 pub trait Entity {
     fn gene(&self) -> &Gene;
-    fn flags(&self) -> &u8;
-
     fn gene_mut(&mut self) -> &mut Gene;
+
+    fn flags(&self) -> &u8;
     fn flags_mut(&mut self) -> &mut u8;
 
     fn get_flag(&self, flag: u8) -> bool {

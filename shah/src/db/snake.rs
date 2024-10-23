@@ -3,7 +3,7 @@ use crate::{error::SystemError, Binary, Gene};
 use shah_macros::Entity;
 use std::{
     fs::File,
-    io::{Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom, Write},
 };
 
 /// TOLERABLE CAPACITY DIFFERENCE
@@ -151,7 +151,8 @@ impl SnakeDb {
         } else {
             head.position = self.db_size()?;
             if head.position < SnakeHead::N {
-                head.position = self.file.seek(SeekFrom::Start(SnakeHead::N))?;
+                head.position =
+                    self.file.seek(SeekFrom::Start(SnakeHead::N))?;
             }
             head.capacity = capacity;
             self.file.seek_relative((capacity - 1) as i64)?;
@@ -163,6 +164,50 @@ impl SnakeDb {
         } else {
             self.index.add(&mut head)?;
         }
+
+        Ok(head)
+    }
+
+    fn check_offset(
+        &mut self, gene: &Gene, offset: u64, buflen: usize,
+    ) -> Result<(SnakeHead, usize), SystemError> {
+        let mut head = SnakeHead::default();
+        self.index.get(gene, &mut head)?;
+        if head.free() {
+            return Err(SystemError::SnakeIsFree);
+        }
+        assert!(head.position >= SnakeHead::N);
+        assert_ne!(head.capacity, 0);
+        if offset >= head.capacity {
+            return Err(SystemError::BadOffset);
+        }
+        let len = if offset + (buflen as u64) > head.capacity {
+            (head.capacity - offset) as usize
+        } else {
+            buflen
+        };
+
+        Ok((head, len))
+    }
+
+    pub fn write(
+        &mut self, gene: &Gene, offset: u64, data: &[u8],
+    ) -> Result<SnakeHead, SystemError> {
+        let (head, len) = self.check_offset(gene, offset, data.len())?;
+
+        self.file.seek(SeekFrom::Start(head.position + offset))?;
+        self.file.write_all(&data[..len])?;
+
+        Ok(head)
+    }
+
+    pub fn read(
+        &mut self, gene: &Gene, offset: u64, data: &mut [u8],
+    ) -> Result<SnakeHead, SystemError> {
+        let (head, len) = self.check_offset(gene, offset, data.len())?;
+
+        self.file.seek(SeekFrom::Start(head.position + offset))?;
+        self.file.read_exact(&mut data[..len])?;
 
         Ok(head)
     }

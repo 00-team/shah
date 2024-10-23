@@ -49,6 +49,8 @@ pub enum SystemError {
     BadTrieKey,
     SeekOutOfRange,
     SnakeCapacityIsZero,
+    SnakeIsFree,
+    BadOffset,
 }
 
 impl From<std::io::Error> for SystemError {

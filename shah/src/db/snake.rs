@@ -98,10 +98,8 @@ impl SnakeDb {
                 if !head.alive() {
                     log::debug!("dead head: {head:?}");
                     self.index.add_dead(&head.gene);
-                } else {
-                    if head.free() {
-                        self.add_free(head);
-                    }
+                } else if head.free() {
+                    self.add_free(head);
                 }
             }
         }
@@ -129,7 +127,7 @@ impl SnakeDb {
             if free.capacity >= capacity {
                 if free.capacity - capacity < TCD {
                     self.free -= 1;
-                    let val = opt_free.clone();
+                    let val = *opt_free;
                     *opt_free = None;
                     return val;
                 }
@@ -167,12 +165,13 @@ impl SnakeDb {
         None
     }
 
-    pub fn alloc(&mut self, capacity: u64) -> Result<SnakeHead, SystemError> {
+    pub fn alloc(
+        &mut self, capacity: u64, head: &mut SnakeHead,
+    ) -> Result<(), SystemError> {
         if capacity == 0 {
             return Err(SystemError::SnakeCapacityIsZero);
         }
 
-        let mut head = SnakeHead::default();
         head.set_alive(true);
         head.set_free(false);
 
@@ -195,12 +194,12 @@ impl SnakeDb {
         }
 
         if head.gene.id != 0 {
-            self.index.set(&head)?;
+            self.index.set(head)?;
         } else {
-            self.index.add(&mut head)?;
+            self.index.add(head)?;
         }
 
-        Ok(head)
+        Ok(())
     }
 
     fn check_offset(
@@ -262,12 +261,14 @@ impl SnakeDb {
         }
 
         head.length = length;
-        self.index.set(&head)?;
+        self.index.set(head)?;
 
         Ok(())
     }
 
-    pub fn free(&mut self, gene: &Gene, head: &mut SnakeHead) -> Result<(), SystemError> {
+    pub fn free(
+        &mut self, gene: &Gene, head: &mut SnakeHead,
+    ) -> Result<(), SystemError> {
         self.index.get(gene, head)?;
 
         assert!(head.position >= SnakeHead::N);
@@ -278,7 +279,7 @@ impl SnakeDb {
         }
 
         head.set_free(true);
-        self.index.set(&head)?;
+        self.index.set(head)?;
         self.add_free(head);
 
         Ok(())
@@ -352,7 +353,7 @@ impl SnakeDb {
                 free.position = head.position;
                 free.capacity = head.capacity;
                 free.gene = head.gene;
-                if let Err(e) = self.index.set(&head) {
+                if let Err(e) = self.index.set(head) {
                     log::warn!("set head: {e:?} - {:?}", head.gene);
                     return;
                 }
@@ -377,7 +378,7 @@ impl SnakeDb {
             self.free += 1;
             head.set_free(true);
             head.set_alive(true);
-            if let Err(e) = self.index.set(&head) {
+            if let Err(e) = self.index.set(head) {
                 log::warn!("set head: {e:?} - {:?}", head.gene);
             }
         }

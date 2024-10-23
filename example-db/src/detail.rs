@@ -10,34 +10,46 @@ pub mod db {
 #[shah::api(scope = 3, error = ExampleError, api = ExampleApi)]
 pub mod api {
     use crate::models::{ExampleApi, ExampleError, State};
-    use shah::{db::snake::SnakeHead, ErrorCode};
+    use shah::{db::snake::SnakeHead, ClientError, ErrorCode, Gene, Taker};
 
     pub(crate) fn init(
         state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),
     ) -> Result<(), ErrorCode> {
-        head.clone_from(&state.detail.alloc(*capacity)?);
-        Ok(())
+        Ok(state.detail.alloc(*capacity, head)?)
     }
 
     pub(crate) fn read(
-        state: &mut State, (gene, offset ,): (&Gene, &u64,), (head, buf,): (&mut SnakeHead, &mut [u8; 4096],),
+        state: &mut State, (gene, offset): (&Gene, &u64),
+        (head, buf): (&mut SnakeHead, &mut [u8; 4096]),
     ) -> Result<(), ErrorCode> {
-        head.clone_from(state.detail.read(gene, *offset, buf));
-        Ok(())
+        Ok(state.detail.read(gene, head, *offset, buf)?)
     }
 
-pub(crate) fn init(
-        state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),
-    ) -> Result<(), ErrorCode> {
-        head.clone_from(&state.detail.alloc(*capacity)?);
-        Ok(())
+    #[client]
+    pub(crate) fn read(
+        taker: &mut Taker, gene: &Gene, offset: u64,
+    ) -> Result<String, ClientError<ExampleError>> {
+        Ok(String::new())
     }
 
-pub(crate) fn init(
-        state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),
+    // pub fn read() -> Result<String>
+
+    pub(crate) fn write(
+        state: &mut State,
+        (gene, offset, data, length): (&Gene, &u64, &[u8; 4094], &u64),
+        (head,): (&mut SnakeHead,),
     ) -> Result<(), ErrorCode> {
-        head.clone_from(&state.detail.alloc(*capacity)?);
-        Ok(())
+        Ok(state.detail.write(
+            gene,
+            head,
+            *offset,
+            &data[0..*length as usize],
+        )?)
     }
 
+    pub(crate) fn free(
+        state: &mut State, (gene,): (&Gene,), (head,): (&mut SnakeHead,),
+    ) -> Result<(), ErrorCode> {
+        Ok(state.detail.free(gene, head)?)
+    }
 }

@@ -51,6 +51,7 @@ pub enum SystemError {
     SnakeCapacityIsZero,
     SnakeIsFree,
     BadOffset,
+    SnakeBadLength
 }
 
 impl From<std::io::Error> for SystemError {

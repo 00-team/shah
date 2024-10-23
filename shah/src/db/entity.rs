@@ -10,12 +10,6 @@ use std::{
 
 const ITER_EXHAUSTION: u8 = 250;
 
-pub struct EntityMetadata {
-    pub version: u32,
-    pub size: u32,
-    pub fields: String,
-}
-
 pub struct EntityCount {
     pub alive: u64,
     pub total: u64,
@@ -43,10 +37,10 @@ where
     T: Default + Entity + Debug + Clone + Binary,
 {
     pub file: File,
-    _e: PhantomData<T>,
     pub live: u64,
     pub dead: u64,
     pub dead_list: [GeneId; 4096],
+    _e: PhantomData<T>,
 }
 
 impl<T> EntityDb<T>

@@ -204,10 +204,10 @@ impl SnakeDb {
     }
 
     fn check_offset(
-        &mut self, gene: &Gene, offset: u64, buflen: usize,
-    ) -> Result<(SnakeHead, usize), SystemError> {
-        let mut head = SnakeHead::default();
-        self.index.get(gene, &mut head)?;
+        &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64,
+        buflen: usize,
+    ) -> Result<usize, SystemError> {
+        self.index.get(gene, head)?;
         if head.free() {
             return Err(SystemError::SnakeIsFree);
         }
@@ -222,36 +222,36 @@ impl SnakeDb {
             buflen
         };
 
-        Ok((head, len))
+        Ok(len)
     }
 
     pub fn write(
-        &mut self, gene: &Gene, offset: u64, data: &[u8],
-    ) -> Result<SnakeHead, SystemError> {
-        let (head, len) = self.check_offset(gene, offset, data.len())?;
+        &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64, data: &[u8],
+    ) -> Result<(), SystemError> {
+        let len = self.check_offset(gene, head, offset, data.len())?;
 
         self.file.seek(SeekFrom::Start(head.position + offset))?;
         self.file.write_all(&data[..len])?;
 
-        Ok(head)
+        Ok(())
     }
 
     pub fn read(
-        &mut self, gene: &Gene, offset: u64, data: &mut [u8],
-    ) -> Result<SnakeHead, SystemError> {
-        let (head, len) = self.check_offset(gene, offset, data.len())?;
+        &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64,
+        data: &mut [u8],
+    ) -> Result<(), SystemError> {
+        let len = self.check_offset(gene, head, offset, data.len())?;
 
         self.file.seek(SeekFrom::Start(head.position + offset))?;
         self.file.read_exact(&mut data[..len])?;
 
-        Ok(head)
+        Ok(())
     }
 
     pub fn set_length(
-        &mut self, gene: &Gene, length: u64,
-    ) -> Result<SnakeHead, SystemError> {
-        let mut head = SnakeHead::default();
-        self.index.get(gene, &mut head)?;
+        &mut self, gene: &Gene, head: &mut SnakeHead, length: u64,
+    ) -> Result<(), SystemError> {
+        self.index.get(gene, head)?;
         if head.free() {
             return Err(SystemError::SnakeIsFree);
         }
@@ -264,25 +264,24 @@ impl SnakeDb {
         head.length = length;
         self.index.set(&head)?;
 
-        Ok(head)
+        Ok(())
     }
 
-    pub fn free(&mut self, gene: &Gene) -> Result<SnakeHead, SystemError> {
-        let mut head = SnakeHead::default();
-        self.index.get(gene, &mut head)?;
+    pub fn free(&mut self, gene: &Gene, head: &mut SnakeHead) -> Result<(), SystemError> {
+        self.index.get(gene, head)?;
 
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
 
         if head.free() {
-            return Ok(head);
+            return Ok(());
         }
 
         head.set_free(true);
         self.index.set(&head)?;
-        self.add_free(&mut head);
+        self.add_free(head);
 
-        Ok(head)
+        Ok(())
     }
 
     fn add_free(&mut self, head: &mut SnakeHead) {

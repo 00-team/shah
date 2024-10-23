@@ -67,7 +67,7 @@ pub mod db {
 
     pub(crate) fn setup() -> UserDb {
         let mut db = UserDb::new("user").expect("user db setup");
-        db.setup(|_| {}).expect("user update pop err")
+        db.setup().expect("user update pop err")
     }
 }
 

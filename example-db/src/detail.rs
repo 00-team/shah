@@ -3,6 +3,6 @@ pub mod db {
 
     pub fn setup() -> SnakeDb {
         let db = SnakeDb::new("detail").expect("detail setup");
-        db
+        db.setup().expect("detail setup")
     }
 }

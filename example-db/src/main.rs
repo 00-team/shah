@@ -17,7 +17,6 @@ enum Commands {
     #[default]
     Help,
     Run,
-    Detail,
 }
 
 fn main() {
@@ -38,12 +37,6 @@ fn main() {
         }
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
-        }
-        Commands::Detail => {
-            let buf = "this is a simple test for detail".as_bytes();
-            println!("buf: {buf:?} - {}", buf.len());
-            let head = state.detail.alloc(buf.len() as u64);
-            println!("head: {head:#?}");
         }
     }
 }

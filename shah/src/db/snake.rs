@@ -3,7 +3,7 @@ use crate::{error::SystemError, Binary, Gene};
 use shah_macros::Entity;
 use std::{
     fs::File,
-    io::{Read, Seek, SeekFrom, Write},
+    io::{ErrorKind, Read, Seek, SeekFrom, Write},
 };
 
 /// TOLERABLE CAPACITY DIFFERENCE
@@ -59,19 +59,54 @@ impl SnakeDb {
         Ok(db)
     }
 
-    pub fn setup(mut self) -> Self {
-        if self.db_size().expect("could not get db size") < SnakeHead::N {
-            self.file.seek(SeekFrom::Start(SnakeHead::N - 1)).unwrap();
-            self.file.write_all(&[0u8]).expect("write");
+    pub fn setup(mut self) -> Result<Self, SystemError> {
+        if self.db_size()? < SnakeHead::N {
+            self.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
+            self.file.write_all(&[0u8])?;
         }
-        self.index = self
-            .index
-            .setup(|head| {
-                log::info!("this is the head: {head:?}");
-            })
-            .expect("snake index setup");
+        // this is so fucking annoying because of borrow rules
+        // i have to setup index manually
+        self.index.live = 0;
+        self.index.dead = 0;
+        self.index.dead_list.fill(0);
+        let index_db_size = self.index.db_size()?;
+        let mut head = SnakeHead::default();
+        let buf = head.as_binary_mut();
 
-        self
+        if index_db_size < SnakeHead::N {
+            self.index.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
+            self.index.file.write_all(&[0u8])?;
+            return Ok(self);
+        }
+
+        if index_db_size == SnakeHead::N {
+            return Ok(self);
+        }
+
+        self.index.live = (index_db_size / SnakeHead::N) - 1;
+        self.index.file.seek(SeekFrom::Start(SnakeHead::N))?;
+        loop {
+            match self.index.file.read_exact(buf) {
+                Ok(_) => {}
+                Err(e) => match e.kind() {
+                    ErrorKind::UnexpectedEof => break,
+                    _ => Err(e)?,
+                },
+            }
+            {
+                let head = SnakeHead::from_binary_mut(buf);
+                if !head.alive() {
+                    log::debug!("dead head: {head:?}");
+                    self.index.add_dead(&head.gene);
+                } else {
+                    if head.free() {
+                        self.add_free(head);
+                    }
+                }
+            }
+        }
+
+        Ok(self)
     }
 
     fn db_size(&mut self) -> std::io::Result<u64> {
@@ -340,6 +375,7 @@ impl SnakeDb {
                 capacity: head.capacity,
                 gene: head.gene,
             });
+            self.free += 1;
             head.set_free(true);
             head.set_alive(true);
             if let Err(e) = self.index.set(&head) {

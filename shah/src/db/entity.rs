@@ -71,9 +71,7 @@ where
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn setup<F: FnMut(&T)>(
-        mut self, mut func: F,
-    ) -> Result<Self, SystemError> {
+    pub fn setup(mut self) -> Result<Self, SystemError> {
         self.live = 0;
         self.dead = 0;
         self.dead_list.fill(0);
@@ -104,13 +102,10 @@ where
             }
             {
                 let entity = T::from_binary(buf);
-                log::info!("entity: {entity:?}");
                 if !entity.alive() {
-                    log::info!("dead: {entity:?}");
+                    log::debug!("dead: {entity:?}");
                     self.add_dead(entity.gene());
                 }
-
-                func(entity)
             }
         }
 
@@ -244,6 +239,7 @@ where
     }
 
     pub fn add_dead(&mut self, gene: &Gene) {
+        println!("live: {}", self.live);
         self.live -= 1;
         if self.dead as usize >= self.dead_list.len()
             || gene.iter >= ITER_EXHAUSTION

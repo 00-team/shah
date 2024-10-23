@@ -60,6 +60,10 @@ impl SnakeDb {
     }
 
     pub fn setup(mut self) -> Self {
+        if self.db_size().expect("could not get db size") < SnakeHead::N {
+            self.file.seek(SeekFrom::Start(SnakeHead::N - 1)).unwrap();
+            self.file.write_all(&[0u8]).expect("write");
+        }
         self.index = self
             .index
             .setup(|head| {
@@ -135,6 +139,7 @@ impl SnakeDb {
 
         let mut head = SnakeHead::default();
         head.set_alive(true);
+        head.set_free(false);
 
         if let Some(dead) = self.take_free(capacity) {
             println!("take dead: {dead:?}");
@@ -145,6 +150,9 @@ impl SnakeDb {
             }
         } else {
             head.position = self.db_size()?;
+            if head.position < SnakeHead::N {
+                head.position = self.file.seek(SeekFrom::Start(SnakeHead::N))?;
+            }
             head.capacity = capacity;
             self.file.seek_relative((capacity - 1) as i64)?;
             self.file.write_all(&[0u8])?;
@@ -152,6 +160,8 @@ impl SnakeDb {
 
         if head.gene.id != 0 {
             self.index.set(&head)?;
+        } else {
+            self.index.add(&mut head)?;
         }
 
         Ok(head)

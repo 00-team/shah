@@ -23,10 +23,9 @@ impl Perms for [u8] {
 
 #[cfg(test)]
 mod tests {
-    use super::{Perm, Perms};
+    use super::Perms;
 
-    pub const A: Perm = (0, 0);
-    pub const C: Perm = (1, 2);
+    crate::perms!(A, _P, _P, _P, _P, _P, _P, _P, _P, C);
 
     #[test]
     fn perms() {
@@ -37,10 +36,11 @@ mod tests {
         perms.perm_set(A, true);
         assert!(perms.perm_get(A));
         assert_eq!(perms, [1, 0, 0]);
+        perms.perm_set(A, false);
 
         assert!(!perms.perm_get(C));
         perms.perm_set(C, true);
         assert!(perms.perm_get(C));
-        assert_eq!(perms, [1, 4, 0]);
+        assert_eq!(perms, [0, 2, 0]);
     }
 }

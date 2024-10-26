@@ -1,6 +1,6 @@
 [package]
 name = "shah"
-version = "0.0.2"
+version = "0.1.0"
 description = "custom database"
 publish = true
 readme.workspace = true
@@ -11,8 +11,8 @@ categories.workspace = true
 license-file.workspace = true
 
 [dependencies]
-# shah-macros = "0.0.1"
-shah-macros = { path = "../shah-macros" }
+shah-macros = "0.1.0"
+# shah-macros = { path = "../shah-macros" }
 log = "0.4.22"
 
 # [lints.rust]

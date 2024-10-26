@@ -24,7 +24,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     let ci = crate_ident();
     let content = api_mod.content.unwrap().1;
     let api_funcs = content.iter().filter_map(|i| match i {
-        syn::Item::Fn(f) => Some(&f.sig),
+        syn::Item::Fn(f) => Some(f),
         _ => None,
     });
     let api_uses = content.iter().filter(|i| matches!(i, syn::Item::Use(_)));
@@ -37,10 +37,12 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         inp: Vec<syn::Type>,
         out: Vec<syn::Type>,
         ret: bool,
+        client: Option<syn::ItemFn>,
     }
     let mut funcs = Vec::<Func>::with_capacity(api_funcs.clone().count());
+    todo!("custom client funcs");
 
-    for sig in api_funcs {
+    for syn::ItemFn { sig, .. } in api_funcs {
         let mut func = Func {
             ident: sig.ident.clone(),
             api_ident: format_ident!("{}_api", sig.ident),
@@ -48,6 +50,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             inp: Default::default(),
             out: Default::default(),
             ret: returns_output_size(&sig.output),
+            client: None,
         };
         let mut inp_done = false;
 
@@ -107,7 +110,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             quote_into! {s += #item};
         }
 
-        for Func { api_ident, ident, state, inp, out, ret } in funcs.iter() {
+        for Func { api_ident, ident, state, inp, out, ret, .. } in funcs.iter() {
             let mut output_var = TokenStream2::new();
             for (i, t) in out.iter().enumerate() {
                 let vid = format_ident!("ov{}", i);

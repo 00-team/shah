@@ -3,11 +3,9 @@ mod command;
 mod entity;
 mod enum_code;
 mod model;
+mod perms;
 
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote, ToTokens};
-use quote_into::quote_into;
 
 #[proc_macro_derive(Command)]
 pub fn command(code: TokenStream) -> TokenStream {
@@ -32,6 +30,11 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
 #[proc_macro_derive(Entity, attributes(entity_flags))]
 pub fn entity(code: TokenStream) -> TokenStream {
     entity::entity(code)
+}
+
+#[proc_macro]
+pub fn perms(code: TokenStream) -> TokenStream {
+    perms::perms(code)
 }
 
 fn crate_ident() -> syn::Ident {

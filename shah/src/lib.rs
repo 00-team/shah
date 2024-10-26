@@ -3,6 +3,7 @@ pub mod db;
 pub mod error;
 pub mod models;
 pub mod server;
+pub mod perms;
 mod taker;
 pub(crate) mod utils;
 
@@ -11,7 +12,7 @@ pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;
 
-pub use shah_macros::{api, enum_code, model, Command, Entity};
+pub use shah_macros::{api, perms, enum_code, model, Command, Entity};
 
 pub const PAGE_SIZE: usize = 32;
 

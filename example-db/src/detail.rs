@@ -26,7 +26,7 @@ pub mod api {
     }
 
     #[client]
-    pub(crate) fn read(
+    pub(crate) fn get(
         taker: &mut Taker, gene: &Gene, offset: u64,
     ) -> Result<String, ClientError<ExampleError>> {
         Ok(String::new())

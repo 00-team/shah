@@ -15,6 +15,7 @@ struct Route {
     inp: Vec<syn::Type>,
     out: Vec<syn::Type>,
     ret: bool,
+    doc: String,
 }
 
 pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
@@ -63,6 +64,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             inp: Default::default(),
             out: Default::default(),
             ret: returns_output_size(&sig.output),
+            doc: "input: ".to_string(),
         };
         let mut inp_done = false;
 
@@ -77,6 +79,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                     route.state = Some(tr.clone());
                 }
                 syn::Type::Tuple(tt) => {
+                    route.doc += &arg.pat.to_token_stream().to_string();
                     tt.elems.iter().for_each(|t| {
                         if let syn::Type::Reference(ty) = t {
                             match &(*ty.elem) {
@@ -108,6 +111,9 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                         }
                     });
 
+                    if !inp_done {
+                        route.doc += "\noutput: ";
+                    }
                     inp_done = true;
                 }
                 ty => panic!("unknown api type: {}", ty.to_token_stream()),
@@ -125,7 +131,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             quote_into!(s += #f);
         }
 
-        for Route { api_ident, ident, state, inp, out, ret } in routes.iter() {
+        for Route { api_ident, ident, state, inp, out, ret, .. } in routes.iter() {
             let mut output_var = TokenStream2::new();
             for (i, t) in out.iter().enumerate() {
                 let vid = format_ident!("ov{}", i);
@@ -190,7 +196,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     }}};
 
     let mut c = TokenStream2::new();
-    for (rdx, Route { ident, inp, out, .. }) in routes.iter().enumerate() {
+    for (rdx, Route { ident, inp, out, doc, .. }) in routes.iter().enumerate() {
         let inputs = inp
             .iter()
             .enumerate()
@@ -220,6 +226,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         }
 
         quote_into! {c +=
+            #[doc = #doc]
             pub fn #ident<'a>(
                 taker: &'a mut #ci::Taker,
                 #{inputs.clone().for_each(|(i, t)| quote_into!(c += #i: &#t, ))}

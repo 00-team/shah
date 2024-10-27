@@ -14,10 +14,11 @@ pub mod db {
 pub mod api {
     use crate::models::{ExampleApi, ExampleError, State};
     use shah::{
-        db::snake::SnakeHead, AsUtf8Str, ClientError, ErrorCode, Gene, Taker, BLOCK_SIZE,
+        db::snake::SnakeHead, AsUtf8Str, ClientError, ErrorCode, Gene, Taker,
+        BLOCK_SIZE,
     };
 
-    use super::{DETAIL_MAX, DETAIL_BUF};
+    use super::{DETAIL_BUF, DETAIL_MAX};
 
     pub(crate) fn init(
         state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),
@@ -40,7 +41,7 @@ pub mod api {
 
     pub(crate) fn write(
         state: &mut State,
-        (gene, offset, data, len): (&Gene, &u64, &[u8; 4094], &u64),
+        (gene, offset, data, len): (&Gene, &u64, &[u8; BLOCK_SIZE], &u64),
         (head,): (&mut SnakeHead,),
     ) -> Result<(), ErrorCode> {
         Ok(state.detail.write(gene, head, *offset, &data[0..*len as usize])?)
@@ -97,8 +98,29 @@ pub mod api {
         }
         let snake = snake.unwrap();
         for i in 0..(len / BLOCK_SIZE) {
+            let off = (i * BLOCK_SIZE);
+            let mut write_buffer = [0u8; BLOCK_SIZE];
+            if len < off + BLOCK_SIZE {
+                let wlen = (off + BLOCK_SIZE) - len;
+                write_buffer[0..wlen].copy_from_slice(&data[off..len]);
+                write(
+                    taker,
+                    &snake.gene,
+                    &(off as u64),
+                    &write_buffer,
+                    &(wlen as u64),
+                )?;
+            } else {
+                write(
+                    taker,
+                    &snake.gene,
+                    &(off as u64),
+                    &data[off..off + BLOCK_SIZE].try_into().unwrap(),
+                    &(BLOCK_SIZE as u64),
+                )?;
+            }
         }
 
-        Ok(Gene::default())
+        Ok(snake.gene)
     }
 }

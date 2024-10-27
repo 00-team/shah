@@ -2,8 +2,8 @@ mod binary;
 pub mod db;
 pub mod error;
 pub mod models;
-pub mod server;
 pub mod perms;
+pub mod server;
 mod taker;
 pub(crate) mod utils;
 
@@ -12,7 +12,7 @@ pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;
 
-pub use shah_macros::{api, perms, enum_code, model, Command, Entity};
+pub use shah_macros::{api, enum_code, model, perms, Command, Entity};
 
 pub const PAGE_SIZE: usize = 32;
 
@@ -38,6 +38,22 @@ pub fn command<T: Command + Default>() -> T {
         let Some(arg) = args.next() else { break T::default() };
         if arg == "-c" {
             break T::parse(args);
+        }
+    }
+}
+
+pub trait AsUtf8Str {
+    fn as_utf8_str(&self) -> &str;
+}
+
+impl AsUtf8Str for [u8] {
+    fn as_utf8_str(&self) -> &str {
+        match core::str::from_utf8(self) {
+            Ok(v) => v,
+            Err(e) => match core::str::from_utf8(&self[..e.valid_up_to()]) {
+                Ok(v) => v,
+                Err(_) => "",
+            },
         }
     }
 }

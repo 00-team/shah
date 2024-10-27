@@ -14,7 +14,8 @@ pub use taker::Taker;
 
 pub use shah_macros::{api, enum_code, model, perms, Command, Entity};
 
-pub const PAGE_SIZE: usize = 32;
+pub const PAGE_SIZE: usize = 0x20;
+pub const BLOCK_SIZE: usize = 0x1000;
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

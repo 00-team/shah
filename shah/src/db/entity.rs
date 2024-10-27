@@ -1,5 +1,5 @@
 use crate::error::SystemError;
-use crate::{Binary, Gene, GeneId, PAGE_SIZE};
+use crate::{Binary, Gene, GeneId, BLOCK_SIZE, PAGE_SIZE};
 use std::{
     fmt::Debug,
     fs::File,
@@ -39,7 +39,7 @@ where
     pub file: File,
     pub live: u64,
     pub dead: u64,
-    pub dead_list: [GeneId; 4096],
+    pub dead_list: [GeneId; BLOCK_SIZE],
     _e: PhantomData<T>,
 }
 
@@ -59,7 +59,7 @@ where
         let db = Self {
             live: 0,
             dead: 0,
-            dead_list: [0; 4096],
+            dead_list: [0; BLOCK_SIZE],
             file,
             _e: PhantomData::<T>,
         };

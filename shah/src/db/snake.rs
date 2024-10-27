@@ -1,5 +1,5 @@
 use super::entity::{Entity, EntityDb};
-use crate::{error::SystemError, Binary, Gene};
+use crate::{error::SystemError, Binary, Gene, BLOCK_SIZE};
 use shah_macros::Entity;
 use std::{
     fs::File,
@@ -34,7 +34,7 @@ pub struct SnakeDb {
     pub file: File,
     pub live: u64,
     pub free: u64,
-    pub free_list: [Option<SnakeFree>; 4096],
+    pub free_list: [Option<SnakeFree>; BLOCK_SIZE],
     pub index: EntityDb<SnakeHead>,
 }
 
@@ -51,7 +51,7 @@ impl SnakeDb {
         let db = Self {
             live: 0,
             free: 0,
-            free_list: [None; 4096],
+            free_list: [None; BLOCK_SIZE],
             file,
             index: EntityDb::<SnakeHead>::new(&format!("{name}.index"))?,
         };

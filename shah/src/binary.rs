@@ -30,6 +30,10 @@ pub trait Binary: Sized + Debug {
         //let (_, model, _) = unsafe { data.align_to_mut::<Self>() };
         //&mut model[0]
     }
+
+    fn zeroed(&mut self) {
+        self.as_binary_mut().fill(0);
+    }
 }
 
 // pub trait FromBytes {

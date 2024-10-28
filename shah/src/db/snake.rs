@@ -287,6 +287,7 @@ impl SnakeDb {
     }
 
     fn add_free(&mut self, head: &mut SnakeHead) {
+        // TODO: snakes that are small but at the end of the file
         if head.position == 0 || head.capacity == 0 || head.gene.id == 0 {
             return;
         }

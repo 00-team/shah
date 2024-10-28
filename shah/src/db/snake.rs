@@ -111,7 +111,11 @@ impl SnakeDb {
         self.file.seek(SeekFrom::End(0))
     }
 
-    fn take_free(&mut self, capacity: u64) -> Option<SnakeFree> {
+    fn take_free(
+        &mut self, capacity: u64,
+    ) -> Result<Option<SnakeFree>, SystemError> {
+        let db_size = self.db_size()?;
+
         let mut travel = 0;
         for opt_free in self.free_list.iter_mut() {
             if travel >= self.free {
@@ -124,45 +128,50 @@ impl SnakeDb {
             assert_ne!(free.capacity, 0);
             assert_ne!(free.gene.id, 0);
 
+            if free.position + free.capacity == db_size {
+                self.free -= 1;
+                let val = SnakeFree {
+                    position: free.position,
+                    gene: free.gene,
+                    capacity,
+                };
+                *opt_free = None;
+                return Ok(Some(val));
+            }
+
             if free.capacity >= capacity {
                 if free.capacity - capacity < TCD {
                     self.free -= 1;
                     let val = *opt_free;
                     *opt_free = None;
-                    return val;
+                    return Ok(val);
                 }
 
                 let mut old = SnakeHead::default();
-                if let Err(e) = self.index.get(&free.gene, &mut old) {
-                    log::warn!("error reading free snake head: {e:?}");
-                    return None;
-                }
+                self.index.get(&free.gene, &mut old)?;
                 if !old.free() {
                     log::warn!("free is not even free :/ wtf");
-                    return None;
+                    return Ok(None);
                 }
                 if old.capacity != free.capacity
                     || old.position != free.position
                 {
                     log::warn!("invalid snake free_list: {old:?} != {free:?}");
-                    return None;
+                    return Ok(None);
                 }
 
                 old.capacity -= capacity;
-                if let Err(e) = self.index.set(&old) {
-                    log::warn!("error updating old dead snake: {e:?}");
-                    return None;
-                };
+                self.index.set(&old)?;
                 free.capacity -= capacity;
-                return Some(SnakeFree {
+                return Ok(Some(SnakeFree {
                     gene: Default::default(),
                     position: free.position + free.capacity,
                     capacity,
-                });
+                }));
             }
         }
 
-        None
+        Ok(None)
     }
 
     pub fn alloc(
@@ -176,7 +185,7 @@ impl SnakeDb {
         head.set_alive(true);
         head.set_free(false);
 
-        if let Some(dead) = self.take_free(capacity) {
+        if let Some(dead) = self.take_free(capacity)? {
             println!("take dead: {dead:?}");
             head.position = dead.position;
             head.capacity = dead.capacity;
@@ -287,7 +296,6 @@ impl SnakeDb {
     }
 
     fn add_free(&mut self, head: &mut SnakeHead) {
-        // TODO: snakes that are small but at the end of the file
         if head.position == 0 || head.capacity == 0 || head.gene.id == 0 {
             return;
         }

@@ -1,45 +1,33 @@
-use example_db::phone;
-use shah::{Gene, Taker};
+use example_db::{detail, models::ExampleError};
+use shah::{ClientError, Taker};
 
-fn main() {
-    // let user = User::default();
-    // println!("user: {user:#?}");
-
+fn act() -> Result<(), ClientError<ExampleError>> {
     let mut taker = Taker::init("/tmp/shah.sock", "/tmp/shah.example.sock")
         .expect("could not init taker");
 
-    let phone = "09223334444\0";
-    let gene = Gene { id: 99, ..Default::default() };
-    let res = phone::client::phone_add(
-        &mut taker,
-        phone.as_bytes().try_into().unwrap(),
-        &gene,
-    );
-    println!("res: {res:?}");
+    for (ch, l) in [('A', 400usize), ('B', 6_000), ('C', 1024)] {
+        let len = l.min(detail::DETAIL_MAX);
+        let detail = string_data(ch, l);
+        let gene = detail::set(&mut taker, &None, &detail)?;
+        println!("set: \x1b[32mch: {ch} - {l} - {gene:?}\x1b[m");
+        let out = detail::get(&mut taker, &gene)?;
+        assert_eq!(detail[..len], out);
+        detail::free(&mut taker, &gene)?;
+    }
 
-    // let mut old_user = User::default();
-    // old_user.set_name("Ostad 007 🐧");
-    // println!("old user: {old_user:#?}");
-    // let (new_user,) = user_add(&mut taker, &old_user).unwrap();
-    // println!("new user: {new_user:#?}");
-    // let new_user_gene = new_user.gene;
-    //
-    // let (user,) =
-    //     user_get(&mut taker, &new_user_gene).expect("error getting user");
-    // println!("user name: {:?} - {:?}", user.name, user.name());
+    Ok(())
+}
 
-    // let name = name.split(|c| *c == 0).next().unwrap();
-    // let name = match core::str::from_utf8(name) {
-    //     Err(e) => {
-    //         match core::str::from_utf8(&name[..e.valid_up_to()]) {
-    //             Ok(v) => v,
-    //             Err(e) => {
-    //                 println!("err: {e}");
-    //                 ""
-    //             }
-    //         }
-    //     },
-    //     Ok(v) => v
-    // };
-    // println!("user name: {:?} - {name}", name);
+fn main() {
+    if let Err(e) = act() {
+        println!("error: {e:#?}");
+    }
+}
+
+fn string_data(ch: char, l: usize) -> String {
+    let mut s = String::with_capacity(l);
+    for _ in 0..l {
+        s.push(ch)
+    }
+    s
 }

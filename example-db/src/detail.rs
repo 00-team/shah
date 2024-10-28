@@ -1,7 +1,7 @@
-pub const DETAIL_MAX: usize = 10_000;
+pub const DETAIL_MAX: usize = 5_000;
 pub const DETAIL_BUF: usize = 255;
 
-pub mod db {
+pub(crate) mod db {
     use shah::db::snake::SnakeDb;
 
     pub fn setup() -> SnakeDb {
@@ -10,7 +10,7 @@ pub mod db {
     }
 }
 
-#[shah::api(scope = 3, error = ExampleError, api = ExampleApi)]
+#[shah::api(scope = 2, error = ExampleError, api = ExampleApi)]
 pub mod api {
     use crate::models::{ExampleApi, ExampleError, State};
     use shah::{
@@ -39,6 +39,13 @@ pub mod api {
         Ok(state.detail.read(gene, head, *offset, buf)?)
     }
 
+    pub(crate) fn set_length(
+        state: &mut State, (gene, len): (&Gene, &u64),
+        (head,): (&mut SnakeHead,),
+    ) -> Result<(), ErrorCode> {
+        Ok(state.detail.set_length(gene, head, *len)?)
+    }
+
     pub(crate) fn write(
         state: &mut State,
         (gene, offset, data, len): (&Gene, &u64, &[u8; BLOCK_SIZE], &u64),
@@ -61,9 +68,10 @@ pub mod api {
         let len = head.length.min(head.capacity);
         let len = if len == 0 { head.capacity } else { len } as usize;
         let mut v = Vec::with_capacity(len);
+        unsafe { v.set_len(len) };
 
         if len > BLOCK_SIZE {
-            v[0..BLOCK_SIZE].copy_from_slice(buf);
+            v[..BLOCK_SIZE].copy_from_slice(buf);
             for i in 1..=(len / BLOCK_SIZE) {
                 let off = i * BLOCK_SIZE;
                 let (_, buf) = read(taker, gene, &(off as u64))?;
@@ -71,7 +79,7 @@ pub mod api {
                     .copy_from_slice(&buf[..(len - off).min(BLOCK_SIZE)])
             }
         } else {
-            v[0..len].copy_from_slice(&buf[0..len]);
+            v.copy_from_slice(&buf[..len]);
         }
 
         Ok(v.as_utf8_str().to_string())
@@ -97,11 +105,11 @@ pub mod api {
             snake = Some(init(taker, &capacity)?.0.clone());
         }
         let snake = snake.unwrap();
-        for i in 0..(len / BLOCK_SIZE) {
-            let off = (i * BLOCK_SIZE);
-            let mut write_buffer = [0u8; BLOCK_SIZE];
-            if len < off + BLOCK_SIZE {
-                let wlen = (off + BLOCK_SIZE) - len;
+        for i in 0..=(len / BLOCK_SIZE) {
+            let off = i * BLOCK_SIZE;
+            if len < (off + BLOCK_SIZE) {
+                let mut write_buffer = [0u8; BLOCK_SIZE];
+                let wlen = len - off;
                 write_buffer[0..wlen].copy_from_slice(&data[off..len]);
                 write(
                     taker,
@@ -121,6 +129,10 @@ pub mod api {
             }
         }
 
+        set_length(taker, &snake.gene, &(len as u64))?;
+
         Ok(snake.gene)
     }
 }
+
+pub use client::*;

@@ -172,6 +172,7 @@ impl SnakeDb {
             return Err(SystemError::SnakeCapacityIsZero);
         }
 
+        head.zeroed();
         head.set_alive(true);
         head.set_free(false);
 

@@ -23,7 +23,11 @@ fn main() {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    let routes = [user::api::ROUTES.as_slice(), phone::api::ROUTES.as_slice()];
+    let routes = [
+        user::api::ROUTES.as_slice(),
+        phone::api::ROUTES.as_slice(),
+        detail::api::ROUTES.as_slice(),
+    ];
 
     let mut state = models::State {
         users: user::db::setup(),

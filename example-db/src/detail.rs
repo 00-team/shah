@@ -2,16 +2,18 @@ pub const DETAIL_MAX: usize = 5_000;
 pub const DETAIL_BUF: usize = 255;
 
 pub(crate) mod db {
-    use shah::db::snake::SnakeDb;
 
-    pub fn setup() -> SnakeDb {
-        let db = SnakeDb::new("detail").expect("detail setup");
-        db.setup().expect("detail setup")
+    use shah::{db::snake::SnakeDb, error::SystemError};
+
+    #[allow(dead_code)]
+    pub fn setup() -> Result<SnakeDb, SystemError> {
+        SnakeDb::new("detail")?.setup()
     }
 }
 
 #[shah::api(scope = 2, error = ExampleError, api = ExampleApi)]
 pub mod api {
+
     use crate::models::{ExampleApi, ExampleError, State};
     use shah::{
         db::snake::SnakeHead, AsUtf8Str, ClientError, ErrorCode, Gene, Taker,
@@ -67,8 +69,9 @@ pub mod api {
         let (head, buf) = read(taker, gene, &0)?;
         let len = head.length.min(head.capacity);
         let len = if len == 0 { head.capacity } else { len } as usize;
-        let mut v = Vec::with_capacity(len);
-        unsafe { v.set_len(len) };
+        // let mut v = Vec::with_capacity(len);
+        // unsafe { v.set_len(len) };
+        let mut v = vec![0u8; len];
 
         if len > BLOCK_SIZE {
             v[..BLOCK_SIZE].copy_from_slice(buf);
@@ -95,14 +98,14 @@ pub mod api {
         if let Some(old) = gene {
             let (old_head,) = head(taker, old)?;
             if old_head.capacity >= len as u64 {
-                snake = Some(old_head.clone());
+                snake = Some(*old_head);
             } else {
                 free(taker, old)?;
             }
         }
         if snake.is_none() {
             let capacity = (len + DETAIL_BUF).min(DETAIL_MAX) as u64;
-            snake = Some(init(taker, &capacity)?.0.clone());
+            snake = Some(*init(taker, &capacity)?.0);
         }
         let snake = snake.unwrap();
         for i in 0..=(len / BLOCK_SIZE) {
@@ -135,4 +138,5 @@ pub mod api {
     }
 }
 
+#[allow(unused_imports)]
 pub use client::*;

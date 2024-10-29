@@ -124,6 +124,8 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     }
 
     quote_into! {s += pub(crate) mod api {
+        #![allow(unused_imports)]
+
         #uses
 
     #{

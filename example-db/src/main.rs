@@ -4,11 +4,7 @@ mod phone;
 mod user;
 
 use shah::Command;
-use std::{
-    default,
-    env::Args,
-    io::{stdout, Write},
-};
+use std::io::{stdout, Write};
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
 
@@ -30,14 +26,14 @@ fn main() {
     ];
 
     let mut state = models::State {
-        users: user::db::setup(),
+        users: user::db::setup().expect("user setup"),
         phone: phone::db::setup(),
-        detail: detail::db::setup(),
+        detail: detail::db::setup().expect("detail setup"),
     };
 
     match shah::command() {
         Commands::Help => {
-            stdout().write_all(Commands::help().as_bytes());
+            stdout().write_all(Commands::help().as_bytes()).unwrap();
         }
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()

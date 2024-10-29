@@ -12,7 +12,9 @@ fn act() -> Result<(), ClientError<ExampleError>> {
         println!("set: \x1b[32mch: {ch} - {l} - {gene:?}\x1b[m");
         let out = detail::get(&mut taker, &gene)?;
         assert_eq!(detail[..len], out);
-        detail::free(&mut taker, &gene)?;
+        if l == 6_000 {
+            detail::free(&mut taker, &gene)?;
+        }
     }
 
     Ok(())

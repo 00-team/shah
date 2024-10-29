@@ -1,7 +1,10 @@
 pub mod db {
+    #![allow(dead_code)]
+
     use shah::db::entity::EntityDb;
+    use shah::error::SystemError;
+    use shah::Entity;
     use shah::Gene;
-    use shah::{Binary, Entity};
 
     use crate::models::ExampleError;
 
@@ -65,9 +68,8 @@ pub mod db {
         }
     }
 
-    pub(crate) fn setup() -> UserDb {
-        let mut db = UserDb::new("user").expect("user db setup");
-        db.setup().expect("user update pop err")
+    pub(crate) fn setup() -> Result<UserDb, SystemError> {
+        UserDb::new("user")?.setup()
     }
 }
 
@@ -75,7 +77,7 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{PAGE_SIZE, ErrorCode, Gene, GeneId};
+    use shah::{ErrorCode, Gene, GeneId, PAGE_SIZE};
 
     pub(crate) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),

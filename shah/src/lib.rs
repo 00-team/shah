@@ -51,10 +51,8 @@ impl AsUtf8Str for [u8] {
     fn as_utf8_str(&self) -> &str {
         match core::str::from_utf8(self) {
             Ok(v) => v,
-            Err(e) => match core::str::from_utf8(&self[..e.valid_up_to()]) {
-                Ok(v) => v,
-                Err(_) => "",
-            },
+            Err(e) => core::str::from_utf8(&self[..e.valid_up_to()])
+                .unwrap_or_default(),
         }
     }
 }

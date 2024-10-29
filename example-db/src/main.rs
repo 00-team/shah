@@ -2,6 +2,7 @@ mod detail;
 mod models;
 mod phone;
 mod user;
+mod note;
 
 use shah::Command;
 use std::io::{stdout, Write};

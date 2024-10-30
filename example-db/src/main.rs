@@ -1,8 +1,8 @@
 mod detail;
 mod models;
+mod note;
 mod phone;
 mod user;
-mod note;
 
 use shah::Command;
 use std::io::{stdout, Write};
@@ -28,7 +28,7 @@ fn main() {
 
     let mut state = models::State {
         users: user::db::setup().expect("user setup"),
-        phone: phone::db::setup(),
+        phone: phone::db::setup().expect("phone setup"),
         detail: detail::db::setup().expect("detail setup"),
     };
 

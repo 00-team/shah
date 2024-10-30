@@ -249,11 +249,11 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         for (i, f) in flags.iter().enumerate() {
             let set = format_ident!("set_{f}");
             quote_into! {ffs +=
-                fn #f(&self) -> bool {
+                pub fn #f(&self) -> bool {
                     (self.#field & (1 << #i)) == (1 << #i)
                 }
 
-                fn #set(&mut self, #f: bool) -> &mut Self {
+                pub fn #set(&mut self, #f: bool) -> &mut Self {
                     if #f {
                         self.#field |= (1 << #i);
                     } else {

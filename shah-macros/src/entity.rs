@@ -33,11 +33,11 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
         let fi = format_ident!("{flag}");
         let set = format_ident!("set_{flag}");
         quote_into! {f +=
-            fn #fi(&self) -> bool {
+            pub fn #fi(&self) -> bool {
                 (self.#flags_ident & (1 << #i)) == (1 << #i)
             }
 
-            fn #set(&mut self, #fi: bool) -> &mut Self {
+            pub fn #set(&mut self, #fi: bool) -> &mut Self {
                 if #fi {
                     self.#flags_ident |= (1 << #i);
                 } else {

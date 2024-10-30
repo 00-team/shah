@@ -1,6 +1,7 @@
 pub mod db {
     use shah::{
         db::trie_const::{TrieAbc, TrieConst},
+        error::SystemError,
         Gene,
     };
 
@@ -19,7 +20,7 @@ pub mod db {
     // const PHONE_ABC: &str = "0123456789";
     pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
-    pub fn setup() -> PhoneDb {
+    pub fn setup() -> Result<PhoneDb, SystemError> {
         PhoneDb::new("phone", PhoneAbc).setup()
     }
 
@@ -33,7 +34,7 @@ pub mod db {
         fn phone_db() {
             let db = PhoneDb::new("tests.phone", PhoneAbc);
             db.file.set_len(0).expect("file truncate");
-            let mut db = db.setup();
+            let mut db = db.setup().expect("phone setup");
 
             let mock_data = [
                 ("223334044", 2233, [3, 4, 0, 4, 4]),

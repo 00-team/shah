@@ -87,7 +87,7 @@ where
         }
     }
 
-    pub fn setup(mut self) -> Self {
+    pub fn setup(mut self) -> Result<Self, SystemError> {
         let db_size = self.db_size().expect("could not read db_size");
         let cache_size = self.cache_len * Self::PS;
 
@@ -98,11 +98,11 @@ where
 
             self.file.write_all(&[0u8]).expect("could not write &[0u8]");
 
-            return self;
+            return Ok(self);
         }
 
         assert!(db_size >= cache_size, "invalid trie-const caching");
-        self
+        Ok(self)
     }
 
     pub fn db_size(&mut self) -> std::io::Result<u64> {

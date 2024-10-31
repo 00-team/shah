@@ -1,4 +1,6 @@
+#[cfg(feature = "serde")]
 use crate::{error::SystemError, Binary};
+#[cfg(feature = "serde")]
 use std::str::FromStr;
 
 pub type GeneId = u64;
@@ -41,10 +43,15 @@ impl serde::Serialize for Gene {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.as_hex())
+        if self.id == 0 {
+            serializer.serialize_none()
+        } else {
+            serializer.serialize_str(&self.as_hex())
+        }
     }
 }
 
+#[cfg(feature = "serde")]
 struct StrVisitor;
 #[cfg(feature = "serde")]
 impl<'de> serde::de::Visitor<'de> for StrVisitor {

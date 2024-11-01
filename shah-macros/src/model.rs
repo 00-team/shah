@@ -153,15 +153,15 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                 let pfi = prev.ident.clone().unwrap();
                 let pft = &prev.ty;
                 quote_into! { asspad +=
-                    assert!(
-                        ::core::mem::offset_of!(#ident, #field) ==
+                    assert_eq!(
+                        ::core::mem::offset_of!(#ident, #field),
                         ::core::mem::offset_of!(#ident, #pfi) +
                         ::core::mem::size_of::<#pft>()
                     );
                 }
             } else {
                 quote_into! { asspad +=
-                    assert!(::core::mem::offset_of!(#ident, #field) == 0);
+                    assert_eq!(::core::mem::offset_of!(#ident, #field), 0);
                 }
             }
 
@@ -169,8 +169,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                 let ty = &f.ty;
 
                 quote_into! { asspad +=
-                    assert!(
-                        ::core::mem::size_of::<#ident>() ==
+                    assert_eq!(
+                        ::core::mem::size_of::<#ident>(),
                         ::core::mem::offset_of!(#ident, #field) +
                         ::core::mem::size_of::<#ty>()
                     );

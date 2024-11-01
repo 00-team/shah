@@ -36,41 +36,35 @@ pub struct PondDb<T>
 where
     T: Default + Entity + Debug + Clone + Binary,
 {
-    pub file: File,
     pub live: u64,
     pub dead: u64,
     pub dead_list: [GeneId; BLOCK_SIZE],
     pub index: EntityDb<PondIndex>,
     pub items: EntityDb<T>,
 }
+// TODO: find a good way to iter throgh items db
 
-// impl<T> EntityDb<T>
+// impl<T> PondDb<T>
 // where
 //     T: Entity + Debug + Clone + Default + Binary,
 // {
 //     pub fn new(name: &str) -> Result<Self, SystemError> {
-//         std::fs::create_dir_all("data/")?;
-//
-//         let file = std::fs::OpenOptions::new()
-//             .read(true)
-//             .write(true)
-//             .create(true)
-//             .open(format!("data/{name}.bin"))?;
-//
 //         let db = Self {
 //             live: 0,
 //             dead: 0,
 //             dead_list: [0; BLOCK_SIZE],
-//             file,
-//             _e: PhantomData::<T>,
+//             index: EntityDb::<PondIndex>::new(&format!(
+//                 "{name}.pond.index.bin"
+//             ))?,
+//             items: EntityDb::<T>::new(&format!("{name}.pond.items.bin"))?,
 //         };
 //
 //         Ok(db)
 //     }
 //
-//     pub fn db_size(&mut self) -> std::io::Result<u64> {
-//         self.file.seek(SeekFrom::End(0))
-//     }
+//     // pub fn db_size(&mut self) -> std::io::Result<u64> {
+//     //     self.file.seek(SeekFrom::End(0))
+//     // }
 //
 //     pub fn setup(mut self) -> Result<Self, SystemError> {
 //         self.live = 0;

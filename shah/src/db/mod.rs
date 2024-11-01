@@ -1,3 +1,4 @@
+pub mod brood;
 pub mod entity;
-pub mod trie_const;
 pub mod snake;
+pub mod trie_const;

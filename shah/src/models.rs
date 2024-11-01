@@ -25,6 +25,10 @@ impl Gene {
     pub fn is_none(&self) -> bool {
         self.id == 0
     }
+
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
 }
 
 #[cfg(feature = "serde")]

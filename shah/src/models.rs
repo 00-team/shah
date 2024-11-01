@@ -21,6 +21,10 @@ impl Gene {
         let out = faster_hex::hex_encode(self.as_binary(), &mut dst).unwrap();
         out.to_string()
     }
+
+    pub fn is_none(&self) -> bool {
+        self.id == 0
+    }
 }
 
 #[cfg(feature = "serde")]

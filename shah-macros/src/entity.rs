@@ -9,6 +9,17 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
     let mut flags_ident: Option<&syn::Ident> = None;
     let ci = crate::crate_ident();
 
+    let generics = &item.generics;
+    let mut gnb = item.generics.clone();
+    for p in gnb.params.iter_mut() {
+        match p {
+            syn::GenericParam::Type(t) => t.bounds.clear(),
+            _ => {
+                panic!("invalid generic param")
+            }
+        }
+    }
+
     let syn::Data::Struct(data) = &item.data else {
         panic!("Entity Trait is only ment for structs")
     };
@@ -49,7 +60,7 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
     }
 
     quote! {
-        impl #ci::db::entity::Entity for #ident {
+        impl #generics #ci::db::entity::Entity for #ident #gnb {
             fn gene(&self) -> &Gene {
                 &self.gene
             }

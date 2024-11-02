@@ -12,6 +12,18 @@ type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
 
+    let generics = &item.generics;
+    let is_generic = item.generics.lt_token.is_some();
+    let mut gnb = item.generics.clone();
+    for p in gnb.params.iter_mut() {
+        match p {
+            syn::GenericParam::Type(t) => t.bounds.clear(),
+            _ => {
+                panic!("invalid generic param")
+            }
+        }
+    }
+
     match &item.fields {
         syn::Fields::Named(_) => {}
         _ => panic!("invalid struct type must be named"),
@@ -143,44 +155,46 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     });
 
     let fields_len = item.fields.len();
-    item.fields
-        .iter()
-        .enumerate()
-        .scan(None as Option<&syn::Field>, |state, (i, f)| {
-            let field = f.ident.clone().unwrap();
+    if !is_generic {
+        item.fields
+            .iter()
+            .enumerate()
+            .scan(None as Option<&syn::Field>, |state, (i, f)| {
+                let field = f.ident.clone().unwrap();
 
-            if let Some(prev) = state {
-                let pfi = prev.ident.clone().unwrap();
-                let pft = &prev.ty;
-                quote_into! { asspad +=
-                    assert!(
-                        ::core::mem::offset_of!(#ident, #field) ==
-                        ::core::mem::offset_of!(#ident, #pfi) +
-                        ::core::mem::size_of::<#pft>()
-                    );
+                if let Some(prev) = state {
+                    let pfi = prev.ident.clone().unwrap();
+                    let pft = &prev.ty;
+                    quote_into! { asspad +=
+                        assert!(
+                            ::core::mem::offset_of!(#ident, #field) ==
+                            ::core::mem::offset_of!(#ident, #pfi) +
+                            ::core::mem::size_of::<#pft>()
+                        );
+                    }
+                } else {
+                    quote_into! { asspad +=
+                        assert!(::core::mem::offset_of!(#ident, #field) == 0);
+                    }
                 }
-            } else {
-                quote_into! { asspad +=
-                    assert!(::core::mem::offset_of!(#ident, #field) == 0);
+
+                if i == fields_len - 1 {
+                    let ty = &f.ty;
+
+                    quote_into! { asspad +=
+                        assert!(
+                            ::core::mem::size_of::<#ident>() ==
+                            ::core::mem::offset_of!(#ident, #field) +
+                            ::core::mem::size_of::<#ty>()
+                        );
+                    }
                 }
-            }
 
-            if i == fields_len - 1 {
-                let ty = &f.ty;
-
-                quote_into! { asspad +=
-                    assert!(
-                        ::core::mem::size_of::<#ident>() ==
-                        ::core::mem::offset_of!(#ident, #field) +
-                        ::core::mem::size_of::<#ty>()
-                    );
-                }
-            }
-
-            *state = Some(f);
-            Some((i, f))
-        })
-        .for_each(|_| {});
+                *state = Some(f);
+                Some((i, f))
+            })
+            .for_each(|_| {});
+    }
 
     let mut default_impl = TokenStream2::new();
     quote_into! {default_impl +=
@@ -265,19 +279,19 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }
     }
 
-    quote! {
+    let s = quote! {
         #item
 
         const _: () = { #asspad };
 
-        impl ::core::default::Default for #ident {
+        impl #generics ::core::default::Default for #ident #gnb {
             #[inline]
-            fn default() -> #ident {
+            fn default() -> #ident #gnb {
                 #default_impl
             }
         }
 
-        impl #ident {
+        impl #generics #ident #gnb {
             #ssi
 
             #ffs
@@ -289,6 +303,9 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         //         unsafe { core::mem::transmute(data) }
         //     }
         // }
-    }
-    .into()
+    };
+
+    // println!("{s}");
+
+    s.into()
 }

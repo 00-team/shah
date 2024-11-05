@@ -14,6 +14,7 @@ enum Commands {
     #[default]
     Help,
     Run,
+    Note,
 }
 
 fn main() {
@@ -30,6 +31,7 @@ fn main() {
         users: user::db::setup().expect("user setup"),
         phone: phone::db::setup().expect("phone setup"),
         detail: detail::db::setup().expect("detail setup"),
+        notes: note::db::setup().expect("note setup"),
     };
 
     match shah::command() {
@@ -38,6 +40,9 @@ fn main() {
         }
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
+        }
+        Commands::Note => {
+            state.notes.add
         }
     }
 }

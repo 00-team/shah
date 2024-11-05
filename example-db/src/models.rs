@@ -2,13 +2,14 @@ use std::str::Utf8Error;
 
 use shah::{db::snake::SnakeDb, error::SystemError, ErrorCode};
 
-use crate::{phone::db::PhoneDb, user::db::UserDb};
+use crate::{phone::db::PhoneDb, user::db::UserDb, note::db::NoteDb};
 
 #[derive(Debug)]
 pub struct State {
     pub users: UserDb,
     pub phone: PhoneDb,
     pub detail: SnakeDb,
+    pub notes: NoteDb,
 }
 
 pub type ExampleApi = shah::Api<State>;

@@ -51,7 +51,7 @@ impl serde::Serialize for Gene {
     where
         S: serde::Serializer,
     {
-        if self.id == 0 {
+        if self.is_none() {
             serializer.serialize_none()
         } else {
             serializer.serialize_str(&self.as_hex())

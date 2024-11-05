@@ -183,7 +183,7 @@ where
         gene.server = 69;
         gene.iter = 0;
 
-        if gene.id != 0 {
+        if gene.is_some() {
             let mut og = Gene::default();
             // let mut og = [0u8; size_of::<Gene>()];
             self.file.read_exact_at(og.as_binary_mut(), gene.id * T::N)?;
@@ -202,7 +202,7 @@ where
 
     pub fn add(&mut self, entity: &mut T) -> Result<(), SystemError> {
         entity.set_alive(true);
-        if entity.gene().id == 0 {
+        if entity.gene().is_none() {
             entity.gene_mut().clone_from(&self.new_gene()?);
         }
 

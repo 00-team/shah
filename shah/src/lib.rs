@@ -1,3 +1,4 @@
+mod dead_list;
 mod binary;
 pub mod db;
 pub mod error;

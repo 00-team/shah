@@ -189,7 +189,7 @@ impl SnakeDb {
             println!("take dead: {dead:?}");
             head.position = dead.position;
             head.capacity = dead.capacity;
-            if dead.gene.id != 0 {
+            if dead.gene.is_some() {
                 head.gene = dead.gene;
             }
         } else {
@@ -203,7 +203,7 @@ impl SnakeDb {
             self.file.write_all(&[0u8])?;
         }
 
-        if head.gene.id != 0 {
+        if head.gene.is_some() {
             self.index.set(head)?;
         } else {
             self.index.add(head)?;
@@ -296,7 +296,7 @@ impl SnakeDb {
     }
 
     fn add_free(&mut self, head: &mut SnakeHead) {
-        if head.position == 0 || head.capacity == 0 || head.gene.id == 0 {
+        if head.position == 0 || head.capacity == 0 || head.gene.is_none() {
             return;
         }
 

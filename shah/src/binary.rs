@@ -1,6 +1,4 @@
-use std::fmt::Debug;
-
-pub trait Binary: Sized + Debug {
+pub trait Binary: Sized {
     const S: usize = core::mem::size_of::<Self>();
     const N: u64 = core::mem::size_of::<Self>() as u64;
 
@@ -40,4 +38,4 @@ pub trait Binary: Sized + Debug {
 //     fn from_bytes(data: &[u8]) -> Self;
 // }
 
-impl<T: Sized + Debug> Binary for T {}
+impl<T: Sized> Binary for T {}

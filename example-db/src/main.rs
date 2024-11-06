@@ -42,7 +42,7 @@ fn main() {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
         }
         Commands::Note => {
-            state.notes.add
+            // state.notes.add
         }
     }
 }

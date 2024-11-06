@@ -1,5 +1,5 @@
 use crate::error::SystemError;
-use crate::{Binary, Gene, GeneId, BLOCK_SIZE, PAGE_SIZE};
+use crate::{Binary, DeadList, Gene, GeneId, BLOCK_SIZE, PAGE_SIZE};
 use std::{
     fmt::Debug,
     fs::File,
@@ -38,8 +38,7 @@ where
 {
     pub file: File,
     pub live: u64,
-    pub dead: u64,
-    pub dead_list: [GeneId; BLOCK_SIZE],
+    pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     _e: PhantomData<T>,
 }
 
@@ -58,8 +57,7 @@ where
 
         let db = Self {
             live: 0,
-            dead: 0,
-            dead_list: [0; BLOCK_SIZE],
+            dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
             _e: PhantomData::<T>,
         };
@@ -73,8 +71,7 @@ where
 
     pub fn setup(mut self) -> Result<Self, SystemError> {
         self.live = 0;
-        self.dead = 0;
-        self.dead_list.fill(0);
+        self.dead_list.clear();
         let db_size = self.db_size()?;
         let mut entity = T::default();
         let buf = entity.as_binary_mut();
@@ -220,46 +217,17 @@ where
     }
 
     pub fn take_dead_id(&mut self) -> GeneId {
-        if self.dead == 0 {
-            return 0;
-        }
-
-        for dead in self.dead_list.iter_mut() {
-            if *dead != 0 {
-                let id = *dead;
-                *dead = 0;
-                self.dead -= 1;
-                return id;
-            }
-        }
-
-        log::warn!("invalid state of dead list");
-        self.dead = 0;
-        0
+        self.dead_list.pop(|_| true).unwrap_or_default()
     }
 
     pub fn add_dead(&mut self, gene: &Gene) {
-        println!("live: {}", self.live);
         self.live -= 1;
-        if self.dead as usize >= self.dead_list.len()
-            || gene.iter >= ITER_EXHAUSTION
-        {
+
+        if gene.iter >= ITER_EXHAUSTION {
             return;
         }
 
-        let mut set = false;
-        for slot in self.dead_list.iter_mut() {
-            if *slot == gene.id {
-                log::warn!("{gene:?} already exists in dead list");
-                return;
-            }
-
-            if !set && *slot == 0 {
-                *slot = gene.id;
-                set = true;
-                self.dead += 1;
-            }
-        }
+        self.dead_list.push(gene.id);
     }
 
     pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {

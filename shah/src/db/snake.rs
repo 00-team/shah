@@ -67,8 +67,7 @@ impl SnakeDb {
         // this is so fucking annoying because of borrow rules
         // i have to setup index manually
         self.index.live = 0;
-        self.index.dead = 0;
-        self.index.dead_list.fill(0);
+        self.index.dead_list.clear();
         let index_db_size = self.index.db_size()?;
         let mut head = SnakeHead::default();
         let buf = head.as_binary_mut();
@@ -185,12 +184,12 @@ impl SnakeDb {
         head.set_alive(true);
         head.set_free(false);
 
-        if let Some(dead) = self.take_free(capacity)? {
-            println!("take dead: {dead:?}");
-            head.position = dead.position;
-            head.capacity = dead.capacity;
-            if dead.gene.is_some() {
-                head.gene = dead.gene;
+        if let Some(free) = self.take_free(capacity)? {
+            println!("take dead: {free:?}");
+            head.position = free.position;
+            head.capacity = free.capacity;
+            if free.gene.is_some() {
+                head.gene = free.gene;
             }
         } else {
             head.position = self.db_size()?;

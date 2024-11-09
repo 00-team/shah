@@ -4,6 +4,12 @@ pub struct DeadList<T, const CAP: usize> {
     arr: [Option<T>; CAP],
 }
 
+impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     pub const fn new() -> Self {
         Self { len: 0, arr: [const { None }; CAP] }
@@ -35,16 +41,20 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
         }
     }
 
-    pub const fn is_full(&self) -> bool {
-        self.len == CAP
-    }
-
     pub const fn len(&self) -> usize {
         self.len
     }
 
+    pub const fn is_full(&self) -> bool {
+        self.len == CAP
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn pop<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<T> {
-        if self.len == 0 {
+        if self.is_empty() {
             return None;
         }
         let mut travel = 0usize;

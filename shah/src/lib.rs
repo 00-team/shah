@@ -1,13 +1,10 @@
 mod binary;
-#[cfg(unix)]
 pub mod db;
 pub mod dead_list;
 pub mod error;
 pub mod models;
 pub mod perms;
-#[cfg(unix)]
 pub mod server;
-#[cfg(unix)]
 mod taker;
 pub(crate) mod utils;
 
@@ -15,13 +12,13 @@ pub use crate::binary::*;
 pub use crate::dead_list::DeadList;
 pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
-#[cfg(unix)]
 pub use taker::Taker;
 
-pub use shah_macros::{api, enum_code, model, perms, Command, Entity};
+pub use shah_macros::{api, enum_code, model, perms, Command, Duck, Entity};
 
 pub const PAGE_SIZE: usize = 0x20;
 pub const BLOCK_SIZE: usize = 0x1000;
+pub const ITER_EXHAUSTION: u8 = 0xfa;
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

@@ -1,5 +1,6 @@
 mod api;
 mod command;
+mod duck;
 mod entity;
 mod enum_code;
 mod model;
@@ -30,6 +31,11 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
 #[proc_macro_derive(Entity, attributes(entity_flags))]
 pub fn entity(code: TokenStream) -> TokenStream {
     entity::entity(code)
+}
+
+#[proc_macro_derive(Duck)]
+pub fn duck(code: TokenStream) -> TokenStream {
+    duck::duck(code)
 }
 
 #[proc_macro]

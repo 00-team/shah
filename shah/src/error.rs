@@ -53,12 +53,13 @@ pub enum SystemError {
     BadOffset,
     SnakeBadLength,
     GeneFromHexErr,
+    /// using set for deleting aka seting alive to false without .del(...)
+    DeadSet,
 }
 
 impl From<std::io::Error> for SystemError {
     fn from(value: std::io::Error) -> Self {
-        println!("io error: {value} - {value:#?}");
-        log::warn!("io error: {value} - {value:#?}");
+        log::warn!("IO {value:#?}");
         Self::Io
     }
 }

@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 shah = { path = "../shah" }
 log = "0.4.22"
+rand = "0.8.5"
 
 # [lints.rust]
 # dead_code = "allow"

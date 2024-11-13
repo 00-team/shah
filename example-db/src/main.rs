@@ -4,7 +4,9 @@ mod note;
 mod phone;
 mod user;
 
-use shah::Command;
+use crate::note::db::Note;
+use rand::seq::SliceRandom;
+use shah::{db::pond::Origin, error::SystemError, Command};
 use std::io::{stdout, Write};
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -17,7 +19,7 @@ enum Commands {
     Note,
 }
 
-fn main() {
+fn main() -> Result<(), SystemError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
@@ -42,9 +44,25 @@ fn main() {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
         }
         Commands::Note => {
-            // state.notes.add
+            let mut origin_pool = Vec::<Origin>::new();
+            for _ in 0..5 {
+                let mut origin = Origin::default();
+                state.notes.origins.add(&mut origin)?;
+                origin_pool.push(origin);
+            }
+            for i in 0..500 {
+                let mut note = Note::default();
+                note.set_note(&format!(
+                    "note: {i} - {}",
+                    rand::random::<u16>()
+                ));
+                let og = origin_pool.choose(&mut rand::thread_rng()).unwrap();
+                state.notes.add(&og.gene, &mut note)?;
+            }
         }
     }
+
+    Ok(())
 }
 
 struct SimpleLogger;

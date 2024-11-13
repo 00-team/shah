@@ -69,7 +69,7 @@ pub mod db {
     }
 
     pub(crate) fn setup() -> Result<UserDb, SystemError> {
-        UserDb::new("user")?.setup()
+        UserDb::new("user")?.setup(|_, _| {})
     }
 }
 

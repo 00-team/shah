@@ -1,5 +1,7 @@
 use crate::error::SystemError;
-use crate::{Binary, DeadList, Gene, GeneId, BLOCK_SIZE, PAGE_SIZE};
+use crate::{
+    Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
+};
 use std::{
     fmt::Debug,
     fs::File,
@@ -7,8 +9,6 @@ use std::{
     marker::PhantomData,
     os::unix::fs::FileExt,
 };
-
-const ITER_EXHAUSTION: u8 = 250;
 
 pub struct EntityCount {
     pub alive: u64,
@@ -69,12 +69,14 @@ where
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn setup(mut self) -> Result<Self, SystemError> {
+    pub fn setup<F>(mut self, mut f: F) -> Result<Self, SystemError>
+    where
+        F: FnMut(&mut Self, &T),
+    {
         self.live = 0;
         self.dead_list.clear();
         let db_size = self.db_size()?;
         let mut entity = T::default();
-        let buf = entity.as_binary_mut();
 
         if db_size < T::N {
             self.file.seek(SeekFrom::Start(T::N - 1))?;
@@ -90,20 +92,20 @@ where
 
         self.file.seek(SeekFrom::Start(T::N))?;
         loop {
-            match self.file.read_exact(buf) {
+            match self.file.read_exact(entity.as_binary_mut()) {
                 Ok(_) => {}
                 Err(e) => match e.kind() {
                     ErrorKind::UnexpectedEof => break,
                     _ => Err(e)?,
                 },
             }
-            {
-                let entity = T::from_binary(buf);
-                if !entity.alive() {
-                    log::debug!("dead: {entity:?}");
-                    self.add_dead(entity.gene());
-                }
+
+            let gene = entity.gene();
+            if !entity.alive() && gene.iter < ITER_EXHAUSTION {
+                log::debug!("dead entity: {entity:?}");
+                self.add_dead(gene);
             }
+            f(&mut self, &entity);
         }
 
         Ok(self)
@@ -231,13 +233,28 @@ where
     }
 
     pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
+        if !entity.alive() {
+            return Err(SystemError::DeadSet);
+        }
+
         let mut old_entity = T::default();
         self.get(entity.gene(), &mut old_entity)?;
         self.file.seek_relative(-(T::N as i64))?;
         self.file.write_all(entity.as_binary())?;
 
-        if !entity.alive() {
-            self.add_dead(entity.gene());
+        Ok(())
+    }
+
+    pub fn del(
+        &mut self, gene: &Gene, entity: &mut T,
+    ) -> Result<(), SystemError> {
+        self.get(gene, entity)?;
+        self.file.seek_relative(-(T::N as i64))?;
+        entity.set_alive(false);
+        self.file.write_all(entity.as_binary())?;
+
+        if gene.iter < ITER_EXHAUSTION {
+            self.add_dead(gene);
         }
 
         Ok(())

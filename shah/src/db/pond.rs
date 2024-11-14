@@ -166,6 +166,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             ig.iter = 0;
             buf[0] = *item;
 
+            pond.stack = pos;
             pos
         } else {
             let pos = pond.stack;

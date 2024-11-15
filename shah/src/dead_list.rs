@@ -38,6 +38,7 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
         }
         if let Some(idx) = empty_slot {
             self.arr[idx] = Some(value);
+            self.len += 1;
         }
     }
 

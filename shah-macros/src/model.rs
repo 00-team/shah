@@ -30,18 +30,22 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     }
 
     for attr in item.attrs.iter() {
-        if let syn::Meta::List(meta) = &attr.meta {
-            let ident = meta.path.segments[0].ident.to_string();
-            if ident == "repr" {
-                panic!("model must be repr(C) which is default")
-            }
-            if ident == "derive" {
-                for token in meta.tokens.clone() {
-                    if let proc_macro2::TokenTree::Ident(t) = token {
-                        if t == "Default" {
-                            panic!("remove the Default derive")
-                        }
-                    }
+        let syn::Meta::List(meta) = &attr.meta else {
+            continue;
+        };
+
+        let ident = meta.path.segments[0].ident.to_string();
+        if ident == "repr" {
+            panic!("model must be repr(C) which is default")
+        }
+        if ident == "derive" {
+            for token in meta.tokens.clone() {
+                let proc_macro2::TokenTree::Ident(t) = token else {
+                    continue;
+                };
+
+                if t == "Default" {
+                    panic!("remove the Default derive")
                 }
             }
         }
@@ -93,13 +97,11 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                                 get: true,
                                 set: true,
                             };
-                            let args =
-                                match parser.parse(l.tokens.clone().into()) {
-                                    Ok(v) => v,
-                                    Err(e) => {
-                                        panic!("error parsing key value: {e}")
-                                    }
-                                };
+                            let Ok(args) =
+                                parser.parse(l.tokens.clone().into())
+                            else {
+                                panic!("error parsing key value")
+                            };
                             let args = args.into_iter().map(|a| {
                                 if let syn::Expr::Path(p) = &(*a.left) {
                                     if let syn::Expr::Lit(lit) = &(*a.right) {
@@ -113,18 +115,14 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                                 panic!("invalid keyval args")
                             });
                             for (key, val) in args.into_iter() {
-                                let val = if let syn::Lit::Bool(b) = val {
-                                    b.value
-                                } else {
+                                let syn::Lit::Bool(val) = val else {
                                     panic!("str args values must be bool")
                                 };
 
-                                if key == "set" {
-                                    sf.set = val;
-                                }
-
-                                if key == "get" {
-                                    sf.get = val;
+                                match key.to_string().as_str() {
+                                    "set" => sf.set = val.value,
+                                    "get" => sf.get = val.value,
+                                    _ => panic!("unknown key"),
                                 }
                             }
 
@@ -151,7 +149,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                 _ => {}
             }
             true
-        })
+        });
     });
 
     let fields_len = item.fields.len();

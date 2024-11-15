@@ -81,33 +81,34 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 syn::Type::Tuple(tt) => {
                     route.doc += &arg.pat.to_token_stream().to_string();
                     tt.elems.iter().for_each(|t| {
-                        if let syn::Type::Reference(ty) = t {
-                            match &(*ty.elem) {
-                                syn::Type::Path(_) => {}
-                                syn::Type::Array(_) => {}
-                                syn::Type::Slice(_) => {
-                                    panic!("dynamic data (aka slice) is not supported")
-                                }
-                                el => panic!(
-                                    "invalid type: {}",
-                                    el.to_token_stream()
-                                ),
-                            }
-                            if !inp_done {
-                                if ty.mutability.is_some() {
-                                    panic!("input types must be immutable");
-                                }
-
-                                route.inp.push(*ty.elem.clone());
-                            } else {
-                                if ty.mutability.is_none() {
-                                    panic!("output types must be mutable");
-                                }
-
-                                route.out.push(*ty.elem.clone());
-                            }
-                        } else {
+                        let syn::Type::Reference(ty) = t else {
                             panic!("invalid api")
+                        };
+
+                        match &(*ty.elem) {
+                            syn::Type::Path(_) => {}
+                            syn::Type::Array(_) => {}
+                            syn::Type::Slice(_) => {
+                                panic!(
+                                    "dynamic data (aka slice) is not supported"
+                                )
+                            }
+                            el => {
+                                panic!("invalid type: {}", el.to_token_stream())
+                            }
+                        }
+                        if !inp_done {
+                            if ty.mutability.is_some() {
+                                panic!("input types must be immutable");
+                            }
+
+                            route.inp.push(*ty.elem.clone());
+                        } else {
+                            if ty.mutability.is_none() {
+                                panic!("output types must be mutable");
+                            }
+
+                            route.out.push(*ty.elem.clone());
                         }
                     });
 
@@ -309,25 +310,28 @@ fn parse_args(args: Args) -> ApiArgs {
 }
 
 fn returns_output_size(rt: &syn::ReturnType) -> bool {
-    if let syn::ReturnType::Type(_, t) = rt {
-        if let syn::Type::Path(p) = &(**t) {
-            let args = &p.path.segments[0].arguments;
-            if let syn::PathArguments::AngleBracketed(a) = args {
-                if let syn::GenericArgument::Type(t) = &a.args[0] {
-                    if let syn::Type::Tuple(tp) = t {
-                        if tp.elems.is_empty() {
-                            return false;
-                        }
-                    }
+    'b: {
+        let syn::ReturnType::Type(_, t) = rt else { break 'b };
 
-                    if let syn::Type::Path(p) = t {
-                        if p.to_token_stream().to_string() == "usize" {
-                            return true;
-                        }
-                    }
-                }
+        let syn::Type::Path(p) = &(**t) else { break 'b };
+        let args = &p.path.segments[0].arguments;
+
+        let syn::PathArguments::AngleBracketed(a) = args else { break 'b };
+        let syn::GenericArgument::Type(t) = &a.args[0] else { break 'b };
+
+        if let syn::Type::Tuple(tp) = t {
+            if tp.elems.is_empty() {
+                return false;
             }
         }
+
+        if let syn::Type::Path(p) = t {
+            if p.to_token_stream().to_string() == "usize" {
+                return true;
+            }
+        }
+
+        break 'b;
     }
 
     panic!("return type of an api must be Result<(), ErrorCode> or Result<usize, ErrorCode>")

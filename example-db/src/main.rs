@@ -6,7 +6,7 @@ mod user;
 
 use crate::note::db::Note;
 use rand::seq::SliceRandom;
-use shah::{db::pond::Origin, error::SystemError, Command};
+use shah::{db::pond::Origin, error::SystemError, Command, Gene};
 use std::io::{stdout, Write};
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -50,14 +50,28 @@ fn main() -> Result<(), SystemError> {
                 state.notes.origins.add(&mut origin)?;
                 origin_pool.push(origin);
             }
+            let mut note_pool = Vec::<Gene>::with_capacity(500);
             for i in 0..500 {
                 let mut note = Note::default();
                 note.set_note(&format!(
-                    "note: {i} - {}",
+                    "note: {i} - {} - {}",
+                    ["\n\nl2", "\n\n\nl3", "\nl1", "xxx\nxxx\nxxx\n"]
+                        .choose(&mut rand::thread_rng())
+                        .unwrap(),
                     rand::random::<u16>()
                 ));
                 let og = origin_pool.choose(&mut rand::thread_rng()).unwrap();
                 state.notes.add(&og.gene, &mut note)?;
+                note_pool.push(note.gene);
+            }
+            note_pool.shuffle(&mut rand::thread_rng());
+            for _ in 0..400 {
+                let mut note = Note::default();
+                let ng = note_pool.pop().unwrap();
+                state.notes.get(&ng, &mut note)?;
+                note.set_note("deleted");
+                state.notes.set(&mut note)?;
+                state.notes.del(&ng, &mut note)?;
             }
         }
     }

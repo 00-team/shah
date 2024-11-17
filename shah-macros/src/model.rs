@@ -54,7 +54,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
     let ident = item.ident.clone();
     let mut asspad = TokenStream2::new();
-    // let ci = crate::crate_ident();
+    let ci = crate::crate_ident();
 
     struct StrField {
         field: syn::Ident,
@@ -249,8 +249,11 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                     } else {
                         vlen
                     };
-                    // let len = value.len().min(self.#field.len());
-                    self.#field[..len].clone_from_slice(&value.as_bytes()[..len])
+
+                    self.#field[..len].clone_from_slice(&value.as_bytes()[..len]);
+                    if len < flen {
+                        self.#field[len] = 0;
+                    }
                 }
             };
         }
@@ -295,6 +298,9 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
             #ffs
         }
+
+
+        impl #generics #ci::Binary for #ident #gnb {}
 
         // impl #ci::FromBytes for #ident {
         //     fn from_bytes(data: &[u8]) -> Self {

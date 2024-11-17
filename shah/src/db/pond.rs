@@ -103,8 +103,8 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
     pub fn half_empty_pond(
         &mut self, origin: &mut Origin,
     ) -> Result<Pond, SystemError> {
+        // FIXME: this is not correct at all
         let mut pond_gene = origin.first;
-        let mut past_pond = Pond::default();
         let mut pond = Pond::default();
         loop {
             if pond_gene.is_none() {
@@ -121,10 +121,11 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
                 origin.ponds += 1;
 
-                if past_pond.is_alive() {
-                    past_pond.next = new.gene;
+                if pond.is_alive() {
+                    pond.next = new.gene;
                     new.past = origin.last;
                     origin.last = new.gene;
+                    self.index.set(&pond)?;
                 } else {
                     new.past.zeroed();
                     origin.first = new.gene;
@@ -133,7 +134,6 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
                 return Ok(new);
             }
 
-            past_pond = pond.clone();
             self.index.get(&pond_gene, &mut pond)?;
             if pond.alive < PAGE_SIZE as u8 {
                 return Ok(pond);
@@ -153,7 +153,6 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         let mut pond = self.half_empty_pond(&mut origin)?;
         pond.alive += 1;
-        // log::info!("pond[{}].alive: {}", pond.gene.id, pond.alive);
 
         let mut buf = [T::default(); PAGE_SIZE];
         *item.pond_mut() = pond.gene;
@@ -172,11 +171,9 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         } else {
             let pos = pond.stack;
             self.file.read_exact_at(buf.as_binary_mut(), pos)?;
-            // log::info!("before: {buf:?}");
             let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
-                // log::error!("slot: {} - {}", sg.id, slot.alive());
                 if !slot.is_alive() && sg.iter < ITER_EXHAUSTION {
                     let ig = item.gene_mut();
                     ig.id = pos / T::N + x as u64;
@@ -235,7 +232,8 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             return Err(SystemError::GeneIdNotInDatabase);
         }
 
-        self.file.seek(SeekFrom::Start(pos))?;
+        let rs = self.file.seek(SeekFrom::Start(pos))?;
+        assert_eq!(rs, pos, "could not seek correctly");
 
         Ok(())
     }
@@ -251,6 +249,10 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         }
 
         let og = entity.gene();
+        if gene.id != og.id {
+            log::error!("invalid gene.id != og.id: {} != {}", gene.id, og.id);
+            return Err(SystemError::Database);
+        }
 
         if gene.pepper != og.pepper {
             log::warn!("bad gene {:?} != {:?}", gene.pepper, og.pepper);
@@ -271,13 +273,16 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         Ok(EntityCount { total, alive: self.live })
     }
 
-    pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
+    pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {
         if !entity.is_alive() {
             return Err(SystemError::DeadSet);
         }
 
         let mut old_entity = T::default();
         self.get(entity.gene(), &mut old_entity)?;
+
+        *entity.pond_mut() = *old_entity.pond();
+
         self.file.seek_relative(-(T::N as i64))?;
         self.file.write_all(entity.as_binary())?;
 
@@ -288,14 +293,22 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), SystemError> {
         self.get(gene, entity)?;
-        self.file.seek_relative(-(T::N as i64))?;
+
         entity.set_alive(false);
+
+        self.file.seek_relative(-(T::N as i64))?;
         self.file.write_all(entity.as_binary())?;
 
         let mut pond = Pond::default();
         self.index.get(entity.pond(), &mut pond)?;
         pond.alive -= 1;
-        // TODO: delete pond
+        self.index.set(&pond)?;
+
+        let mut origin = Origin::default();
+        self.origins.get(&pond.origin, &mut origin)?;
+        origin.items -= 1;
+        self.origins.set(&origin)?;
+        // TODO: delete pond when it becomes fully empty
 
         if gene.iter < ITER_EXHAUSTION {
             self.free_list.push(*gene);

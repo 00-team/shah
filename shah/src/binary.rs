@@ -38,4 +38,17 @@ pub trait Binary: Sized {
 //     fn from_bytes(data: &[u8]) -> Self;
 // }
 
-impl<T: Sized> Binary for T {}
+// impl<T: Sized> Binary for T {}
+impl<const N: usize, T: Binary> Binary for [T; N] {}
+
+macro_rules! impl_binary {
+    ($($ty:ty),*) => {
+        $(impl Binary for $ty {})*
+    };
+}
+
+impl_binary! {
+    u8, u16, u32, u64, usize,
+    i8, i16, i32, i64, isize,
+    f32, f64, bool
+}

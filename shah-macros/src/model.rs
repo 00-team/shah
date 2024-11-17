@@ -259,9 +259,10 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut ffs = TokenStream2::new();
     for FlagField { field, flags } in flag_fields.iter() {
         for (i, f) in flags.iter().enumerate() {
+            let get = format_ident!("is_{f}");
             let set = format_ident!("set_{f}");
             quote_into! {ffs +=
-                pub fn #f(&self) -> bool {
+                pub fn #get(&self) -> bool {
                     (self.#field & (1 << #i)) == (1 << #i)
                 }
 

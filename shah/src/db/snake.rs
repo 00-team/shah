@@ -94,10 +94,10 @@ impl SnakeDb {
             }
             {
                 let head = SnakeHead::from_binary_mut(buf);
-                if !head.alive() {
+                if !head.is_alive() {
                     log::debug!("dead head: {head:?}");
                     self.index.add_dead(&head.gene);
-                } else if head.free() {
+                } else if head.is_free() {
                     self.add_free(head);
                 }
             }
@@ -148,7 +148,7 @@ impl SnakeDb {
 
                 let mut old = SnakeHead::default();
                 self.index.get(&free.gene, &mut old)?;
-                if !old.free() {
+                if !old.is_free() {
                     log::warn!("free is not even free :/ wtf");
                     return Ok(None);
                 }
@@ -216,7 +216,7 @@ impl SnakeDb {
         buflen: usize,
     ) -> Result<usize, SystemError> {
         self.index.get(gene, head)?;
-        if head.free() {
+        if head.is_free() {
             return Err(SystemError::SnakeIsFree);
         }
         assert!(head.position >= SnakeHead::N);
@@ -260,7 +260,7 @@ impl SnakeDb {
         &mut self, gene: &Gene, head: &mut SnakeHead, length: u64,
     ) -> Result<(), SystemError> {
         self.index.get(gene, head)?;
-        if head.free() {
+        if head.is_free() {
             return Err(SystemError::SnakeIsFree);
         }
         assert!(head.position >= SnakeHead::N);
@@ -283,7 +283,7 @@ impl SnakeDb {
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
 
-        if head.free() {
+        if head.is_free() {
             return Ok(());
         }
 

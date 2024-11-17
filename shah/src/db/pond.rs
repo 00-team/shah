@@ -85,7 +85,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
     pub fn setup(mut self) -> Result<Self, SystemError> {
         self.origins = self.origins.setup(|_, _| {})?;
         self.index = self.index.setup(|_, pond| {
-            if pond.alive() && pond.free() {
+            if pond.is_alive() && pond.is_free() {
                 self.free_list.push(pond.gene);
                 if pond.next.is_some() || pond.past.is_some() {
                     log::warn!("invalid pond: {pond:?}");
@@ -121,7 +121,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
                 origin.ponds += 1;
 
-                if past_pond.alive() {
+                if past_pond.is_alive() {
                     past_pond.next = new.gene;
                     new.past = origin.last;
                     origin.last = new.gene;
@@ -177,7 +177,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
                 // log::error!("slot: {} - {}", sg.id, slot.alive());
-                if !slot.alive() && sg.iter < ITER_EXHAUSTION {
+                if !slot.is_alive() && sg.iter < ITER_EXHAUSTION {
                     let ig = item.gene_mut();
                     ig.id = pos / T::N + x as u64;
                     ig.iter = if sg.id != 0 { sg.iter + 1 } else { 0 };
@@ -246,7 +246,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
-        if !entity.alive() {
+        if !entity.is_alive() {
             return Err(SystemError::EntityNotAlive);
         }
 
@@ -272,7 +272,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
     }
 
     pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
-        if !entity.alive() {
+        if !entity.is_alive() {
             return Err(SystemError::DeadSet);
         }
 

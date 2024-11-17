@@ -42,9 +42,10 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
     let mut f = TokenStream2::new();
     for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
         let fi = format_ident!("{flag}");
+        let get = format_ident!("is_{flag}");
         let set = format_ident!("set_{flag}");
         quote_into! {f +=
-            fn #fi(&self) -> bool {
+            fn #get(&self) -> bool {
                 (self.#flags_ident & (1 << #i)) == (1 << #i)
             }
 

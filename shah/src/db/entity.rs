@@ -26,9 +26,9 @@ pub trait Entity {
     fn gene(&self) -> &Gene;
     fn gene_mut(&mut self) -> &mut Gene;
 
-    flag! {alive, set_alive}
-    flag! {edited, set_edited}
-    flag! {private, set_private}
+    flag! {is_alive, set_alive}
+    flag! {is_edited, set_edited}
+    flag! {is_private, set_private}
 }
 
 #[derive(Debug)]
@@ -101,7 +101,7 @@ where
             }
 
             let gene = entity.gene();
-            if !entity.alive() && gene.iter < ITER_EXHAUSTION {
+            if !entity.is_alive() && gene.iter < ITER_EXHAUSTION {
                 log::debug!("dead entity: {entity:?}");
                 self.add_dead(gene);
             }
@@ -136,7 +136,7 @@ where
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
-        if !entity.alive() {
+        if !entity.is_alive() {
             return Err(SystemError::EntityNotAlive);
         }
 
@@ -233,7 +233,7 @@ where
     }
 
     pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
-        if !entity.alive() {
+        if !entity.is_alive() {
             return Err(SystemError::DeadSet);
         }
 

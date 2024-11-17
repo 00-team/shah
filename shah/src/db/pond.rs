@@ -153,6 +153,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         let mut pond = self.half_empty_pond(&mut origin)?;
         pond.alive += 1;
+        // log::info!("pond[{}].alive: {}", pond.gene.id, pond.alive);
 
         let mut buf = [T::default(); PAGE_SIZE];
         *item.pond_mut() = pond.gene;
@@ -171,14 +172,22 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         } else {
             let pos = pond.stack;
             self.file.read_exact_at(buf.as_binary_mut(), pos)?;
+            // log::info!("before: {buf:?}");
+            let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
+                // log::error!("slot: {} - {}", sg.id, slot.alive());
                 if !slot.alive() && sg.iter < ITER_EXHAUSTION {
                     let ig = item.gene_mut();
                     ig.id = pos / T::N + x as u64;
                     ig.iter = if sg.id != 0 { sg.iter + 1 } else { 0 };
                     *slot = *item;
+                    found_empty_slot = true;
+                    break;
                 }
+            }
+            if !found_empty_slot {
+                log::error!("could not found an empty slot for item");
             }
 
             pos

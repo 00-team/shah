@@ -6,16 +6,21 @@ use crate::{Binary, ErrorCode, ReplyHead};
 pub struct Taker {
     conn: UnixDatagram,
     reply: [u8; 1024 * 64],
+    server: String,
 }
 
 impl Taker {
     pub fn init(server: &str, path: &str) -> std::io::Result<Self> {
         let _ = std::fs::remove_file(path);
         let conn = UnixDatagram::bind(path)?;
-        conn.connect(server)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { conn, reply: [0u8; 1024 * 64] })
+        Ok(Self { conn, server: server.to_string(), reply: [0u8; 1024 * 64] })
+    }
+
+    pub fn connect(&self) -> std::io::Result<()> {
+        self.conn.connect(&self.server)?;
+        Ok(())
     }
 
     pub fn reply_head(&self) -> &ReplyHead {
@@ -29,7 +34,13 @@ impl Taker {
     pub fn take(&mut self, order: &[u8]) -> Result<(), ErrorCode> {
         self.reply[0..ReplyHead::S].fill(0);
 
-        self.conn.send(order)?;
+        match self.conn.send(order) {
+            Err(e) => {
+                log::error!("send error: {e}");
+                Err(e)?;
+            }
+            _ => {}
+        }
         self.conn.recv(&mut self.reply)?;
 
         // let (reply_head, reply_body) = reply.split_at(ReplyHead::S);

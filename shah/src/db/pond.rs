@@ -14,6 +14,8 @@ use std::os::unix::fs::FileExt;
 //    for frontend. just have a min/max value in each "pond" and
 //    if item > pond.max then move it to pond.past ...
 
+// TODO: allow the full deletion of origin. cascading
+
 #[crate::model]
 #[derive(Debug, Clone, Copy, crate::Entity)]
 pub struct Origin {
@@ -53,7 +55,7 @@ pub struct Pond {
 }
 
 #[derive(Debug)]
-pub struct PondDb<T: Duck> {
+pub struct PondDb<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> {
     pub file: File,
     pub live: u64,
     pub free_list: DeadList<Gene, BLOCK_SIZE>,

@@ -73,6 +73,19 @@ fn main() -> Result<(), SystemError> {
                 state.notes.set(&mut note)?;
                 state.notes.del(&ng, &mut note)?;
             }
+            for i in 0..500 {
+                let mut note = Note::default();
+                note.set_note(&format!(
+                    "note: {i} - {} - {}",
+                    ["\n\nl2", "\n\n\nl3", "\nl1", "xxx\nxxx\nxxx\n"]
+                        .choose(&mut rand::thread_rng())
+                        .unwrap(),
+                    rand::random::<u16>()
+                ));
+                let og = origin_pool.choose(&mut rand::thread_rng()).unwrap();
+                state.notes.add(&og.gene, &mut note)?;
+                note_pool.push(note.gene);
+            }
         }
     }
 

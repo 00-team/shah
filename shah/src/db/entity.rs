@@ -268,7 +268,7 @@ where
         let count = size / T::S;
         if count != PAGE_SIZE {
             for item in result.iter_mut().skip(count) {
-                item.as_binary_mut().fill(0)
+                item.zeroed()
             }
         }
 

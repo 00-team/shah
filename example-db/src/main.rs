@@ -65,7 +65,7 @@ fn main() -> Result<(), SystemError> {
                 note_pool.push(note.gene);
             }
             note_pool.shuffle(&mut rand::thread_rng());
-            for _ in 0..400 {
+            for _ in 0..499 {
                 let mut note = Note::default();
                 let ng = note_pool.pop().unwrap();
                 state.notes.get(&ng, &mut note)?;

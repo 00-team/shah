@@ -1,4 +1,6 @@
-use std::{os::unix::net::UnixDatagram, time::Duration};
+use std::{
+    io::ErrorKind, os::unix::net::UnixDatagram, thread::sleep, time::Duration,
+};
 
 use crate::{Binary, ErrorCode, ReplyHead};
 
@@ -34,12 +36,21 @@ impl Taker {
     pub fn take(&mut self, order: &[u8]) -> Result<(), ErrorCode> {
         self.reply[0..ReplyHead::S].fill(0);
 
-        match self.conn.send(order) {
-            Err(e) => {
-                log::error!("send error: {e}");
-                Err(e)?;
+        if let Err(e) = self.conn.send(order) {
+            log::error!("send error: {e:#?}");
+            match e.kind() {
+                ErrorKind::NotConnected | ErrorKind::ConnectionRefused => {
+                    for i in 0..3 {
+                        log::info!("reconnect try: {i}");
+                        if self.connect().is_ok() {
+                            self.conn.send(order)?;
+                            break;
+                        }
+                        sleep(Duration::from_secs(2));
+                    }
+                }
+                _ => Err(e)?,
             }
-            _ => {}
         }
         self.conn.recv(&mut self.reply)?;
 

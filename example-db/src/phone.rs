@@ -28,7 +28,7 @@ pub mod db {
     mod tests {
         use super::PhoneAbc;
         use shah::{db::trie_const::TrieConst, Gene};
-        type PhoneDb = TrieConst<10, 5, 4, PhoneAbc, Gene>;
+        type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
         #[test]
         fn phone_db() {
@@ -37,9 +37,11 @@ pub mod db {
             let mut db = db.setup().expect("phone setup");
 
             let mock_data = [
-                ("223334044", 2233, [3, 4, 0, 4, 4]),
-                ("183937071", 1839, [3, 7, 0, 7, 1]),
-                ("192236504", 1922, [3, 6, 5, 0, 4]),
+                ("223334044", 2233340, [4, 4]),
+                ("183937071", 1839370, [7, 1]),
+                ("192236504", 1922365, [0, 4]),
+                ("961772969", 9617729, [6, 9]),
+                ("961772970", 9617729, [7, 0]),
             ];
 
             for (i, (phone, cache, index)) in mock_data.iter().enumerate() {

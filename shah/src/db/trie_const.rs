@@ -140,6 +140,7 @@ where
         &mut self, key: &TrieConstKey<INDEX>,
     ) -> Result<Option<Val>, SystemError> {
         let mut pos = key.cache * Self::PS;
+        log::info!("phone pos: {pos} = {} * {}", key.cache, Self::PS);
         let mut node = [0u64; ABC_LEN];
         let mut node_value = [Val::default(); ABC_LEN];
         let db_size = self.db_size()?;
@@ -150,6 +151,7 @@ where
 
         self.file.seek(SeekFrom::Start(pos))?;
         self.file.read_exact(node[0].as_binary_mut())?;
+        log::info!("node: {node:?}");
         pos = node[0];
         if pos == 0 {
             return Ok(None);

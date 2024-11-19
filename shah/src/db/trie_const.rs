@@ -139,10 +139,7 @@ where
     pub fn get(
         &mut self, key: &TrieConstKey<INDEX>,
     ) -> Result<Option<Val>, SystemError> {
-        log::debug!("============ \x1b[32mget\x1b[0m =============");
-        log::warn!("key: {} -> {:?}", key.cache, key.index);
         let mut pos = key.cache * Self::PS;
-        log::info!("phone pos: {pos} = {} * {}", key.cache, Self::PS);
         let mut node = [0u64; ABC_LEN];
         let mut node_value = [Val::default(); ABC_LEN];
         let db_size = self.db_size()?;
@@ -153,7 +150,6 @@ where
 
         self.file.seek(SeekFrom::Start(pos))?;
         self.file.read_exact(node[0].as_binary_mut())?;
-        log::info!("node: {node:?}");
         pos = node[0];
         if pos == 0 {
             return Ok(None);
@@ -163,9 +159,7 @@ where
             self.file.seek(SeekFrom::Start(pos))?;
 
             if i + 1 == INDEX {
-                log::info!("reading value at: {pos}");
                 self.file.read_exact(node_value.as_binary_mut())?;
-                log::info!("node_value: {:?}", node_value);
                 return Ok(Some(node_value[key.index[i]]));
             }
 
@@ -183,8 +177,6 @@ where
     pub fn set(
         &mut self, key: &TrieConstKey<INDEX>, val: Val,
     ) -> Result<Option<Val>, SystemError> {
-        log::debug!("============ \x1b[36mset\x1b[0m =============");
-        log::warn!("key: {} -> {:?}", key.cache, key.index);
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
         let mut single = 0u64;
@@ -209,7 +201,6 @@ where
         if !writing {
             loop {
                 let ki = key.index[i];
-                log::info!("ki: {ki}");
                 self.file.seek(SeekFrom::Start(pos))?;
 
                 if i + 1 == INDEX {

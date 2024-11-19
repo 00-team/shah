@@ -380,4 +380,16 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         Ok(())
     }
+
+    pub fn list(
+        &mut self, pond: &mut Pond, result: &mut [T; PAGE_SIZE],
+    ) -> Result<(), SystemError> {
+        let pond_gene = pond.gene;
+        self.index.get(&pond_gene, pond)?;
+
+        self.seek_id(pond.stack)?;
+        self.file.read_exact(result.as_binary_mut())?;
+
+        Ok(())
+    }
 }

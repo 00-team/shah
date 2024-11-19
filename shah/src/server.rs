@@ -1,5 +1,3 @@
-#![allow(dead_code, unused)]
-
 use crate::{Api, Binary, OrderHead, ReplyHead};
 use std::{
     fmt::Debug,
@@ -79,6 +77,6 @@ pub fn run<T: Debug>(
         reply_head.elapsed = time.elapsed().as_micros() as u64;
         let reply_size = ReplyHead::S + reply_head.size as usize;
 
-        server.send_to_addr(&reply[..reply_size], &addr);
+        server.send_to_addr(&reply[..reply_size], &addr)?;
     }
 }

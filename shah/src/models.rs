@@ -1,7 +1,5 @@
 #[cfg(feature = "serde")]
 use crate::{error::SystemError, Binary};
-#[cfg(feature = "serde")]
-use std::str::FromStr;
 
 pub type GeneId = u64;
 
@@ -14,8 +12,8 @@ pub struct Gene {
     pub server: u32,
 }
 
-#[cfg(feature = "serde")]
 impl Gene {
+    #[cfg(feature = "serde")]
     pub fn as_hex(&self) -> String {
         let mut dst = [0u8; Gene::S * 2];
         let out = faster_hex::hex_encode(self.as_binary(), &mut dst).unwrap();
@@ -32,7 +30,7 @@ impl Gene {
 }
 
 #[cfg(feature = "serde")]
-impl FromStr for Gene {
+impl std::str::FromStr for Gene {
     type Err = SystemError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut gene = Gene::default();

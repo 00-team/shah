@@ -5,7 +5,6 @@ mod phone;
 mod user;
 
 use crate::note::db::Note;
-use crate::phone::db::{PhoneAbc, PhoneDb};
 use rand::seq::SliceRandom;
 use shah::{db::pond::Origin, error::SystemError, Command, Gene};
 use std::io::{stdout, Write};
@@ -18,7 +17,6 @@ enum Commands {
     Help,
     Run,
     Note,
-    Trie,
 }
 
 fn main() -> Result<(), SystemError> {
@@ -89,34 +87,6 @@ fn main() -> Result<(), SystemError> {
                 note_pool.push(note.gene);
             }
         }
-        Commands::Trie => {
-            let db = PhoneDb::new("tests.phone", PhoneAbc);
-            db.file.set_len(0).expect("file truncate");
-            let mut db = db.setup().expect("phone setup");
-
-            let mock_data = [
-                // ("223334044", 2233340, [4, 4]),
-                // ("183937071", 1839370, [7, 1]),
-                // ("192236504", 1922365, [0, 4]),
-                ("961772969", 9617729, [6, 9]),
-                ("961772970", 9617729, [7, 0]),
-            ];
-
-            for (i, (phone, cache, index)) in mock_data.iter().enumerate() {
-                let i = i as u64;
-                let a = Gene { id: i + 3, ..Default::default() };
-                let b = Gene { id: (i + 3) * 2, ..Default::default() };
-                let k = db.convert_key(phone).expect("convert key");
-                assert_eq!(k.cache, *cache);
-                assert_eq!(k.index, *index);
-
-                assert_eq!(db.get(&k).expect("get"), None);
-                assert_eq!(db.set(&k, a).expect("set"), None);
-                assert_eq!(db.get(&k).expect("get"), Some(a));
-                assert_eq!(db.set(&k, b).expect("set"), Some(a));
-                assert_eq!(db.get(&k).expect("get"), Some(b));
-            }
-        }
     }
 
     Ok(())
@@ -138,12 +108,13 @@ impl log::Log for SimpleLogger {
             log::Level::Error => ["\x1b[31m", "E", "Error"],
         };
         println!(
-            "[{}{}\x1b[0m]{{{}{}\x1b[0m}}: {}",
+            "[{}{}\x1b[0m]{{{}{}\x1b[32m:\x1b[93m{}\x1b[0m}}: {}",
             level[0],
             level[1],
             level[0],
             record.target(),
-            record.args()
+            record.line().unwrap_or_default(),
+            record.args(),
         );
     }
 

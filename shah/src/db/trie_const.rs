@@ -139,6 +139,8 @@ where
     pub fn get(
         &mut self, key: &TrieConstKey<INDEX>,
     ) -> Result<Option<Val>, SystemError> {
+        log::debug!("============ \x1b[32mget\x1b[0m =============");
+        log::warn!("key: {} -> {:?}", key.cache, key.index);
         let mut pos = key.cache * Self::PS;
         log::info!("phone pos: {pos} = {} * {}", key.cache, Self::PS);
         let mut node = [0u64; ABC_LEN];
@@ -161,7 +163,9 @@ where
             self.file.seek(SeekFrom::Start(pos))?;
 
             if i + 1 == INDEX {
+                log::info!("reading value at: {pos}");
                 self.file.read_exact(node_value.as_binary_mut())?;
+                log::info!("node_value: {:?}", node_value);
                 return Ok(Some(node_value[key.index[i]]));
             }
 
@@ -179,29 +183,33 @@ where
     pub fn set(
         &mut self, key: &TrieConstKey<INDEX>, val: Val,
     ) -> Result<Option<Val>, SystemError> {
+        log::debug!("============ \x1b[36mset\x1b[0m =============");
+        log::warn!("key: {} -> {:?}", key.cache, key.index);
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
+        let mut single = 0u64;
         let mut node_value = [Val::default(); ABC_LEN];
         let mut end_of_file = 0u64;
         let mut writing = false;
         let mut i = 0usize;
 
         self.file.seek(SeekFrom::Start(pos))?;
-        self.file.read_exact(node[0].as_binary_mut())?;
-        if node[0] == 0 {
+        self.file.read_exact(single.as_binary_mut())?;
+        if single == 0 {
             end_of_file = self.db_size()?;
-            node[0] = end_of_file;
+            single = end_of_file;
             self.file.seek(SeekFrom::Start(pos))?;
-            self.file.write_all(node[0].as_binary())?;
+            self.file.write_all(single.as_binary())?;
             self.file.seek(SeekFrom::Start(end_of_file))?;
             writing = true;
         } else {
-            pos = node[0];
+            pos = single;
         }
 
         if !writing {
             loop {
                 let ki = key.index[i];
+                log::info!("ki: {ki}");
                 self.file.seek(SeekFrom::Start(pos))?;
 
                 if i + 1 == INDEX {
@@ -224,7 +232,7 @@ where
                 end_of_file = self.db_size()?;
                 node[ki] = end_of_file;
 
-                self.file.seek_relative(-(Self::NODE_SIZE as i64))?;
+                self.file.seek(SeekFrom::Start(pos))?;
                 self.file.write_all(node.as_binary())?;
                 self.file.seek(SeekFrom::Start(end_of_file))?;
                 break;

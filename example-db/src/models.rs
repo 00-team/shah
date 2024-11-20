@@ -2,7 +2,7 @@ use std::str::Utf8Error;
 
 use shah::{db::snake::SnakeDb, error::SystemError, ErrorCode};
 
-use crate::{phone::db::PhoneDb, user::db::UserDb, note::db::NoteDb};
+use crate::{note::db::NoteDb, phone::db::PhoneDb, user::db::UserDb};
 
 #[derive(Debug)]
 pub struct State {
@@ -15,7 +15,7 @@ pub struct State {
 pub type ExampleApi = shah::Api<State>;
 
 /// example errors
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum ExampleError {
     UserNotFound,

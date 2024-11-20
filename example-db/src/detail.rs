@@ -64,7 +64,7 @@ pub mod api {
 
     #[client]
     pub fn get(
-        taker: &mut Taker, gene: &Gene,
+        taker: &Taker, gene: &Gene,
     ) -> Result<String, ClientError<ExampleError>> {
         let (head, buf) = read(taker, gene, &0)?;
         let len = head.length.min(head.capacity);
@@ -74,7 +74,7 @@ pub mod api {
         let mut v = vec![0u8; len];
 
         if len > BLOCK_SIZE {
-            v[..BLOCK_SIZE].copy_from_slice(buf);
+            v[..BLOCK_SIZE].copy_from_slice(&buf);
             for i in 1..=(len / BLOCK_SIZE) {
                 let off = i * BLOCK_SIZE;
                 let (_, buf) = read(taker, gene, &(off as u64))?;
@@ -90,7 +90,7 @@ pub mod api {
 
     #[client]
     pub fn set(
-        taker: &mut Taker, gene: &Option<Gene>, data: &str,
+        taker: &Taker, gene: &Option<Gene>, data: &str,
     ) -> Result<Gene, ClientError<ExampleError>> {
         let data = data.as_bytes();
         let len = data.len().min(DETAIL_MAX);
@@ -98,14 +98,14 @@ pub mod api {
         if let Some(old) = gene {
             let (old_head,) = head(taker, old)?;
             if old_head.capacity >= len as u64 {
-                snake = Some(*old_head);
+                snake = Some(old_head);
             } else {
                 free(taker, old)?;
             }
         }
         if snake.is_none() {
             let capacity = (len + DETAIL_BUF).min(DETAIL_MAX) as u64;
-            snake = Some(*init(taker, &capacity)?.0);
+            snake = Some(init(taker, &capacity)?.0);
         }
         let snake = snake.unwrap();
         for i in 0..=(len / BLOCK_SIZE) {

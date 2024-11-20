@@ -2,12 +2,12 @@ use std::{
     io::ErrorKind, os::unix::net::UnixDatagram, thread::sleep, time::Duration,
 };
 
-use crate::{Binary, ErrorCode, ReplyHead};
+use crate::{Binary, ErrorCode, Reply};
 
 /// Order Taker
 pub struct Taker {
     conn: UnixDatagram,
-    reply: [u8; 1024 * 64],
+    // reply: [u8; 1024 * 64],
     server: String,
 }
 
@@ -17,7 +17,7 @@ impl Taker {
         let conn = UnixDatagram::bind(path)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { conn, server: server.to_string(), reply: [0u8; 1024 * 64] })
+        Ok(Self { conn, server: server.to_string() })
     }
 
     pub fn connect(&self) -> std::io::Result<()> {
@@ -25,16 +25,18 @@ impl Taker {
         Ok(())
     }
 
-    pub fn reply_head(&self) -> &ReplyHead {
-        ReplyHead::from_binary(&self.reply[0..ReplyHead::S])
-    }
+    // pub fn reply_head(&self) -> &ReplyHead {
+    //     ReplyHead::from_binary(&self.reply[0..ReplyHead::S])
+    // }
+    //
+    // pub fn reply_body(&self, size: usize) -> &[u8] {
+    //     &self.reply[ReplyHead::S..ReplyHead::S + size]
+    // }
 
-    pub fn reply_body(&self, size: usize) -> &[u8] {
-        &self.reply[ReplyHead::S..ReplyHead::S + size]
-    }
-
-    pub fn take(&mut self, order: &[u8]) -> Result<(), ErrorCode> {
-        self.reply[0..ReplyHead::S].fill(0);
+    pub fn take(&self, order: &[u8]) -> Result<Reply, ErrorCode> {
+        // let mut reply = [0u8; 1024 * 64];
+        let mut reply = Reply::default();
+        // self.reply[0..ReplyHead::S].fill(0);
 
         if let Err(e) = self.conn.send(order) {
             log::error!("send error: {e:#?}");
@@ -52,15 +54,18 @@ impl Taker {
                 _ => Err(e)?,
             }
         }
-        self.conn.recv(&mut self.reply)?;
-
-        // let (reply_head, reply_body) = reply.split_at(ReplyHead::S);
-        let reply_head = self.reply_head();
-
-        if reply_head.error != 0 {
-            return Err(ErrorCode::from_u32(reply_head.error));
+        self.conn.recv(reply.head.as_binary_mut())?;
+        if reply.head.error != 0 {
+            return Err(ErrorCode::from_u32(reply.head.error));
         }
 
-        Ok(())
+        self.conn.recv(&mut reply.body)?;
+
+        // let (reply_head, reply_body) = reply.split_at(ReplyHead::S);
+        // let reply_head = self.reply_head();
+        // let reply_head = ReplyHead::from_binary(&reply[0..ReplyHead::S]);
+        // let reply_body = &reply[ReplyHead::S..ReplyHead::S + size];
+
+        Ok(reply)
     }
 }

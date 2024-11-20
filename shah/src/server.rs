@@ -1,8 +1,8 @@
-use crate::{Api, Binary, OrderHead, ReplyHead};
+use crate::{Api, Binary, OrderHead, Reply};
 use std::{
     fmt::Debug,
     io::{self, ErrorKind},
-    os::unix::net::UnixDatagram,
+    os::unix::net::{SocketAddr, UnixDatagram},
     time::{Duration, Instant},
 };
 
@@ -19,7 +19,7 @@ pub fn run<T: Debug>(
     log::info!("plutus database starting\n{path}\n\n");
 
     let mut order = [0u8; 1024 * 64];
-    let mut reply = [0u8; 1024 * 64];
+    let mut reply = Reply::default();
 
     loop {
         let time = Instant::now();
@@ -59,24 +59,35 @@ pub fn run<T: Debug>(
             continue;
         }
 
-        let (reply_head, reply_body) = reply.split_at_mut(ReplyHead::S);
-        let reply_head = ReplyHead::from_binary_mut(reply_head);
+        // let (reply_head, reply_body) = reply.split_at_mut(ReplyHead::S);
+        // let reply_head = ReplyHead::from_binary_mut(reply_head);
         // let reply_body = &mut reply_body[..route.output_size];
 
-        match (route.caller)(state, order_body, reply_body) {
+        let result = (route.caller)(state, order_body, &mut reply.body);
+        reply.head.elapsed = time.elapsed().as_micros() as u64;
+
+        match result {
             Ok(output_size) => {
-                reply_head.error = 0;
-                reply_head.size = output_size as u32;
+                reply.head.error = 0;
+                reply.head.size = output_size as u32;
+                if send(&server, reply.head.as_binary(), &addr) {
+                    continue;
+                };
+                send(&server, &reply.body[..output_size], &addr);
             }
             Err(e) => {
-                reply_head.error = e.as_u32();
-                reply_head.size = 0;
+                reply.head.error = e.as_u32();
+                reply.head.size = 0;
+                send(&server, reply.head.as_binary(), &addr);
             }
         }
-
-        reply_head.elapsed = time.elapsed().as_micros() as u64;
-        let reply_size = ReplyHead::S + reply_head.size as usize;
-
-        server.send_to_addr(&reply[..reply_size], &addr)?;
     }
+}
+
+fn send(conn: &UnixDatagram, data: &[u8], addr: &SocketAddr) -> bool {
+    if let Err(e) = conn.send_to_addr(data, addr) {
+        log::error!("error: {e}");
+        return true;
+    }
+    false
 }

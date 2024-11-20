@@ -112,3 +112,10 @@ pub struct ReplyHead {
     pub error: u32,
     pub elapsed: u64,
 }
+
+#[crate::model]
+#[derive(Debug)]
+pub struct Reply {
+    pub head: ReplyHead,
+    pub body: [u8; 1024 * 64],
+}

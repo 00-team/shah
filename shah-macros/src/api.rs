@@ -216,7 +216,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         quote_into! {bf += 0};
         let mut output_result = TokenStream2::new();
         for t in out.iter() {
-            quote_into! {output_result += <#t as #ci::Binary>::from_binary(&reply_body[#bf..#bf + <#t as #ci::Binary>::S]),};
+            quote_into! {output_result += <#t as #ci::Binary>::from_binary(&reply.body[#bf..#bf + <#t as #ci::Binary>::S]).clone(),};
             quote_into! {bf += + <#t as #ci::Binary>::S};
         }
 
@@ -230,10 +230,10 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
         quote_into! {c +=
             #[doc = #doc]
-            pub fn #ident<'a>(
-                taker: &'a mut #ci::Taker,
+            pub fn #ident(
+                taker: &#ci::Taker,
                 #{inputs.clone().for_each(|(i, t)| quote_into!(c += #i: &#t, ))}
-            ) -> Result<(#{out.iter().for_each(|t| quote_into!(c += &'a #t,))}), #ci::ClientError<#user_error>> {
+            ) -> Result<(#{out.iter().for_each(|t| quote_into!(c += #t,))}), #ci::ClientError<#user_error>> {
             // ) -> Result<(), #ci::ClientError<#user_error>> {
                 let mut order = [0u8; #input_size + <#ci::OrderHead as #ci::Binary>::S];
                 let (order_head, order_body) = order.split_at_mut(<#ci::OrderHead as #ci::Binary>::S);
@@ -244,9 +244,9 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
                 #input_result
 
-                taker.take(&order)?;
-                let reply_head = taker.reply_head();
-                let reply_body = taker.reply_body(reply_head.size as usize);
+                let reply = taker.take(&order)?;
+                // let reply_head = taker.reply_head();
+                // let reply_body = taker.reply_body(reply_head.size as usize);
                 Ok((#output_result))
             }
         }

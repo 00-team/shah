@@ -9,6 +9,8 @@ use std::{
 /// TOLERABLE CAPACITY DIFFERENCE
 const TCD: u64 = 255;
 
+// FIXME: the free snakes are not handled correctly
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SnakeFree {
     gene: Gene,

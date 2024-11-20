@@ -1,5 +1,5 @@
 #[crate::model]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ErrorCode {
     pub scope: u16,
     pub code: u16,
@@ -30,7 +30,7 @@ impl From<std::io::Error> for ErrorCode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum SystemError {
     Database,
@@ -71,14 +71,14 @@ impl From<u16> for SystemError {
     }
 }
 
-#[derive(Debug)]
-pub enum ClientError<T> {
+#[derive(Debug, Clone, Copy)]
+pub enum ClientError<T: Clone + Copy> {
     Unknown,
     System(SystemError),
     User(T),
 }
 
-impl<T: From<u16>> From<ErrorCode> for ClientError<T> {
+impl<T: From<u16> + Clone + Copy> From<ErrorCode> for ClientError<T> {
     fn from(value: ErrorCode) -> Self {
         match value.scope {
             1 => ClientError::System(value.code.into()),

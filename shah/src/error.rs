@@ -33,12 +33,8 @@ impl From<std::io::Error> for ErrorCode {
 #[derive(Debug)]
 #[repr(u16)]
 pub enum SystemError {
-    NotFound = 0,
-    Forbidden,
-    RateLimited,
     Database,
     Io,
-    Args,
     ZeroGeneId,
     BadGenePepper,
     BadGeneIter,
@@ -47,7 +43,6 @@ pub enum SystemError {
     GeneIdNotInDatabase,
     EntityNotAlive,
     BadTrieKey,
-    SeekOutOfRange,
     SnakeCapacityIsZero,
     SnakeIsFree,
     BadOffset,

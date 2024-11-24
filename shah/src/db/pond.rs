@@ -382,6 +382,21 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
     }
 
     pub fn list(
+        &mut self, page: u64, result: &mut [T; PAGE_SIZE],
+    ) -> Result<usize, SystemError> {
+        self.seek_id(page * PAGE_SIZE as u64 + 1)?;
+        let size = self.file.read(result.as_binary_mut())?;
+        let count = size / T::S;
+        if count != PAGE_SIZE {
+            for item in result.iter_mut().skip(count) {
+                item.zeroed()
+            }
+        }
+
+        Ok(count)
+    }
+
+    pub fn pond_list(
         &mut self, pond: &mut Pond, result: &mut [T; PAGE_SIZE],
     ) -> Result<(), SystemError> {
         let pond_gene = pond.gene;

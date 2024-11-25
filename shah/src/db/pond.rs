@@ -252,6 +252,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             pond.stack
         };
 
+        self.live += 1;
         self.file.write_all_at(buf.as_binary(), stack * T::N)?;
         self.index.set(&pond)?;
         self.origins.set(&origin)?;
@@ -358,6 +359,8 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         entity.set_alive(false);
 
+        self.live -= 1;
+
         self.file.seek_relative(-(T::N as i64))?;
         self.file.write_all(entity.as_binary())?;
 
@@ -404,6 +407,56 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         self.seek_id(pond.stack)?;
         self.file.read_exact(result.as_binary_mut())?;
+
+        Ok(())
+    }
+
+    pub fn pond_free(&mut self, pond: &mut Pond) -> Result<(), SystemError> {
+        let mut buf = [T::default(); PAGE_SIZE];
+
+        self.seek_id(pond.stack)?;
+        self.file.read_exact(buf.as_binary_mut())?;
+
+        pond.empty = 0;
+        for item in buf.iter_mut() {
+            if item.is_alive() {
+                item.set_alive(false);
+                self.live -= 1;
+            }
+            if item.gene().iter < ITER_EXHAUSTION {
+                pond.empty += 1;
+            }
+        }
+
+        self.seek_id(pond.stack)?;
+        self.file.write_all(buf.as_binary())?;
+
+        pond.set_free(true);
+        pond.alive = 0;
+
+        self.index.set(&pond)?;
+        self.free_list.push(pond.gene);
+
+        Ok(())
+    }
+
+    pub fn cascade(&mut self, origene: &Gene) -> Result<(), SystemError> {
+        let mut origin = Origin::default();
+        self.origins.get(origene, &mut origin)?;
+
+        let mut pond_gene = origin.first;
+        let mut pond = Pond::default();
+        loop {
+            if pond_gene.is_none() {
+                break;
+            }
+
+            self.index.get(&pond_gene, &mut pond)?;
+            pond_gene = pond.next;
+            self.pond_free(&mut pond)?;
+        }
+
+        self.origins.del(origene, &mut origin)?;
 
         Ok(())
     }

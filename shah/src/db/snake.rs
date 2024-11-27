@@ -36,7 +36,7 @@ pub struct SnakeDb {
     pub file: File,
     pub live: u64,
     pub free: u64,
-    pub free_list: [Option<SnakeFree>; BLOCK_SIZE],
+    pub free_list: Box<[Option<SnakeFree>; BLOCK_SIZE]>,
     pub index: EntityDb<SnakeHead>,
 }
 
@@ -53,7 +53,7 @@ impl SnakeDb {
         let db = Self {
             live: 0,
             free: 0,
-            free_list: [None; BLOCK_SIZE],
+            free_list: Box::new([None; BLOCK_SIZE]),
             file,
             index: EntityDb::<SnakeHead>::new(&format!("{name}.index"))?,
         };

@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub struct DeadList<T, const CAP: usize> {
     len: usize,
-    arr: [Option<T>; CAP],
+    arr: Box<[Option<T>; CAP]>,
 }
 
 impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
@@ -11,8 +11,8 @@ impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
 }
 
 impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
-    pub const fn new() -> Self {
-        Self { len: 0, arr: [const { None }; CAP] }
+    pub fn new() -> Self {
+        Self { len: 0, arr: Box::new([const { None }; CAP]) }
     }
 
     pub fn push(&mut self, value: T) {

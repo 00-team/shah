@@ -13,6 +13,9 @@ pub trait Perms {
 
         Ok(())
     }
+    fn perm_test(&self, perm: Perm) -> bool {
+        self.perm_check(perm).is_ok()
+    }
 }
 
 impl Perms for [u8] {

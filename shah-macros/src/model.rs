@@ -234,10 +234,12 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         if *set {
             let set_ident = format_ident!("set_{field}");
             quote_into! {ssi +=
-                pub fn #set_ident(&mut self, value: &str) {
+                pub fn #set_ident(&mut self, value: &str) -> bool {
+                    let mut overflow = false;
                     let vlen = value.len();
                     let flen = self.#field.len();
                     let len = if vlen > flen {
+                        overflow = true;
                         let mut idx = flen;
                         loop {
                             if value.is_char_boundary(idx) {
@@ -254,6 +256,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
                     if len < flen {
                         self.#field[len] = 0;
                     }
+
+                    overflow
                 }
             };
         }

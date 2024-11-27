@@ -5,7 +5,7 @@ use crate::{
 };
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 
@@ -88,6 +88,9 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
     }
 
     pub fn setup(mut self) -> Result<Self, SystemError> {
+        self.live = 0;
+        self.free_list.clear();
+
         self.origins = self.origins.setup(|_, _| {})?;
         self.index = self.index.setup(|_, pond| {
             if pond.is_alive() && pond.is_free() && pond.empty > 0 {
@@ -98,10 +101,40 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             }
         })?;
 
+        // let db_size = self.db_size()?;
+        // if db_size < T::N {
+        //     self.file.seek(SeekFrom::Start(T::N - 1))?;
+        //     self.file.write_all(&[0u8])?;
+        // }
+
         let db_size = self.db_size()?;
+        let mut entity = T::default();
+
         if db_size < T::N {
             self.file.seek(SeekFrom::Start(T::N - 1))?;
             self.file.write_all(&[0u8])?;
+            return Ok(self);
+        }
+
+        if db_size == T::N {
+            return Ok(self);
+        }
+
+        self.live = (db_size / T::N) - 1;
+
+        self.file.seek(SeekFrom::Start(T::N))?;
+        loop {
+            match self.file.read_exact(entity.as_binary_mut()) {
+                Ok(_) => {}
+                Err(e) => match e.kind() {
+                    ErrorKind::UnexpectedEof => break,
+                    _ => Err(e)?,
+                },
+            }
+
+            if !entity.is_alive() {
+                self.live -= 1;
+            }
         }
 
         Ok(self)

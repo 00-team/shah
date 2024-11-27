@@ -97,6 +97,7 @@ impl SnakeDb {
             {
                 let head = SnakeHead::from_binary_mut(buf);
                 if !head.is_alive() {
+                    self.index.live -= 1;
                     log::debug!("dead head: {head:?}");
                     self.index.add_dead(&head.gene);
                 } else if head.is_free() {

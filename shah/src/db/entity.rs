@@ -100,11 +100,15 @@ where
                 },
             }
 
-            let gene = entity.gene();
-            if !entity.is_alive() && gene.iter < ITER_EXHAUSTION {
-                log::debug!("dead entity: {entity:?}");
-                self.add_dead(gene);
+            if !entity.is_alive() {
+                self.live -= 1;
+                let gene = entity.gene();
+                if gene.iter < ITER_EXHAUSTION {
+                    log::debug!("dead entity: {entity:?}");
+                    self.add_dead(gene);
+                }
             }
+
             f(&mut self, &entity);
         }
 

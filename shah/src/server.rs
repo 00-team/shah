@@ -1,4 +1,4 @@
-use crate::{Api, Binary, OrderHead, Reply};
+use crate::{Api, Binary, OrderHead, Reply, ReplyHead};
 use std::{
     fmt::Debug,
     io::{self, ErrorKind},
@@ -32,6 +32,9 @@ pub fn run<T: Debug>(
         let (order_head, order_body) = order.split_at(OrderHead::S);
         let order_head = OrderHead::from_binary(order_head);
         let order_body = &order_body[..order_size - OrderHead::S];
+
+        reply.head.route = order_head.route;
+        reply.head.scope = order_head.scope;
 
         let route = match routes
             .get(order_head.scope as usize)

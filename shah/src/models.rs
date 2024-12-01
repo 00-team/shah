@@ -108,6 +108,9 @@ pub struct OrderHead {
 #[crate::model]
 #[derive(Debug)]
 pub struct ReplyHead {
+    pub scope: u8,
+    pub route: u8,
+    _pad: [u8; 6],
     pub size: u32,
     pub error: u32,
     pub elapsed: u64,

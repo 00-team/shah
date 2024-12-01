@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{Binary, ErrorCode, Reply};
+use crate::{error::SystemError, Binary, ErrorCode, OrderHead, Reply};
 
 /// Order Taker
 pub struct Taker {
@@ -35,7 +35,7 @@ impl Taker {
     //     &self.reply[ReplyHead::S..ReplyHead::S + size]
     // }
 
-    pub fn take(&self, order: &[u8]) -> Result<Reply, ErrorCode> {
+    pub fn take(&self, order: &mut [u8]) -> Result<Reply, ErrorCode> {
         let mut reply = Reply::default();
         // self.reply[0..ReplyHead::S].fill(0);
 
@@ -44,6 +44,8 @@ impl Taker {
             *count = 0;
         }
         *count += 1;
+        let order_head = OrderHead::from_binary_mut(order);
+        order_head.id = *count;
 
         if let Err(e) = self.conn.send(order) {
             log::error!("send error: {e:#?}");
@@ -62,7 +64,10 @@ impl Taker {
             }
         }
         self.conn.recv(reply.as_binary_mut())?;
-        drop(count);
+
+        if reply.head.id != *count {
+            Err(SystemError::BadOrderId)?;
+        }
 
         // let order_head = OrderHead::from_binary(order);
         // assert_eq!(reply.head.scope, order_head.scope);

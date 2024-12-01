@@ -244,7 +244,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
                 #input_result
 
-                let reply = taker.take(&order)?;
+                let reply = taker.take(&mut order)?;
                 // let reply_head = taker.reply_head();
                 // let reply_body = taker.reply_body(reply_head.size as usize);
                 Ok((#output_result))

@@ -33,8 +33,7 @@ pub fn run<T: Debug>(
         let order_head = OrderHead::from_binary(order_head);
         let order_body = &order_body[..order_size - OrderHead::S];
 
-        reply.head.route = order_head.route;
-        reply.head.scope = order_head.scope;
+        reply.head.id = order_head.id;
 
         let route = match routes
             .get(order_head.scope as usize)

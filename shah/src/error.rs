@@ -33,6 +33,7 @@ impl From<std::io::Error> for ErrorCode {
 #[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum SystemError {
+    BadOrderId,
     Database,
     Io,
     ZeroGeneId,

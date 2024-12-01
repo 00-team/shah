@@ -10,6 +10,7 @@ use std::{
     os::unix::fs::FileExt,
 };
 
+#[derive(Debug)]
 pub struct EntityCount {
     pub alive: u64,
     pub total: u64,

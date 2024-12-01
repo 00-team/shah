@@ -1,5 +1,6 @@
 use std::{
-    io::ErrorKind, os::unix::net::UnixDatagram, thread::sleep, time::Duration,
+    io::ErrorKind, os::unix::net::UnixDatagram, sync::Mutex, thread::sleep,
+    time::Duration,
 };
 
 use crate::{Binary, ErrorCode, Reply};
@@ -9,6 +10,7 @@ pub struct Taker {
     conn: UnixDatagram,
     // reply: [u8; 1024 * 64],
     server: String,
+    count: Mutex<u64>,
 }
 
 impl Taker {
@@ -17,7 +19,7 @@ impl Taker {
         let conn = UnixDatagram::bind(path)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { conn, server: server.to_string() })
+        Ok(Self { conn, server: server.to_string(), count: Mutex::new(0) })
     }
 
     pub fn connect(&self) -> std::io::Result<()> {
@@ -34,9 +36,14 @@ impl Taker {
     // }
 
     pub fn take(&self, order: &[u8]) -> Result<Reply, ErrorCode> {
-        // let mut reply = [0u8; 1024 * 64];
         let mut reply = Reply::default();
         // self.reply[0..ReplyHead::S].fill(0);
+
+        let mut count = self.count.lock().unwrap();
+        if *count == u64::MAX {
+            *count = 0;
+        }
+        *count += 1;
 
         if let Err(e) = self.conn.send(order) {
             log::error!("send error: {e:#?}");
@@ -54,12 +61,18 @@ impl Taker {
                 _ => Err(e)?,
             }
         }
-        self.conn.recv(reply.head.as_binary_mut())?;
+        self.conn.recv(reply.as_binary_mut())?;
+        drop(count);
+
+        // let order_head = OrderHead::from_binary(order);
+        // assert_eq!(reply.head.scope, order_head.scope);
+        // assert_eq!(reply.head.route, order_head.route);
+
         if reply.head.error != 0 {
             return Err(ErrorCode::from_u32(reply.head.error));
         }
 
-        self.conn.recv(&mut reply.body)?;
+        // self.conn.recv(&mut reply.body)?;
 
         // let (reply_head, reply_body) = reply.split_at(ReplyHead::S);
         // let reply_head = self.reply_head();

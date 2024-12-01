@@ -70,10 +70,15 @@ pub fn run<T: Debug>(
             Ok(output_size) => {
                 reply.head.error = 0;
                 reply.head.size = output_size as u32;
-                if send(&server, reply.head.as_binary(), &addr) {
-                    continue;
-                };
-                send(&server, &reply.body[..output_size], &addr);
+                send(
+                    &server,
+                    &reply.as_binary()[..ReplyHead::S + output_size],
+                    &addr,
+                );
+                // if send(&server, reply.head.as_binary(), &addr) {
+                //     continue;
+                // };
+                // send(&server, &reply.body[..output_size], &addr);
             }
             Err(e) => {
                 reply.head.error = e.as_u32();

@@ -4,7 +4,7 @@ use crate::{error::SystemError, Binary};
 pub type GeneId = u64;
 
 #[crate::model]
-#[derive(Debug, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
 pub struct Gene {
     pub id: GeneId,
     pub iter: u8,

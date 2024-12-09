@@ -34,7 +34,7 @@ pub fn routes(code: TokenStream) -> TokenStream {
     for i in idents {
         let si = i.to_string();
         quote_into! {s +=
-            if let Some(scope) = routes[#i::api::SCOPE] {
+            if let Some(scope) = &routes[#i::api::SCOPE] {
                 panic!(
                     "scope: \x1b[32m{}\x1b[m is already is use by: \x1b[93m{}\x1b[m and cannot be used for: \x1b[93m{}\x1b[m",
                     #i::api::SCOPE, scope.name, #si

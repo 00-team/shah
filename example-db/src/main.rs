@@ -4,7 +4,6 @@ mod note;
 mod phone;
 mod user;
 
-use crate::models::ExampleApi;
 use crate::note::db::Note;
 use rand::seq::SliceRandom;
 use shah::{db::pond::Origin, error::SystemError, Command, Gene};

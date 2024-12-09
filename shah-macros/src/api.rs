@@ -11,7 +11,6 @@ type Args = Punctuated<syn::MetaNameValue, syn::Token![,]>;
 struct Route {
     ident: syn::Ident,
     api_ident: syn::Ident,
-    state: Option<syn::TypeReference>,
     inp: Vec<syn::Type>,
     out: Vec<syn::Type>,
     ret: bool,
@@ -25,7 +24,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         panic!("invalid api mod");
     };
     let attrs = syn::parse_macro_input!(args with Args::parse_terminated);
-    let ApiArgs { api_scope, api_struct, user_error } = parse_args(attrs);
+    let ApiArgs { api_scope, user_error } = parse_args(attrs);
     let ci = crate_ident();
     let mut uses = TokenStream2::new();
     let mut user_funcs = Vec::<syn::ItemFn>::new();
@@ -55,12 +54,12 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     }
 
     let mut routes = Vec::<Route>::with_capacity(user_funcs.len());
+    let mut state: Option<syn::Type> = None;
 
     for syn::ItemFn { sig, .. } in user_funcs.iter() {
         let mut route = Route {
             ident: sig.ident.clone(),
             api_ident: format_ident!("{}_api", sig.ident),
-            state: None,
             inp: Default::default(),
             out: Default::default(),
             ret: returns_output_size(&sig.output),
@@ -76,7 +75,9 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
             match &(*arg.ty) {
                 syn::Type::Reference(tr) => {
-                    route.state = Some(tr.clone());
+                    if state.is_none() {
+                        state = Some(*tr.elem.clone());
+                    }
                 }
                 syn::Type::Tuple(tt) => {
                     route.doc += &arg.pat.to_token_stream().to_string();
@@ -134,7 +135,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             quote_into!(s += #f);
         }
 
-        for Route { api_ident, ident, state, inp, out, ret, .. } in routes.iter() {
+        for Route { api_ident, ident, inp, out, ret, .. } in routes.iter() {
             let mut output_var = TokenStream2::new();
             for (i, t) in out.iter().enumerate() {
                 let vid = format_ident!("ov{}", i);
@@ -165,7 +166,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 
             quote_into! {s +=
                 #[allow(dead_code)]
-                pub(crate) fn #api_ident(state: #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
+                pub(crate) fn #api_ident(state: &mut #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
                     let input = (#input_var);
                     #output_var
                     let res = #ident(state, input, output)?;
@@ -179,7 +180,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         }
 
         let routes_len = routes.len();
-        quote_into! {s += pub(crate) const ROUTES: [#api_struct; #routes_len] = [#{
+        quote_into! {s += pub(crate) const ROUTES: [#ci::Api<#state>; #routes_len] = [#{
             for Route { api_ident, ident, inp, .. } in routes.iter() {
                 let mut input_size = TokenStream2::new();
                 quote_into!(input_size += 0);
@@ -189,7 +190,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 }
 
                 let name = ident.to_string();
-                quote_into! {s += #api_struct {
+                quote_into! {s += #ci::Api::<#state> {
                     name: #name,
                     caller: #api_ident,
                     input_size: #input_size,
@@ -268,13 +269,11 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
 }
 
 struct ApiArgs {
-    api_struct: syn::Path,
     user_error: syn::Path,
     api_scope: syn::LitInt,
 }
 
 fn parse_args(args: Args) -> ApiArgs {
-    let mut api_struct: Option<syn::Path> = None;
     let mut user_error: Option<syn::Path> = None;
     let mut api_scope: Option<syn::LitInt> = None;
 
@@ -288,11 +287,6 @@ fn parse_args(args: Args) -> ApiArgs {
                     }
                 }
             }
-            "api" => {
-                if let syn::Expr::Path(path) = &meta.value {
-                    api_struct = Some(path.path.clone());
-                }
-            }
             "error" => {
                 if let syn::Expr::Path(path) = &meta.value {
                     user_error = Some(path.path.clone());
@@ -302,15 +296,11 @@ fn parse_args(args: Args) -> ApiArgs {
         }
     }
 
-    if api_struct.is_none() || api_scope.is_none() || user_error.is_none() {
+    if api_scope.is_none() || user_error.is_none() {
         panic!("invalid attrs. api = <Path>, scope = usize, error = UserError")
     }
 
-    ApiArgs {
-        api_struct: api_struct.unwrap(),
-        user_error: user_error.unwrap(),
-        api_scope: api_scope.unwrap(),
-    }
+    ApiArgs { user_error: user_error.unwrap(), api_scope: api_scope.unwrap() }
 }
 
 fn returns_output_size(rt: &syn::ReturnType) -> bool {

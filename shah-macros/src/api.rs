@@ -297,7 +297,7 @@ fn parse_args(args: Args) -> ApiArgs {
     }
 
     if api_scope.is_none() || user_error.is_none() {
-        panic!("invalid attrs. api = <Path>, scope = usize, error = UserError")
+        panic!("invalid attrs. scope = usize, error = UserError")
     }
 
     ApiArgs { user_error: user_error.unwrap(), api_scope: api_scope.unwrap() }

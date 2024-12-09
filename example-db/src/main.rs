@@ -25,8 +25,6 @@ fn main() -> Result<(), SystemError> {
 
     let routes = shah::routes!(models::State, user, phone, detail);
 
-    log::info!("routes: {routes:#?}");
-
     let mut state = models::State {
         users: user::db::setup().expect("user setup"),
         phone: phone::db::setup().expect("phone setup"),

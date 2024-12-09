@@ -44,7 +44,7 @@ pub fn run<T: Debug>(
             continue;
         };
 
-        log::debug!("\norder {}::{}", scope.name, route.name);
+        log::debug!("order {}::{}", scope.name, route.name);
 
         if route.input_size != order_body.len() {
             log::warn!(

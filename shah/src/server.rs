@@ -1,7 +1,7 @@
 use crate::{Api, Binary, OrderHead, Reply, ReplyHead};
 use std::{
     fmt::Debug,
-    io::{self, ErrorKind},
+    io,
     os::unix::net::{SocketAddr, UnixDatagram},
     time::{Duration, Instant},
 };
@@ -12,7 +12,7 @@ pub fn run<T: Debug>(
     let _ = std::fs::remove_file(path);
     let server = UnixDatagram::bind(path)?;
 
-    server.set_nonblocking(true)?;
+    // server.set_nonblocking(true)?;
     server.set_read_timeout(Some(Duration::from_secs(5)))?;
     server.set_write_timeout(Some(Duration::from_secs(5)))?;
 
@@ -25,7 +25,7 @@ pub fn run<T: Debug>(
         let time = Instant::now();
         let (order_size, addr) = match server.recv_from(&mut order) {
             Ok(v) => v,
-            Err(e) if e.kind() == ErrorKind::WouldBlock => continue,
+            // Err(e) if e.kind() == ErrorKind::WouldBlock => continue,
             e => e?,
         };
 

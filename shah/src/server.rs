@@ -1,4 +1,4 @@
-use crate::{Api, Binary, OrderHead, Reply, ReplyHead};
+use crate::{Binary, OrderHead, Reply, ReplyHead, Scope};
 use std::{
     fmt::Debug,
     io,
@@ -7,7 +7,7 @@ use std::{
 };
 
 pub fn run<T: Debug>(
-    path: &str, state: &mut T, routes: &[&[Api<T>]],
+    path: &str, state: &mut T, routes: &[Scope<T>],
 ) -> io::Result<()> {
     let _ = std::fs::remove_file(path);
     let server = UnixDatagram::bind(path)?;
@@ -34,23 +34,17 @@ pub fn run<T: Debug>(
         let order_body = &order_body[..order_size - OrderHead::S];
 
         reply.head.id = order_head.id;
-
-        let route = match routes
-            .get(order_head.scope as usize)
-            .and_then(|v| v.get(order_head.route as usize))
-        {
-            Some(v) => v,
-            None => {
-                log::warn!(
-                    "invalid api index: [{}, {}]",
-                    order_head.scope,
-                    order_head.route
-                );
-                continue;
-            }
+        let Some(scope) = routes.get(order_head.scope as usize) else {
+            log::warn!("unkown scope: {}", order_head.scope);
+            continue;
         };
 
-        log::debug!("route: {route:#?}");
+        let Some(route) = scope.routes.get(order_head.route as usize) else {
+            log::warn!("unkown route: {}", order_head.route);
+            continue;
+        };
+
+        log::debug!("\norder {}::{}", scope.name, route.name);
 
         if route.input_size != order_body.len() {
             log::warn!(

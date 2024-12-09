@@ -14,7 +14,9 @@ pub use crate::error::{ClientError, ErrorCode};
 pub use models::*;
 pub use taker::Taker;
 
-pub use shah_macros::{api, enum_code, model, perms, Command, Duck, Entity};
+pub use shah_macros::{
+    api, enum_code, model, perms, routes, Command, Duck, Entity,
+};
 
 pub const PAGE_SIZE: usize = 0x20;
 pub const BLOCK_SIZE: usize = 0x1000;
@@ -24,11 +26,19 @@ pub const ITER_EXHAUSTION: u8 = 0xfa;
 extern crate self as shah;
 
 type ApiCaller<T> = fn(&mut T, &[u8], &mut [u8]) -> Result<usize, ErrorCode>;
+
 #[derive(Debug)]
 pub struct Api<T> {
     pub name: &'static str,
     pub input_size: usize,
     pub caller: ApiCaller<T>,
+}
+
+#[derive(Debug)]
+pub struct Scope<T: 'static> {
+    pub routes: &'static [Api<T>],
+    pub name: &'static str,
+    pub scope: usize,
 }
 
 pub trait Command {

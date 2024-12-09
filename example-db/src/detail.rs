@@ -11,6 +11,7 @@ pub(crate) mod db {
     }
 }
 
+
 #[shah::api(scope = 2, error = ExampleError, api = ExampleApi)]
 pub mod api {
 

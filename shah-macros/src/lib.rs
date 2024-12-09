@@ -5,6 +5,7 @@ mod entity;
 mod enum_code;
 mod model;
 mod perms;
+mod routes;
 
 use proc_macro::TokenStream;
 
@@ -36,6 +37,11 @@ pub fn entity(code: TokenStream) -> TokenStream {
 #[proc_macro_derive(Duck)]
 pub fn duck(code: TokenStream) -> TokenStream {
     duck::duck(code)
+}
+
+#[proc_macro]
+pub fn routes(code: TokenStream) -> TokenStream {
+    routes::routes(code)
 }
 
 #[proc_macro]

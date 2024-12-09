@@ -243,6 +243,11 @@ impl SnakeDb {
 
         self.file.seek(SeekFrom::Start(head.position + offset))?;
         self.file.write_all(&data[..len])?;
+        let len = len as u64;
+        if len < head.capacity {
+            self.file.seek_relative((head.capacity - len - 1) as i64)?;
+            self.file.write_all(&[0u8])?;
+        }
 
         Ok(())
     }
@@ -252,9 +257,13 @@ impl SnakeDb {
         data: &mut [u8],
     ) -> Result<(), SystemError> {
         let len = self.check_offset(gene, head, offset, data.len())?;
+        log::info!(
+            "read len: {len} - offset: {offset} - data len: {} - head: {head:#?}",
+            data.len()
+        );
 
         self.file.seek(SeekFrom::Start(head.position + offset))?;
-        self.file.read_exact(&mut data[..len])?;
+        self.file.read(&mut data[..len])?;
 
         Ok(())
     }

@@ -196,7 +196,11 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 },}
             }
         }];};
-    }}};
+    }
+
+        pub(crate) const FILE: &str = file!();
+        pub(crate) const SCOPE: usize = #api_scope;
+    }};
 
     let mut c = TokenStream2::new();
     for (rdx, Route { ident, inp, out, doc, .. }) in routes.iter().enumerate() {

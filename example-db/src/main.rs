@@ -4,6 +4,7 @@ mod note;
 mod phone;
 mod user;
 
+use crate::models::ExampleApi;
 use crate::note::db::Note;
 use rand::seq::SliceRandom;
 use shah::{db::pond::Origin, error::SystemError, Command, Gene};
@@ -23,11 +24,9 @@ fn main() -> Result<(), SystemError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    let routes = [
-        user::api::ROUTES.as_slice(),
-        phone::api::ROUTES.as_slice(),
-        detail::api::ROUTES.as_slice(),
-    ];
+    let routes = shah::routes!(models::State, user, phone, detail);
+
+    log::info!("routes: {routes:#?}");
 
     let mut state = models::State {
         users: user::db::setup().expect("user setup"),

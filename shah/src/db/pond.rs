@@ -467,7 +467,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         pond.set_free(true);
         pond.alive = 0;
 
-        self.index.set(&pond)?;
+        self.index.set(pond)?;
         self.free_list.push(pond.gene);
 
         Ok(())

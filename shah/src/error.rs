@@ -59,16 +59,16 @@ pub enum SystemError {
 
 impl IsNotFound for SystemError {
     fn is_not_found(&self) -> bool {
-        match self {
+        matches!(
+            self,
             SystemError::ZeroGeneId
-            | SystemError::BadGeneIter
-            | SystemError::GeneIdNotInDatabase
-            | SystemError::EntityNotAlive
-            | SystemError::DeadSet
-            | SystemError::SnakeIsFree
-            | SystemError::BadGenePepper => true,
-            _ => false,
-        }
+                | SystemError::BadGeneIter
+                | SystemError::GeneIdNotInDatabase
+                | SystemError::EntityNotAlive
+                | SystemError::DeadSet
+                | SystemError::SnakeIsFree
+                | SystemError::BadGenePepper
+        )
     }
 }
 

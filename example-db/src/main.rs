@@ -135,7 +135,7 @@ fn main() -> Result<(), SystemError> {
             for _ in 0usize..10_000 {
                 let len = rng.gen_range(1u64..5049) + 8;
                 let ulen = len as usize;
-                let char = rng.gen_range(b'a'..b'z');
+                let char = rng.gen_range(b'a'..=b'z');
                 set_buf[0..ulen - 8].fill(char);
                 set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
                 let head = detail_set(&mut state, None, &set_buf[0..ulen])?;
@@ -194,7 +194,7 @@ fn main() -> Result<(), SystemError> {
             // for (char, len, gene) in pool.iter_mut() {
             //     *len = rng.gen_range(4000u64..9549) + 8;
             //     let ulen = *len as usize;
-            //     *char = rng.gen_range(b'a'..b'z');
+            //     *char = rng.gen_range(b'a'..=b'z');
             //     set_buf[0..ulen - 8].fill(*char);
             //     set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
             //     let head =

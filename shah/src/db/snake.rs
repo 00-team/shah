@@ -154,7 +154,7 @@ impl SnakeDb {
                         return Ok(None);
                     }
 
-                    free.position = free.position + capacity;
+                    free.position += capacity;
                     free.capacity -= capacity;
 
                     disk.position = free.position;

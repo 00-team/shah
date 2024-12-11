@@ -5,9 +5,8 @@ mod phone;
 mod user;
 
 use crate::models::State;
-use rand::Rng;
 use shah::{
-    db::snake::SnakeHead, error::SystemError, Binary, Command, Gene, BLOCK_SIZE,
+    db::snake::SnakeHead, error::SystemError, Command, Gene, BLOCK_SIZE,
 };
 use std::io::{stdout, Write};
 
@@ -18,7 +17,6 @@ enum Commands {
     #[default]
     Help,
     Run,
-    Detail,
 }
 
 pub fn detail_get(
@@ -122,133 +120,6 @@ fn main() -> Result<(), SystemError> {
         }
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
-        }
-        Commands::Detail => {
-            const N: usize = 1_00;
-            let mut rng = rand::thread_rng();
-            let mut pool = Vec::<(u8, u64, Gene)>::with_capacity(N);
-            let mut set_buf = [0u8; 10 * 1024];
-            let mut get_buf = [0u8; 10 * 1024];
-
-            let mut total_length = 0u64;
-            let mut total_capacity = 0u64;
-
-            for _ in 0usize..N {
-                let len = rng.gen_range(1020u64..5049) + 8;
-                let ulen = len as usize;
-                let char = rng.gen_range(b'a'..=b'z');
-                set_buf[0..ulen - 8].fill(char);
-                set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
-                let head = detail_set(&mut state, None, &set_buf[0..ulen])?;
-                assert_eq!(head.length, len);
-                pool.push((char, len, head.gene));
-                total_length += len;
-                total_capacity += head.capacity;
-                assert_eq!(head.length, len, "set length is not correct");
-            }
-
-
-
-            // let (_, _, last) = pool.last().unwrap();
-            // let (last_data, last_head) = detail_get(&mut state, last)?;
-            // assert_eq!(last_data.len(), last_head.length as usize, "last che");
-
-            println!("total_length: {total_length}");
-            println!("total_capacity: {total_capacity}");
-            println!(
-                "total_capacity + SnakeHead::N: {}",
-                total_capacity + SnakeHead::N
-            );
-
-            // for (char, len, gene) in pool.iter() {
-            //     let ulen = *len as usize;
-            //     let (data, head) = detail_get(&mut state, gene)?;
-            //
-            //     assert_eq!(data.len(), ulen, "invalid data len");
-            //     assert_eq!(*len, head.length, "invalid head len");
-            //     assert!(
-            //         head.length <= head.capacity,
-            //         "invalid length <= capacity"
-            //     );
-            //     get_buf[0..ulen - 8].fill(*char);
-            //     assert_eq!(data[..ulen - 8], get_buf[0..ulen - 8], "bad data");
-            //     let data_len = u64::from_le_bytes(
-            //         data[ulen - 8..ulen].try_into().unwrap(),
-            //     );
-            //     assert_eq!(data_len, *len, "invalid len in data");
-            // }
-
-            // log::info!("deleting all details");
-            // // pool.shuffle(&mut rng);
-            // for (i, (_, _, gene)) in pool.iter().enumerate() {
-            //     if i % 2 == 0 {
-            //         continue;
-            //     }
-            //     if i > 8 {
-            //         break;
-            //     }
-            //     state.detail.free(gene)?;
-            // }
-            //
-            // log::info!("second");
-            //
-            // for (i, (_, _, gene)) in pool.iter().enumerate() {
-            //     if i == 0 {
-            //         continue;
-            //     }
-            //     if i % 2 != 0 {
-            //         continue;
-            //     }
-            //     if i > 7 {
-            //         break;
-            //     }
-            //     state.detail.free(gene)?;
-            // }
-            //
-            // log::info!("after");
-            // let (_, _, last) = pool.last().unwrap();
-            // let (last_data, last_head) = detail_get(&mut state, last)?;
-            // assert_eq!(last_data.len(), last_head.length as usize);
-
-            // log::info!("reset all details");
-            // let mut new_total_length = 0u64;
-            // let mut new_total_capacity = 0u64;
-            //
-            // for (char, len, gene) in pool.iter_mut() {
-            //     *len = rng.gen_range(4000u64..9549) + 8;
-            //     let ulen = *len as usize;
-            //     *char = rng.gen_range(b'a'..=b'z');
-            //     set_buf[0..ulen - 8].fill(*char);
-            //     set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
-            //     let head =
-            //         detail_set(&mut state, Some(*gene), &set_buf[0..ulen])?;
-            //     *gene = head.gene;
-            //     assert_eq!(head.length, *len, "invalid head length");
-            //     // pool.push((*char, len, head.gene));
-            //     new_total_length += *len;
-            //     new_total_capacity += head.capacity;
-            // }
-            //
-            // println!("new_total_length: {new_total_length}");
-            // println!("new_total_capacity: {new_total_capacity}");
-            //
-            // for (char, len, gene) in pool.iter() {
-            //     let ulen = *len as usize;
-            //     let (data, head) = detail_get(&mut state, gene)?;
-            //
-            //     assert_eq!(data.len(), ulen, "invalid data len");
-            //     assert_eq!(*len, head.length, "invalid head len");
-            //     assert!(
-            //         head.length <= head.capacity,
-            //         "invalid length <= capacity"
-            //     );
-            //     get_buf[0..ulen - 8].fill(*char);
-            //     assert_eq!(data[..ulen - 8], get_buf[0..ulen - 8], "bad data");
-            //     let data_len = u64::from_le_bytes(
-            //         data[ulen - 8..ulen].try_into().unwrap(),
-            //     );
-            //     assert_eq!(data_len, *len, "invalid len in data");
-            // }
         }
     }
 

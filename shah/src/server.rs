@@ -22,12 +22,13 @@ pub fn run<T: Debug>(
     let mut reply = Reply::default();
 
     loop {
-        let time = Instant::now();
         let (order_size, addr) = match server.recv_from(&mut order) {
             Ok(v) => v,
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             e => e?,
         };
+
+        let time = Instant::now();
 
         let (order_head, order_body) = order.split_at(OrderHead::S);
         let order_head = OrderHead::from_binary(order_head);

@@ -10,8 +10,6 @@ use std::{
 const TCD: u64 = 255;
 const FREE_LIST_SIZE: usize = BLOCK_SIZE;
 
-// FIXME: the free snakes are not handled correctly
-
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SnakeFree {
     gene: Gene,
@@ -134,46 +132,80 @@ impl SnakeDb {
             assert_ne!(free.gene.id, 0);
 
             if free.position + free.capacity == db_size {
-                self.free -= 1;
+                if free.capacity > capacity + TCD {
+                    let val = SnakeFree {
+                        position: free.position,
+                        capacity,
+                        gene: Gene::default(),
+                    };
+
+                    let mut disk = SnakeHead::default();
+                    self.index.get(&free.gene, &mut disk)?;
+                    if !disk.is_free() {
+                        log::warn!("free is not even free on the disk :/ wtf");
+                        return Ok(None);
+                    }
+                    if disk.capacity != free.capacity
+                        || disk.position != free.position
+                    {
+                        log::warn!(
+                            "invalid snake free_list: {disk:?} != {free:?}"
+                        );
+                        return Ok(None);
+                    }
+
+                    free.position = free.position + capacity;
+                    free.capacity -= capacity;
+
+                    disk.position = free.position;
+                    disk.capacity = free.capacity;
+                    self.index.set(&disk)?;
+
+                    return Ok(Some(val));
+                }
+
                 let val = SnakeFree {
                     position: free.position,
+                    capacity: free.capacity.max(capacity),
                     gene: free.gene,
-                    capacity,
                 };
+
+                self.free -= 1;
                 *opt_free = None;
                 return Ok(Some(val));
             }
 
-            if free.capacity >= capacity {
-                if free.capacity - capacity < TCD {
-                    self.free -= 1;
-                    let val = *opt_free;
-                    *opt_free = None;
-                    return Ok(val);
-                }
-
-                let mut old = SnakeHead::default();
-                self.index.get(&free.gene, &mut old)?;
-                if !old.is_free() {
-                    log::warn!("free is not even free :/ wtf");
-                    return Ok(None);
-                }
-                if old.capacity != free.capacity
-                    || old.position != free.position
-                {
-                    log::warn!("invalid snake free_list: {old:?} != {free:?}");
-                    return Ok(None);
-                }
-
-                old.capacity -= capacity;
-                self.index.set(&old)?;
-                free.capacity -= capacity;
-                return Ok(Some(SnakeFree {
-                    gene: Default::default(),
-                    position: free.position + free.capacity,
-                    capacity,
-                }));
+            if free.capacity < capacity {
+                continue;
             }
+
+            if free.capacity - capacity < TCD {
+                self.free -= 1;
+                let val = *opt_free;
+                *opt_free = None;
+                return Ok(val);
+            }
+
+            let mut disk = SnakeHead::default();
+            self.index.get(&free.gene, &mut disk)?;
+            if !disk.is_free() {
+                log::warn!("free is not even free :/ wtf");
+                return Ok(None);
+            }
+            if disk.capacity != free.capacity || disk.position != free.position
+            {
+                log::warn!("invalid snake free_list: {disk:?} != {free:?}");
+                return Ok(None);
+            }
+
+            disk.capacity -= capacity;
+            self.index.set(&disk)?;
+            free.capacity -= capacity;
+            return Ok(Some(SnakeFree {
+                gene: Default::default(),
+                position: free.position + free.capacity,
+                capacity,
+            }));
         }
 
         Ok(None)
@@ -191,12 +223,9 @@ impl SnakeDb {
         head.set_free(false);
 
         if let Some(free) = self.take_free(capacity)? {
-            println!("take dead: {free:?}");
             head.position = free.position;
             head.capacity = free.capacity;
-            if free.gene.is_some() {
-                head.gene = free.gene;
-            }
+            head.gene = free.gene;
         } else {
             head.position = self.db_size()?;
             if head.position < SnakeHead::N {
@@ -204,9 +233,10 @@ impl SnakeDb {
                     self.file.seek(SeekFrom::Start(SnakeHead::N))?;
             }
             head.capacity = capacity;
-            self.file.seek_relative((capacity - 1) as i64)?;
-            self.file.write_all(&[0u8])?;
         }
+
+        self.file.seek(SeekFrom::Start(head.position + head.capacity - 1))?;
+        self.file.write_all(&[0u8])?;
 
         if head.gene.is_some() {
             self.index.set(head)?;
@@ -317,9 +347,9 @@ impl SnakeDb {
 
         let mut index = if self.free == 0 { 0 } else { FREE_LIST_SIZE };
         let mut travel = 0;
-        let mut round_two = false;
+        // let mut round_two = false;
         // let mut round_two_index = 0usize;
-        log::warn!("add_free: {} | {}", head.gene.id, self.free);
+        // log::warn!("add_free: {} | {}", head.gene.id, self.free);
 
         let mut fdx = 0usize;
         while fdx < FREE_LIST_SIZE {
@@ -340,24 +370,24 @@ impl SnakeDb {
             assert_ne!(free.capacity, 0);
             assert_ne!(free.gene.id, 0);
 
-            log::trace!(
-                "[{}] head: {} + {} == {}",
-                head.gene.id,
-                head.position,
-                head.capacity,
-                head.position + head.capacity
-            );
-            log::trace!(
-                "[{}] free: {} + {} == {}",
-                free.gene.id,
-                free.position,
-                free.capacity,
-                free.position + free.capacity
-            );
-            log::trace!("round_two: {round_two}");
+            // log::trace!(
+            //     "[{}] head: {} + {} == {}",
+            //     head.gene.id,
+            //     head.position,
+            //     head.capacity,
+            //     head.position + head.capacity
+            // );
+            // log::trace!(
+            //     "[{}] free: {} + {} == {}",
+            //     free.gene.id,
+            //     free.position,
+            //     free.capacity,
+            //     free.position + free.capacity
+            // );
+            // log::trace!("round_two: {round_two}");
 
             if free.position + free.capacity == head.position {
-                log::info!("found before: round two: {round_two}");
+                // log::info!("found before: round two: {round_two}");
                 let mut disk = SnakeHead::default();
                 self.index.get(&free.gene, &mut disk)?;
 
@@ -375,7 +405,7 @@ impl SnakeDb {
                 *slot = None;
                 self.free -= 1;
 
-                round_two = true;
+                // round_two = true;
                 fdx = 0;
                 travel = 0;
                 continue;
@@ -404,7 +434,7 @@ impl SnakeDb {
             }
 
             if head.position + head.capacity == free.position {
-                log::info!("found after : round two: {round_two}");
+                // log::info!("found after : round two: {round_two}");
                 let mut disk = SnakeHead::default();
                 self.index.get(&free.gene, &mut disk)?;
 
@@ -428,7 +458,7 @@ impl SnakeDb {
                 // head.position = free.position;
                 // head.capacity = free.capacity;
 
-                round_two = true;
+                // round_two = true;
                 fdx = 0;
                 travel = 0;
                 continue;
@@ -441,7 +471,7 @@ impl SnakeDb {
         head.set_alive(true);
         self.index.set(&head)?;
 
-        log::error!("setting a free at: {index} | round_two: {round_two}");
+        // log::error!("setting a free at: {index} | round_two: {round_two}");
         if index < FREE_LIST_SIZE {
             let opt_free = &mut self.free_list[index];
             if opt_free.is_some() {

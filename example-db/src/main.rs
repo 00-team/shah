@@ -177,12 +177,23 @@ fn main() -> Result<(), SystemError> {
                 if i % 2 == 0 {
                     continue;
                 }
+                if i > 8 {
+                    break;
+                }
                 state.detail.free(gene)?;
             }
 
+            log::info!("second");
+
             for (i, (_, _, gene)) in pool.iter().enumerate() {
+                if i == 0 {
+                    continue;
+                }
                 if i % 2 != 0 {
                     continue;
+                }
+                if i > 7 {
+                    break;
                 }
                 state.detail.free(gene)?;
             }

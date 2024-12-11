@@ -1,4 +1,4 @@
-pub const DETAIL_MAX: usize = 5_000;
+pub const DETAIL_MAX: usize = 50 * 1024;
 pub const DETAIL_BUF: usize = 255;
 
 pub(crate) mod db {
@@ -10,7 +10,6 @@ pub(crate) mod db {
         SnakeDb::new("detail")?.setup()
     }
 }
-
 
 #[shah::api(scope = 2, error = ExampleError, api = ExampleApi)]
 pub mod api {
@@ -58,9 +57,9 @@ pub mod api {
     }
 
     pub(crate) fn free(
-        state: &mut State, (gene,): (&Gene,), (head,): (&mut SnakeHead,),
+        state: &mut State, (gene,): (&Gene,), (): (),
     ) -> Result<(), ErrorCode> {
-        Ok(state.detail.free(gene, head)?)
+        Ok(state.detail.free(gene)?)
     }
 
     #[client]

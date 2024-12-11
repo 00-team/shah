@@ -30,6 +30,10 @@ impl From<std::io::Error> for ErrorCode {
     }
 }
 
+pub trait IsNotFound {
+    fn is_not_found(&self) -> bool;
+}
+
 #[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum SystemError {
@@ -51,6 +55,21 @@ pub enum SystemError {
     GeneFromHexErr,
     /// using set for deleting aka seting alive to false without .del(...)
     DeadSet,
+}
+
+impl IsNotFound for SystemError {
+    fn is_not_found(&self) -> bool {
+        match self {
+            SystemError::ZeroGeneId
+            | SystemError::BadGeneIter
+            | SystemError::GeneIdNotInDatabase
+            | SystemError::EntityNotAlive
+            | SystemError::DeadSet
+            | SystemError::SnakeIsFree
+            | SystemError::BadGenePepper => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<std::io::Error> for SystemError {
@@ -79,12 +98,22 @@ pub enum ClientError<T: Clone + Copy> {
     User(T),
 }
 
-impl<T: From<u16> + Clone + Copy> From<ErrorCode> for ClientError<T> {
+impl<T: From<u16> + Copy> From<ErrorCode> for ClientError<T> {
     fn from(value: ErrorCode) -> Self {
         match value.scope {
             1 => ClientError::System(value.code.into()),
             2 => ClientError::User(value.code.into()),
             _ => ClientError::Unknown,
+        }
+    }
+}
+
+impl<T: IsNotFound + Copy> IsNotFound for ClientError<T> {
+    fn is_not_found(&self) -> bool {
+        match self {
+            Self::Unknown => false,
+            Self::User(u) => u.is_not_found(),
+            Self::System(s) => s.is_not_found(),
         }
     }
 }

@@ -8,6 +8,7 @@ use std::{
 
 /// TOLERABLE CAPACITY DIFFERENCE
 const TCD: u64 = 255;
+const FREE_LIST_SIZE: usize = BLOCK_SIZE;
 
 // FIXME: the free snakes are not handled correctly
 
@@ -36,7 +37,7 @@ pub struct SnakeDb {
     pub file: File,
     pub live: u64,
     pub free: u64,
-    pub free_list: Box<[Option<SnakeFree>; BLOCK_SIZE]>,
+    pub free_list: Box<[Option<SnakeFree>; FREE_LIST_SIZE]>,
     pub index: EntityDb<SnakeHead>,
 }
 
@@ -101,7 +102,7 @@ impl SnakeDb {
                     log::debug!("dead head: {head:?}");
                     self.index.add_dead(&head.gene);
                 } else if head.is_free() {
-                    self.add_free(head);
+                    self.add_free(*head);
                 }
             }
         }
@@ -241,13 +242,11 @@ impl SnakeDb {
     ) -> Result<(), SystemError> {
         let len = self.check_offset(gene, head, offset, data.len())?;
 
+        // self.file.seek(SeekFrom::Start(head.position + head.capacity - 1))?;
+        // self.file.write_all(&[0u8])?;
+
         self.file.seek(SeekFrom::Start(head.position + offset))?;
         self.file.write_all(&data[..len])?;
-        let len = len as u64;
-        if len < head.capacity {
-            self.file.seek_relative((head.capacity - len - 1) as i64)?;
-            self.file.write_all(&[0u8])?;
-        }
 
         Ok(())
     }
@@ -257,13 +256,13 @@ impl SnakeDb {
         data: &mut [u8],
     ) -> Result<(), SystemError> {
         let len = self.check_offset(gene, head, offset, data.len())?;
-        log::info!(
-            "read len: {len} - offset: {offset} - data len: {} - head: {head:#?}",
-            data.len()
-        );
+        // log::info!(
+        //     "read len: {len} - offset: {offset} - data len: {} - head: {head:#?}",
+        //     data.len()
+        // );
 
         self.file.seek(SeekFrom::Start(head.position + offset))?;
-        self.file.read(&mut data[..len])?;
+        self.file.read_exact(&mut data[..len])?;
 
         Ok(())
     }
@@ -287,10 +286,9 @@ impl SnakeDb {
         Ok(())
     }
 
-    pub fn free(
-        &mut self, gene: &Gene, head: &mut SnakeHead,
-    ) -> Result<(), SystemError> {
-        self.index.get(gene, head)?;
+    pub fn free(&mut self, gene: &Gene) -> Result<(), SystemError> {
+        let mut head = SnakeHead::default();
+        self.index.get(gene, &mut head)?;
 
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
@@ -300,24 +298,34 @@ impl SnakeDb {
         }
 
         head.set_free(true);
-        self.index.set(head)?;
+        self.index.set(&head)?;
         self.add_free(head);
 
         Ok(())
     }
 
-    fn add_free(&mut self, head: &mut SnakeHead) {
+    fn add_free(&mut self, mut head: SnakeHead) {
         if head.position == 0 || head.capacity == 0 || head.gene.is_none() {
+            log::warn!("invalid head into add_free");
             return;
         }
 
-        let mut index = 0;
+        let mut index = if self.free == 0 { 0 } else { FREE_LIST_SIZE };
         let mut travel = 0;
-        for opt_free in self.free_list.iter_mut() {
+        let mut round_two = false;
+
+        let mut fdx = 0usize;
+        while fdx < FREE_LIST_SIZE {
             if travel >= self.free {
                 break;
             }
-            let Some(free) = opt_free else { continue };
+            let Some(free) = &mut self.free_list[fdx] else {
+                if index == FREE_LIST_SIZE {
+                    index = fdx;
+                }
+                fdx += 1;
+                continue;
+            };
             travel += 1;
 
             assert_ne!(free.position, 0);
@@ -325,6 +333,7 @@ impl SnakeDb {
             assert_ne!(free.gene.id, 0);
 
             if free.position + free.capacity == head.position {
+                log::info!("found before: round two: {round_two}");
                 let mut old = SnakeHead::default();
                 if let Err(e) = self.index.get(&free.gene, &mut old) {
                     log::warn!("get old free: {e:?} - {:?}", free.gene);
@@ -342,16 +351,24 @@ impl SnakeDb {
                     log::warn!("set old free: {e:?} - {:?}", free.gene);
                     return;
                 }
-                head.set_alive(false);
-                if let Err(e) = self.index.set(head) {
-                    log::warn!("set head: {e:?} - {:?}", head.gene);
+                if let Err(e) =
+                    self.index.del(&head.gene, &mut SnakeHead::default())
+                {
+                    log::warn!("del head: {e:?} - {:?}", head.gene);
                     return;
                 }
 
-                return;
+                log::info!("go for round two");
+                round_two = true;
+                fdx = 0;
+                head.position = free.position;
+                head.capacity = free.capacity;
+                travel = 0;
+                continue;
             }
 
             if head.position + head.capacity == free.position {
+                log::info!("found after : round two: {round_two}");
                 let mut old = SnakeHead::default();
                 if let Err(e) = self.index.get(&free.gene, &mut old) {
                     log::warn!("get old free: {e:?} - {:?}", free.gene);
@@ -363,9 +380,10 @@ impl SnakeDb {
                     log::warn!("old != free: {old:?} - {free:?}");
                     return;
                 }
-                old.set_alive(false);
-                if let Err(e) = self.index.set(&old) {
-                    log::warn!("set old free: {e:?} - {:?}", free.gene);
+                if let Err(e) =
+                    self.index.del(&old.gene, &mut SnakeHead::default())
+                {
+                    log::warn!("del old free: {e:?} - {:?}", free.gene);
                     return;
                 }
 
@@ -374,18 +392,27 @@ impl SnakeDb {
                 free.position = head.position;
                 free.capacity = head.capacity;
                 free.gene = head.gene;
-                if let Err(e) = self.index.set(head) {
+                if let Err(e) = self.index.set(&head) {
                     log::warn!("set head: {e:?} - {:?}", head.gene);
                     return;
                 }
 
-                return;
+                round_two = true;
+                fdx = 0;
+                // head.position = free.position;
+                // head.capacity = free.capacity;
+                travel = 0;
+                continue;
             }
 
-            index += 1;
+            fdx += 1;
         }
 
-        if index < self.free_list.len() {
+        if round_two {
+            return;
+        }
+
+        if index < FREE_LIST_SIZE {
             let opt_free = &mut self.free_list[index];
             if opt_free.is_some() {
                 log::warn!("invalid free index. item space occupied: {index}");
@@ -399,28 +426,9 @@ impl SnakeDb {
             self.free += 1;
             head.set_free(true);
             head.set_alive(true);
-            if let Err(e) = self.index.set(head) {
+            if let Err(e) = self.index.set(&head) {
                 log::warn!("set head: {e:?} - {:?}", head.gene);
             }
         }
     }
-
-    // pub fn add_dead(&mut self, head: &SnakeHead) {
-    //     self.live -= 1;
-    //     if self.dead as usize >= self.dead_list.len() {
-    //         return;
-    //     }
-    //
-    //     if head.position == 0 || head.capacity == 0 {
-    //         log::warn!("adding in invalid SnakeDead to dead_list: {head:?}");
-    //         return;
-    //     }
-    //
-    //     // // combined size of head + tail = snake :)
-    //     // let size = SnakeHead::N + new.capacity;
-    //     //
-    //     // for old in self.dead_list.iter_mut() {
-    //     //     if old.position + old.capacity == new.position {}
-    //     // }
-    // }
 }

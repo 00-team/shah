@@ -4,9 +4,11 @@ mod note;
 mod phone;
 mod user;
 
-use crate::note::db::Note;
-use rand::seq::SliceRandom;
-use shah::{db::pond::Origin, error::SystemError, Command, Gene};
+use crate::models::State;
+use rand::Rng;
+use shah::{
+    db::snake::SnakeHead, error::SystemError, Binary, Command, Gene, BLOCK_SIZE,
+};
 use std::io::{stdout, Write};
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -16,7 +18,89 @@ enum Commands {
     #[default]
     Help,
     Run,
-    Note,
+    Detail,
+}
+
+pub fn detail_get(
+    state: &mut State, gene: &Gene,
+) -> Result<(Vec<u8>, SnakeHead), SystemError> {
+    let mut head = SnakeHead::default();
+    let mut buf = [0u8; BLOCK_SIZE];
+    state.detail.read(gene, &mut head, 0, &mut buf)?;
+
+    let len = head.length.min(head.capacity);
+    let len = if len == 0 { head.capacity } else { len } as usize;
+    // let mut v = Vec::with_capacity(len);
+    // unsafe { v.set_len(len) };
+    let mut v = vec![0u8; len];
+
+    if len > BLOCK_SIZE {
+        v[..BLOCK_SIZE].copy_from_slice(&buf);
+        for i in 1..=(len / BLOCK_SIZE) {
+            let off = i * BLOCK_SIZE;
+            state.detail.read(gene, &mut head, off as u64, &mut buf)?;
+            v[off..(off + BLOCK_SIZE).min(len)]
+                .copy_from_slice(&buf[..(len - off).min(BLOCK_SIZE)])
+        }
+    } else {
+        v.copy_from_slice(&buf[..len]);
+    }
+
+    Ok((v, head))
+    // Ok(v.as_utf8_str().to_string())
+}
+
+pub fn detail_set(
+    state: &mut State, gene: Option<Gene>, data: &[u8],
+) -> Result<SnakeHead, SystemError> {
+    // assert!(data.len() <= BLOCK_SIZE);
+
+    let len = data.len().min(detail::DETAIL_MAX);
+    let mut snake: Option<SnakeHead> = None;
+    if let Some(old) = &gene {
+        let mut old_head = SnakeHead::default();
+        state.detail.index.get(old, &mut old_head)?;
+        if old_head.capacity >= len as u64 {
+            snake = Some(old_head);
+        } else {
+            state.detail.free(old)?;
+        }
+    }
+    if snake.is_none() {
+        let cap = (len + detail::DETAIL_BUF).min(detail::DETAIL_MAX) as u64;
+        let mut head = SnakeHead::default();
+        state.detail.alloc(cap, &mut head)?;
+        snake = Some(head);
+    }
+    let snake = snake.unwrap();
+    let mut rethead = SnakeHead::default();
+    state.detail.write(&snake.gene, &mut rethead, 0, &data[0..len])?;
+
+    for i in 0..=(len / BLOCK_SIZE) {
+        let off = i * BLOCK_SIZE;
+        if len < (off + BLOCK_SIZE) {
+            let mut write_buffer = [0u8; BLOCK_SIZE];
+            let wlen = len - off;
+            write_buffer[0..wlen].copy_from_slice(&data[off..len]);
+            state.detail.write(
+                &snake.gene,
+                &mut rethead,
+                off as u64,
+                &write_buffer[0..wlen],
+            )?;
+        } else {
+            state.detail.write(
+                &snake.gene,
+                &mut rethead,
+                off as u64,
+                &data[off..off + BLOCK_SIZE],
+            )?;
+        }
+    }
+
+    state.detail.set_length(&snake.gene, &mut rethead, len as u64)?;
+
+    Ok(rethead)
 }
 
 fn main() -> Result<(), SystemError> {
@@ -39,49 +123,109 @@ fn main() -> Result<(), SystemError> {
         Commands::Run => {
             shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
         }
-        Commands::Note => {
-            let mut origin_pool = Vec::<Origin>::new();
-            for _ in 0..5 {
-                let mut origin = Origin::default();
-                state.notes.origins.add(&mut origin)?;
-                origin_pool.push(origin);
+        Commands::Detail => {
+            let mut rng = rand::thread_rng();
+            let mut pool = Vec::<(u8, u64, Gene)>::with_capacity(10_000);
+            let mut set_buf = [0u8; 10 * 1024];
+            let mut get_buf = [0u8; 10 * 1024];
+
+            let mut total_length = 0u64;
+            let mut total_capacity = 0u64;
+
+            for _ in 0usize..10_000 {
+                let len = rng.gen_range(1u64..5049) + 8;
+                let ulen = len as usize;
+                let char = rng.gen_range(b'a'..b'z');
+                set_buf[0..ulen - 8].fill(char);
+                set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
+                let head = detail_set(&mut state, None, &set_buf[0..ulen])?;
+                assert_eq!(head.length, len);
+                pool.push((char, len, head.gene));
+                total_length += len;
+                total_capacity += head.capacity;
+                assert_eq!(head.length, len, "set length is not correct");
             }
-            let mut note_pool = Vec::<Gene>::with_capacity(500);
-            for i in 0..500 {
-                let mut note = Note::default();
-                note.set_note(&format!(
-                    "note: {i} - {} - {}",
-                    ["\n\nl2", "\n\n\nl3", "\nl1", "xxx\nxxx\nxxx\n"]
-                        .choose(&mut rand::thread_rng())
-                        .unwrap(),
-                    rand::random::<u16>()
-                ));
-                let og = origin_pool.choose(&mut rand::thread_rng()).unwrap();
-                state.notes.add(&og.gene, &mut note)?;
-                note_pool.push(note.gene);
+
+            println!("total_length: {total_length}");
+            println!("total_capacity: {total_capacity}");
+            println!(
+                "total_capacity + SnakeHead::N: {}",
+                total_capacity + SnakeHead::N
+            );
+
+            for (char, len, gene) in pool.iter() {
+                let ulen = *len as usize;
+                let (data, head) = detail_get(&mut state, gene)?;
+
+                assert_eq!(data.len(), ulen, "invalid data len");
+                assert_eq!(*len, head.length, "invalid head len");
+                assert!(
+                    head.length <= head.capacity,
+                    "invalid length <= capacity"
+                );
+                get_buf[0..ulen - 8].fill(*char);
+                assert_eq!(data[..ulen - 8], get_buf[0..ulen - 8], "bad data");
+                let data_len = u64::from_le_bytes(
+                    data[ulen - 8..ulen].try_into().unwrap(),
+                );
+                assert_eq!(data_len, *len, "invalid len in data");
             }
-            note_pool.shuffle(&mut rand::thread_rng());
-            for _ in 0..499 {
-                let mut note = Note::default();
-                let ng = note_pool.pop().unwrap();
-                state.notes.get(&ng, &mut note)?;
-                note.set_note("deleted");
-                state.notes.set(&mut note)?;
-                state.notes.del(&ng, &mut note)?;
+
+            log::info!("deleting all details");
+            // pool.shuffle(&mut rng);
+            for (i, (_, _, gene)) in pool.iter().enumerate() {
+                if i % 2 == 0 {
+                    continue;
+                }
+                state.detail.free(gene)?;
             }
-            for i in 0..500 {
-                let mut note = Note::default();
-                note.set_note(&format!(
-                    "note: {i} - {} - {}",
-                    ["\n\nl2", "\n\n\nl3", "\nl1", "xxx\nxxx\nxxx\n"]
-                        .choose(&mut rand::thread_rng())
-                        .unwrap(),
-                    rand::random::<u16>()
-                ));
-                let og = origin_pool.choose(&mut rand::thread_rng()).unwrap();
-                state.notes.add(&og.gene, &mut note)?;
-                note_pool.push(note.gene);
+
+            for (i, (_, _, gene)) in pool.iter().enumerate() {
+                if i % 2 != 0 {
+                    continue;
+                }
+                state.detail.free(gene)?;
             }
+
+            // log::info!("reset all details");
+            // let mut new_total_length = 0u64;
+            // let mut new_total_capacity = 0u64;
+            //
+            // for (char, len, gene) in pool.iter_mut() {
+            //     *len = rng.gen_range(4000u64..9549) + 8;
+            //     let ulen = *len as usize;
+            //     *char = rng.gen_range(b'a'..b'z');
+            //     set_buf[0..ulen - 8].fill(*char);
+            //     set_buf[ulen - 8..ulen].clone_from_slice(&len.to_le_bytes());
+            //     let head =
+            //         detail_set(&mut state, Some(*gene), &set_buf[0..ulen])?;
+            //     *gene = head.gene;
+            //     assert_eq!(head.length, *len, "invalid head length");
+            //     // pool.push((*char, len, head.gene));
+            //     new_total_length += *len;
+            //     new_total_capacity += head.capacity;
+            // }
+            //
+            // println!("new_total_length: {new_total_length}");
+            // println!("new_total_capacity: {new_total_capacity}");
+            //
+            // for (char, len, gene) in pool.iter() {
+            //     let ulen = *len as usize;
+            //     let (data, head) = detail_get(&mut state, gene)?;
+            //
+            //     assert_eq!(data.len(), ulen, "invalid data len");
+            //     assert_eq!(*len, head.length, "invalid head len");
+            //     assert!(
+            //         head.length <= head.capacity,
+            //         "invalid length <= capacity"
+            //     );
+            //     get_buf[0..ulen - 8].fill(*char);
+            //     assert_eq!(data[..ulen - 8], get_buf[0..ulen - 8], "bad data");
+            //     let data_len = u64::from_le_bytes(
+            //         data[ulen - 8..ulen].try_into().unwrap(),
+            //     );
+            //     assert_eq!(data_len, *len, "invalid len in data");
+            // }
         }
     }
 

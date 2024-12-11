@@ -71,6 +71,13 @@ pub fn run<T: Debug>(
                     &reply.as_binary()[..ReplyHead::S + output_size],
                     &addr,
                 );
+                log::debug!(
+                    "reply {}::{}: {} {}μs",
+                    scope.name,
+                    route.name,
+                    reply.head.size,
+                    reply.head.elapsed
+                );
                 // if send(&server, reply.head.as_binary(), &addr) {
                 //     continue;
                 // };
@@ -80,6 +87,13 @@ pub fn run<T: Debug>(
                 reply.head.error = e.as_u32();
                 reply.head.size = 0;
                 send(&server, reply.head.as_binary(), &addr);
+                log::debug!(
+                    "reply {}::{}: {} {}μs",
+                    scope.name,
+                    route.name,
+                    reply.head.error,
+                    reply.head.elapsed
+                );
             }
         }
     }

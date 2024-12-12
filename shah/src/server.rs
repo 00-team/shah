@@ -89,7 +89,7 @@ pub fn run<T: Debug>(
                 reply.head.size = 0;
                 send(&server, reply.head.as_binary(), &addr);
                 log::debug!(
-                    "reply {}::{}: {} {}μs",
+                    "reply {}::{}: err({:x}) {}μs",
                     scope.name,
                     route.name,
                     reply.head.error,

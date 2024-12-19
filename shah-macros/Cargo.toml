@@ -1,6 +1,6 @@
 [package]
 name = "shah-macros"
-version = "0.2.1"
+version = "0.3.0"
 description = "shah db macros"
 publish = true
 readme.workspace = true

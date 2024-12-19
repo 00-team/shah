@@ -34,9 +34,11 @@ pub trait IsNotFound {
     fn is_not_found(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy)]
-#[repr(u16)]
+#[shah::enum_int(ty = u16)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum SystemError {
+    #[default]
+    Unknown = 0,
     BadOrderId,
     Database,
     Io,
@@ -82,12 +84,6 @@ impl From<std::io::Error> for SystemError {
 impl From<SystemError> for ErrorCode {
     fn from(value: SystemError) -> Self {
         Self::system(value as u16)
-    }
-}
-
-impl From<u16> for SystemError {
-    fn from(value: u16) -> Self {
-        unsafe { core::mem::transmute(value) }
     }
 }
 

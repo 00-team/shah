@@ -15,7 +15,7 @@ pub use models::*;
 pub use taker::Taker;
 
 pub use shah_macros::{
-    api, enum_code, model, perms, routes, Command, Duck, Entity,
+    api, enum_int, enum_code, model, perms, routes, Command, Duck, Entity,
 };
 
 pub const PAGE_SIZE: usize = 0x20;

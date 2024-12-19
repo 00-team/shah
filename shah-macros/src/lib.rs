@@ -3,6 +3,7 @@ mod command;
 mod duck;
 mod entity;
 mod enum_code;
+mod enum_int;
 mod model;
 mod perms;
 mod routes;
@@ -17,6 +18,11 @@ pub fn command(code: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn enum_code(args: TokenStream, code: TokenStream) -> TokenStream {
     enum_code::enum_code(args, code)
+}
+
+#[proc_macro_attribute]
+pub fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
+    enum_int::enum_int(args, code)
 }
 
 #[proc_macro_attribute]

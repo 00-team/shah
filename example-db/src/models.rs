@@ -14,10 +14,12 @@ pub struct State {
 
 pub type ExampleApi = shah::Api<State>;
 
+#[shah::enum_int(ty = u16)]
+#[derive(Debug, Default, Clone, Copy)]
 /// example errors
-#[derive(Debug, Clone, Copy)]
-#[repr(u16)]
 pub enum ExampleError {
+    #[default]
+    Unknown = 0,
     UserNotFound,
     BadPhone,
     BadStr,
@@ -26,12 +28,6 @@ pub enum ExampleError {
 impl From<ExampleError> for ErrorCode {
     fn from(value: ExampleError) -> Self {
         Self::user(value as u16)
-    }
-}
-
-impl From<u16> for ExampleError {
-    fn from(value: u16) -> Self {
-        unsafe { core::mem::transmute(value) }
     }
 }
 

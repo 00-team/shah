@@ -11,3 +11,17 @@ pub(crate) fn getrandom(buf: &mut [u8]) {
         );
     }
 }
+
+#[cfg(target_arch = "aarch64")]
+/// getrandom syscall
+pub(crate) fn getrandom(buf: &mut [u8]) {
+    unsafe {
+        ::core::arch::asm! (
+            "svc 0",
+            in("x8") 278,
+            in("x0") buf.as_ptr() as usize,
+            in("x1") buf.len(),
+            in("x2") 0 // flags
+        );
+    }
+}

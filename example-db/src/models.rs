@@ -1,4 +1,4 @@
-use shah::{db::snake::SnakeDb, ErrorCode};
+use shah::{db::snake::SnakeDb, error::IsNotFound, ErrorCode};
 
 use crate::{note::db::NoteDb, phone::db::PhoneDb, user::db::UserDb};
 
@@ -21,6 +21,15 @@ pub enum ExampleError {
     UserNotFound,
     BadPhone,
     BadStr,
+}
+
+impl IsNotFound for ExampleError {
+    fn is_not_found(&self) -> bool {
+        match self {
+            Self::UserNotFound | Self::BadPhone => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<ExampleError> for ErrorCode {

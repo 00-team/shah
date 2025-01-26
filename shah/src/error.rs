@@ -123,8 +123,12 @@ impl From<SystemError> for ErrorCode {
     }
 }
 
+pub trait IsNotFound {
+    fn is_not_found(&self) -> bool;
+}
+
 #[derive(Debug, Clone, Copy)]
-pub enum ClientError<T: Clone + Copy> {
+pub enum ClientError<T> {
     Unknown,
     System(SystemError),
     NotFound(NotFound),
@@ -138,6 +142,25 @@ impl<T: From<u16> + Copy> From<ErrorCode> for ClientError<T> {
             2 => ClientError::NotFound(value.code.into()),
             127 => ClientError::User(value.code.into()),
             _ => ClientError::Unknown,
+        }
+    }
+}
+
+impl<T: IsNotFound> IsNotFound for ClientError<T> {
+    fn is_not_found(&self) -> bool {
+        match self {
+            Self::NotFound(_) => true,
+            Self::User(ue) => ue.is_not_found(),
+            _ => false,
+        }
+    }
+}
+
+impl IsNotFound for ShahError {
+    fn is_not_found(&self) -> bool {
+        match self {
+            Self::NotFound(_) => true,
+            _ => false,
         }
     }
 }

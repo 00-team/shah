@@ -20,13 +20,13 @@ impl Gene {
         out.to_string()
     }
 
-    // pub fn is_none(&self) -> bool {
-    //     self.id == 0
-    // }
-    //
-    // pub fn is_some(&self) -> bool {
-    //     !self.is_none()
-    // }
+    pub fn is_none(&self) -> bool {
+        self.id == 0
+    }
+
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -49,7 +49,6 @@ impl serde::Serialize for Gene {
     where
         S: serde::Serializer,
     {
-        // if self.is_none() {
         if self.id == 0 {
             serializer.serialize_none()
         } else {

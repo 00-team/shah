@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{binary::Binary, error::ShahError};
+use crate::{binary::Binary, error::{NotFound, ShahError}};
 use crate::error::SystemError;
 
 pub trait TrieAbc {
@@ -138,21 +138,21 @@ where
 
     pub fn get(
         &mut self, key: &TrieConstKey<INDEX>,
-    ) -> Result<Option<Val>, ShahError> {
+    ) -> Result<Val, ShahError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
         let mut node_value = [Val::default(); ABC_LEN];
         let db_size = self.db_size()?;
 
         if db_size < pos + Self::MAX_SIZE {
-            return Ok(None);
+            return Err(NotFound::NoTrieValue)?;
         }
 
         self.file.seek(SeekFrom::Start(pos))?;
         self.file.read_exact(node[0].as_binary_mut())?;
         pos = node[0];
         if pos == 0 {
-            return Ok(None);
+            return Err(NotFound::NoTrieValue)?;
         }
 
         for i in 0..INDEX {
@@ -160,14 +160,14 @@ where
 
             if i + 1 == INDEX {
                 self.file.read_exact(node_value.as_binary_mut())?;
-                return Ok(Some(node_value[key.index[i]]));
+                return Ok(node_value[key.index[i]]);
             }
 
             self.file.read_exact(node.as_binary_mut())?;
             pos = node[key.index[i]];
 
             if pos == 0 || db_size < pos + Self::MAX_SIZE {
-                return Ok(None);
+                return Err(NotFound::NoTrieValue)?;
             }
         }
 

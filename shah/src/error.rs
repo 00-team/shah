@@ -83,6 +83,7 @@ pub enum NotFound {
     DeadSet,
     SnakeIsFree,
     BadGenePepper,
+    NoTrieValue,
 }
 
 impl From<NotFound> for ErrorCode {

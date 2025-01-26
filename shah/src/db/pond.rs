@@ -1,5 +1,5 @@
 use super::entity::{Entity, EntityCount, EntityDb};
-use crate::error::{NotFound, ShahError, SystemError};
+use crate::error::{IsNotFound, NotFound, ShahError, SystemError};
 use crate::{
     Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
 };
@@ -93,8 +93,8 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         self.index = self.index.setup(|_, pond| {
             if pond.is_alive() && pond.is_free() && pond.empty > 0 {
                 self.free_list.push(pond.gene);
-                if pond.next.is_some() || pond.past.is_some() {
-                    log::warn!("invalid pond: {pond:?}");
+                if pond.next.id != 0 || pond.past.id != 0 {
+                    log::warn!("invalid pond: {pond:?}. free ponds must not have siblings");
                 }
             }
         })?;
@@ -170,14 +170,16 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             origin.last = pond.past;
         }
 
-        if pond.past.is_some() {
-            self.index.get(&pond.past, &mut old_pond)?;
+        if let Err(e) = self.index.get(&pond.past, &mut old_pond) {
+            e.not_found_ok()?;
+        } else {
             old_pond.next = pond.next;
             self.index.set(&old_pond)?;
-        }
+        };
 
-        if pond.next.is_some() {
-            self.index.get(&pond.next, &mut old_pond)?;
+        if let Err(e) = self.index.get(&pond.next, &mut old_pond) {
+            e.not_found_ok()?;
+        } else {
             old_pond.past = pond.past;
             self.index.set(&old_pond)?;
         }
@@ -197,7 +199,9 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         let mut pond_gene = origin.first;
         let mut pond = Pond::default();
         loop {
-            if pond_gene.is_none() {
+            if let Err(e) = self.index.get(&pond_gene, &mut pond) {
+                e.not_found_ok()?;
+
                 let mut new = Pond::default();
                 if let Some(free) = self.take_free() {
                     self.index.get(&free, &mut new)?;
@@ -224,7 +228,6 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
                 return Ok(new);
             }
 
-            self.index.get(&pond_gene, &mut pond)?;
             if pond.empty > 0 {
                 return Ok(pond);
             }
@@ -478,11 +481,12 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         let mut pond_gene = origin.first;
         let mut pond = Pond::default();
         loop {
-            if pond_gene.is_none() {
-                break;
+            if let Err(e) = self.index.get(&pond_gene, &mut pond) {
+                if e.is_not_found() {
+                    break;
+                }
+                return Err(e)?;
             }
-
-            self.index.get(&pond_gene, &mut pond)?;
             pond_gene = pond.next;
             self.pond_free(&mut pond)?;
         }

@@ -1,5 +1,8 @@
 use super::entity::{Entity, EntityDb};
-use crate::{error::{NotFound, ShahError, SystemError}, Binary, Gene, BLOCK_SIZE};
+use crate::{
+    error::{NotFound, ShahError, SystemError},
+    Binary, Gene, BLOCK_SIZE,
+};
 use shah_macros::Entity;
 use std::{
     fs::File,
@@ -238,9 +241,8 @@ impl SnakeDb {
         self.file.seek(SeekFrom::Start(head.position + head.capacity - 1))?;
         self.file.write_all(&[0u8])?;
 
-        if head.gene.is_some() {
-            self.index.set(head)?;
-        } else {
+        if let Err(e) = self.index.set(head) {
+            e.not_found_ok()?;
             self.index.add(head)?;
         }
 
@@ -340,7 +342,7 @@ impl SnakeDb {
     }
 
     fn add_free(&mut self, mut head: SnakeHead) -> Result<(), ShahError> {
-        if head.position == 0 || head.capacity == 0 || head.gene.is_none() {
+        if head.position == 0 || head.capacity == 0 || head.gene.id == 0 {
             log::warn!("invalid head into add_free");
             return Ok(());
         }

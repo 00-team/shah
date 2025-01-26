@@ -1,6 +1,4 @@
-use std::str::Utf8Error;
-
-use shah::{db::snake::SnakeDb, error::SystemError, ErrorCode};
+use shah::{db::snake::SnakeDb, ErrorCode};
 
 use crate::{note::db::NoteDb, phone::db::PhoneDb, user::db::UserDb};
 
@@ -28,31 +26,5 @@ pub enum ExampleError {
 impl From<ExampleError> for ErrorCode {
     fn from(value: ExampleError) -> Self {
         Self::user(value as u16)
-    }
-}
-
-pub enum MyErr {
-    System(SystemError),
-    User(ExampleError),
-}
-
-impl From<MyErr> for ErrorCode {
-    fn from(value: MyErr) -> Self {
-        match value {
-            MyErr::User(e) => ErrorCode::user(e as u16),
-            MyErr::System(e) => ErrorCode::system(e as u16),
-        }
-    }
-}
-
-impl From<Utf8Error> for MyErr {
-    fn from(_: Utf8Error) -> Self {
-        MyErr::User(ExampleError::BadStr)
-    }
-}
-
-impl From<SystemError> for MyErr {
-    fn from(value: SystemError) -> Self {
-        MyErr::System(value)
     }
 }

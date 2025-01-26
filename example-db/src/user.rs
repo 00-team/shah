@@ -2,7 +2,7 @@ pub mod db {
     #![allow(dead_code)]
 
     use shah::db::entity::EntityDb;
-    use shah::error::SystemError;
+    use shah::error::ShahError;
     use shah::Entity;
     use shah::Gene;
 
@@ -68,7 +68,7 @@ pub mod db {
         }
     }
 
-    pub(crate) fn setup() -> Result<UserDb, SystemError> {
+    pub(crate) fn setup() -> Result<UserDb, ShahError> {
         UserDb::new("user")?.setup(|_, _| {})
     }
 }

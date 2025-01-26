@@ -1,5 +1,5 @@
 use super::entity::{Entity, EntityDb};
-use crate::{error::SystemError, Binary, Gene, BLOCK_SIZE};
+use crate::{error::{NotFound, ShahError, SystemError}, Binary, Gene, BLOCK_SIZE};
 use shah_macros::Entity;
 use std::{
     fs::File,
@@ -40,7 +40,7 @@ pub struct SnakeDb {
 }
 
 impl SnakeDb {
-    pub fn new(name: &str) -> Result<Self, SystemError> {
+    pub fn new(name: &str) -> Result<Self, ShahError> {
         std::fs::create_dir_all("data/")?;
 
         let file = std::fs::OpenOptions::new()
@@ -60,7 +60,7 @@ impl SnakeDb {
         Ok(db)
     }
 
-    pub fn setup(mut self) -> Result<Self, SystemError> {
+    pub fn setup(mut self) -> Result<Self, ShahError> {
         if self.db_size()? < SnakeHead::N {
             self.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
             self.file.write_all(&[0u8])?;
@@ -116,7 +116,7 @@ impl SnakeDb {
 
     fn take_free(
         &mut self, capacity: u64,
-    ) -> Result<Option<SnakeFree>, SystemError> {
+    ) -> Result<Option<SnakeFree>, ShahError> {
         let db_size = self.db_size()?;
 
         let mut travel = 0;
@@ -213,9 +213,9 @@ impl SnakeDb {
 
     pub fn alloc(
         &mut self, capacity: u64, head: &mut SnakeHead,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         if capacity == 0 {
-            return Err(SystemError::SnakeCapacityIsZero);
+            return Err(SystemError::SnakeCapacityIsZero)?;
         }
 
         head.zeroed();
@@ -250,15 +250,15 @@ impl SnakeDb {
     fn check_offset(
         &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64,
         buflen: usize,
-    ) -> Result<usize, SystemError> {
+    ) -> Result<usize, ShahError> {
         self.index.get(gene, head)?;
         if head.is_free() {
-            return Err(SystemError::SnakeIsFree);
+            return Err(NotFound::SnakeIsFree)?;
         }
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
         if offset >= head.capacity {
-            return Err(SystemError::BadOffset);
+            return Err(SystemError::BadOffset)?;
         }
         let len = if offset + (buflen as u64) > head.capacity {
             (head.capacity - offset) as usize
@@ -271,7 +271,7 @@ impl SnakeDb {
 
     pub fn write(
         &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64, data: &[u8],
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         let len = self.check_offset(gene, head, offset, data.len())?;
 
         // self.file.seek(SeekFrom::Start(head.position + head.capacity - 1))?;
@@ -286,7 +286,7 @@ impl SnakeDb {
     pub fn read(
         &mut self, gene: &Gene, head: &mut SnakeHead, offset: u64,
         data: &mut [u8],
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         let len = self.check_offset(gene, head, offset, data.len())?;
         // log::info!(
         //     "read len: {len} - offset: {offset} - data len: {} - head: {head:#?}",
@@ -301,15 +301,15 @@ impl SnakeDb {
 
     pub fn set_length(
         &mut self, gene: &Gene, head: &mut SnakeHead, length: u64,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         self.index.get(gene, head)?;
         if head.is_free() {
-            return Err(SystemError::SnakeIsFree);
+            return Err(NotFound::SnakeIsFree)?;
         }
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
         if length > head.capacity {
-            return Err(SystemError::SnakeBadLength);
+            return Err(SystemError::SnakeBadLength)?;
         }
 
         head.length = length;
@@ -318,7 +318,7 @@ impl SnakeDb {
         Ok(())
     }
 
-    pub fn free(&mut self, gene: &Gene) -> Result<(), SystemError> {
+    pub fn free(&mut self, gene: &Gene) -> Result<(), ShahError> {
         let mut head = SnakeHead::default();
         self.index.get(gene, &mut head)?;
 
@@ -339,7 +339,7 @@ impl SnakeDb {
         Ok(())
     }
 
-    fn add_free(&mut self, mut head: SnakeHead) -> Result<(), SystemError> {
+    fn add_free(&mut self, mut head: SnakeHead) -> Result<(), ShahError> {
         if head.position == 0 || head.capacity == 0 || head.gene.is_none() {
             log::warn!("invalid head into add_free");
             return Ok(());

@@ -1,5 +1,5 @@
 pub mod db {
-    use shah::{db::pond::PondDb, error::SystemError, Gene};
+    use shah::{db::pond::PondDb, error::ShahError, Gene};
 
     #[shah::model]
     #[derive(Debug, shah::Entity, shah::Duck, Clone, Copy)]
@@ -16,7 +16,7 @@ pub mod db {
     pub type NoteDb = PondDb<Note>;
 
     #[allow(dead_code)]
-    pub(crate) fn setup() -> Result<NoteDb, SystemError> {
+    pub(crate) fn setup() -> Result<NoteDb, ShahError> {
         NoteDb::new("note")?.setup()
     }
 }

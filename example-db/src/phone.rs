@@ -1,7 +1,7 @@
 pub mod db {
     use shah::{
         db::trie_const::{TrieAbc, TrieConst},
-        error::SystemError,
+        error::ShahError,
         Gene,
     };
 
@@ -20,7 +20,7 @@ pub mod db {
     // const PHONE_ABC: &str = "0123456789";
     pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
-    pub fn setup() -> Result<PhoneDb, SystemError> {
+    pub fn setup() -> Result<PhoneDb, ShahError> {
         PhoneDb::new("phone", PhoneAbc).setup()
     }
 
@@ -64,16 +64,18 @@ pub mod db {
 
 #[shah::api(api = crate::models::ExampleApi, scope = 1, error = crate::models::ExampleError)]
 pub mod api {
-    use crate::models::{MyErr, State};
-    use shah::Gene;
+    use crate::models::{ExampleError, State};
+    use shah::{ErrorCode, Gene};
 
     pub(crate) fn phone_add(
         state: &mut State, inp: (&[u8; 12], &Gene),
         out: (&mut [u8; 12], &mut Gene),
-    ) -> Result<(), MyErr> {
+    ) -> Result<(), ErrorCode> {
         println!("phone_add: {inp:#?}");
 
-        let phone = core::str::from_utf8(&inp.0[..11])?;
+        let Ok(phone) = core::str::from_utf8(&inp.0[..11]) else {
+            return Err(ExampleError::BadStr)?;
+        };
         let key = state.phone.convert_key(&phone[2..11])?;
 
         let old = state.phone.set(&key, *inp.1)?.unwrap_or_default();

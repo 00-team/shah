@@ -10,8 +10,12 @@ impl ErrorCode {
         Self { scope: 1, code: code.into() }
     }
 
-    pub fn user<T: Into<u16>>(code: T) -> Self {
+    pub fn not_found<T: Into<u16>>(code: T) -> Self {
         Self { scope: 2, code: code.into() }
+    }
+
+    pub fn user<T: Into<u16>>(code: T) -> Self {
+        Self { scope: 127, code: code.into() }
     }
 
     pub fn as_u32(&self) -> u32 {
@@ -30,8 +34,52 @@ impl From<std::io::Error> for ErrorCode {
     }
 }
 
-pub trait IsNotFound {
-    fn is_not_found(&self) -> bool;
+#[derive(Debug, Clone, Copy)]
+pub enum ShahError {
+    System(SystemError),
+    NotFound(NotFound),
+}
+
+impl From<ShahError> for ErrorCode {
+    fn from(value: ShahError) -> Self {
+        match value {
+            ShahError::System(err) => Self::system(err),
+            ShahError::NotFound(err) => Self::not_found(err),
+        }
+    }
+}
+
+impl From<NotFound> for ShahError {
+    fn from(value: NotFound) -> Self {
+        Self::NotFound(value)
+    }
+}
+
+impl<T: Into<SystemError>> From<T> for ShahError {
+    fn from(value: T) -> Self {
+        Self::System(value.into())
+    }
+}
+
+#[shah::enum_int(ty = u16)]
+#[derive(Debug, Default, Clone, Copy)]
+pub enum NotFound {
+    #[default]
+    Unknown = 0,
+    ZeroGeneId,
+    BadGeneIter,
+    GeneIdNotInDatabase,
+    EntityNotAlive,
+    /// using set for deleting aka seting alive to false without .del(...)
+    DeadSet,
+    SnakeIsFree,
+    BadGenePepper,
+}
+
+impl From<NotFound> for ErrorCode {
+    fn from(value: NotFound) -> Self {
+        Self::not_found(value as u16)
+    }
 }
 
 #[shah::enum_int(ty = u16)]
@@ -40,38 +88,17 @@ pub enum SystemError {
     #[default]
     Unknown = 0,
     BadOrderId,
-    Database,
     Io,
-    ZeroGeneId,
-    BadGenePepper,
-    BadGeneIter,
     BadInputLength,
     BadApiIndex,
-    GeneIdNotInDatabase,
-    EntityNotAlive,
     BadTrieKey,
     SnakeCapacityIsZero,
-    SnakeIsFree,
     BadOffset,
     SnakeBadLength,
+    /// could count parse gene from hex string
     GeneFromHexErr,
-    /// using set for deleting aka seting alive to false without .del(...)
-    DeadSet,
-}
-
-impl IsNotFound for SystemError {
-    fn is_not_found(&self) -> bool {
-        matches!(
-            self,
-            SystemError::ZeroGeneId
-                | SystemError::BadGeneIter
-                | SystemError::GeneIdNotInDatabase
-                | SystemError::EntityNotAlive
-                | SystemError::DeadSet
-                | SystemError::SnakeIsFree
-                | SystemError::BadGenePepper
-        )
-    }
+    /// this may happen if id of gene on the disk is not the correct id
+    MismatchGeneId,
 }
 
 impl From<std::io::Error> for SystemError {
@@ -91,6 +118,7 @@ impl From<SystemError> for ErrorCode {
 pub enum ClientError<T: Clone + Copy> {
     Unknown,
     System(SystemError),
+    NotFound(NotFound),
     User(T),
 }
 
@@ -98,18 +126,9 @@ impl<T: From<u16> + Copy> From<ErrorCode> for ClientError<T> {
     fn from(value: ErrorCode) -> Self {
         match value.scope {
             1 => ClientError::System(value.code.into()),
-            2 => ClientError::User(value.code.into()),
+            2 => ClientError::NotFound(value.code.into()),
+            127 => ClientError::User(value.code.into()),
             _ => ClientError::Unknown,
-        }
-    }
-}
-
-impl<T: IsNotFound + Copy> IsNotFound for ClientError<T> {
-    fn is_not_found(&self) -> bool {
-        match self {
-            Self::Unknown => false,
-            Self::User(u) => u.is_not_found(),
-            Self::System(s) => s.is_not_found(),
         }
     }
 }

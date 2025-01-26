@@ -6,7 +6,7 @@ mod user;
 
 use crate::models::State;
 use shah::{
-    db::snake::SnakeHead, error::SystemError, Command, Gene, BLOCK_SIZE,
+    db::snake::SnakeHead, error::{ShahError, SystemError}, Command, Gene, BLOCK_SIZE,
 };
 use std::io::{stdout, Write};
 
@@ -21,7 +21,7 @@ enum Commands {
 
 pub fn detail_get(
     state: &mut State, gene: &Gene,
-) -> Result<(Vec<u8>, SnakeHead), SystemError> {
+) -> Result<(Vec<u8>, SnakeHead), ShahError> {
     let mut head = SnakeHead::default();
     let mut buf = [0u8; BLOCK_SIZE];
     state.detail.read(gene, &mut head, 0, &mut buf)?;
@@ -50,7 +50,7 @@ pub fn detail_get(
 
 pub fn detail_set(
     state: &mut State, gene: Option<Gene>, data: &[u8],
-) -> Result<SnakeHead, SystemError> {
+) -> Result<SnakeHead, ShahError> {
     // assert!(data.len() <= BLOCK_SIZE);
 
     let len = data.len().min(detail::DETAIL_MAX);

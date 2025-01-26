@@ -1,4 +1,4 @@
-use crate::error::SystemError;
+use crate::error::{NotFound, ShahError};
 use crate::{
     Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
 };
@@ -47,7 +47,7 @@ impl<T> EntityDb<T>
 where
     T: Entity + Debug + Clone + Default + Binary,
 {
-    pub fn new(name: &str) -> Result<Self, SystemError> {
+    pub fn new(name: &str) -> Result<Self, ShahError> {
         std::fs::create_dir_all("data/")?;
 
         let file = std::fs::OpenOptions::new()
@@ -70,7 +70,7 @@ where
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn setup<F>(mut self, mut f: F) -> Result<Self, SystemError>
+    pub fn setup<F>(mut self, mut f: F) -> Result<Self, ShahError>
     where
         F: FnMut(&mut Self, &T),
     {
@@ -116,10 +116,10 @@ where
         Ok(self)
     }
 
-    pub fn seek_id(&mut self, id: GeneId) -> Result<(), SystemError> {
+    pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
         if id == 0 {
             log::warn!("gene id is zero");
-            return Err(SystemError::ZeroGeneId);
+            return Err(NotFound::ZeroGeneId)?;
         }
 
         let db_size = self.db_size()?;
@@ -127,7 +127,7 @@ where
 
         if pos > db_size - T::N {
             log::warn!("invalid position: {pos}/{db_size}");
-            return Err(SystemError::GeneIdNotInDatabase);
+            return Err(NotFound::GeneIdNotInDatabase)?;
         }
 
         self.file.seek(SeekFrom::Start(pos))?;
@@ -137,30 +137,30 @@ where
 
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
         if !entity.is_alive() {
-            return Err(SystemError::EntityNotAlive);
+            return Err(NotFound::EntityNotAlive)?;
         }
 
         let og = entity.gene();
 
         if gene.pepper != og.pepper {
             log::warn!("bad gene {:?} != {:?}", gene.pepper, og.pepper);
-            return Err(SystemError::BadGenePepper);
+            return Err(NotFound::BadGenePepper)?;
         }
 
         if gene.iter != og.iter {
             log::warn!("bad iter {:?} != {:?}", gene.iter, og.iter);
-            return Err(SystemError::BadGeneIter);
+            return Err(NotFound::BadGeneIter)?;
         }
 
         Ok(())
     }
 
-    pub fn seek_add(&mut self) -> Result<u64, SystemError> {
+    pub fn seek_add(&mut self) -> Result<u64, ShahError> {
         let pos = self.file.seek(SeekFrom::End(0))?;
         if pos == 0 {
             self.file.seek(SeekFrom::Start(T::N))?;
@@ -181,7 +181,7 @@ where
         Ok(pos)
     }
 
-    pub fn new_gene(&mut self) -> Result<Gene, SystemError> {
+    pub fn new_gene(&mut self) -> Result<Gene, ShahError> {
         let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
         crate::utils::getrandom(&mut gene.pepper);
         gene.server = 69;
@@ -204,7 +204,7 @@ where
         Ok(gene)
     }
 
-    pub fn add(&mut self, entity: &mut T) -> Result<(), SystemError> {
+    pub fn add(&mut self, entity: &mut T) -> Result<(), ShahError> {
         entity.set_alive(true);
         if entity.gene().is_none() {
             entity.gene_mut().clone_from(&self.new_gene()?);
@@ -217,7 +217,7 @@ where
         Ok(())
     }
 
-    pub fn count(&mut self) -> Result<EntityCount, SystemError> {
+    pub fn count(&mut self) -> Result<EntityCount, ShahError> {
         let db_size = self.db_size()?;
         let total = db_size / T::N - 1;
         Ok(EntityCount { total, alive: self.live })
@@ -237,9 +237,9 @@ where
         self.dead_list.push(gene.id);
     }
 
-    pub fn set(&mut self, entity: &T) -> Result<(), SystemError> {
+    pub fn set(&mut self, entity: &T) -> Result<(), ShahError> {
         if !entity.is_alive() {
-            return Err(SystemError::DeadSet);
+            return Err(NotFound::DeadSet)?;
         }
 
         let mut old_entity = T::default();
@@ -252,7 +252,7 @@ where
 
     pub fn del(
         &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         self.get(gene, entity)?;
         self.file.seek_relative(-(T::N as i64))?;
         entity.set_alive(false);
@@ -267,7 +267,7 @@ where
 
     pub fn list(
         &mut self, page: u64, result: &mut [T; PAGE_SIZE],
-    ) -> Result<usize, SystemError> {
+    ) -> Result<usize, ShahError> {
         self.seek_id(page * PAGE_SIZE as u64 + 1)?;
         let size = self.file.read(result.as_binary_mut())?;
         let count = size / T::S;

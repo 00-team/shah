@@ -1,5 +1,5 @@
 use super::entity::{Entity, EntityCount, EntityDb};
-use crate::error::SystemError;
+use crate::error::{NotFound, ShahError, SystemError};
 use crate::{
     Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
 };
@@ -63,7 +63,7 @@ pub struct PondDb<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> {
 }
 
 impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
-    pub fn new(name: &str) -> Result<Self, SystemError> {
+    pub fn new(name: &str) -> Result<Self, ShahError> {
         std::fs::create_dir_all("data/")?;
 
         let file = std::fs::OpenOptions::new()
@@ -85,7 +85,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         Ok(db)
     }
 
-    pub fn setup(mut self) -> Result<Self, SystemError> {
+    pub fn setup(mut self) -> Result<Self, ShahError> {
         self.live = 0;
         self.free_list.clear();
 
@@ -144,7 +144,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     fn add_empty_pond(
         &mut self, origin: &mut Origin, mut pond: Pond,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         origin.ponds -= 1;
         let mut old_pond = Pond::default();
         let mut buf = [T::default(); PAGE_SIZE];
@@ -193,7 +193,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     fn half_empty_pond(
         &mut self, origin: &mut Origin,
-    ) -> Result<Pond, SystemError> {
+    ) -> Result<Pond, ShahError> {
         let mut pond_gene = origin.first;
         let mut pond = Pond::default();
         loop {
@@ -234,7 +234,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     pub fn add(
         &mut self, origene: &Gene, item: &mut T,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         item.set_alive(true);
 
         let mut origin = Origin::default();
@@ -291,7 +291,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         Ok(())
     }
 
-    pub fn seek_add(&mut self) -> Result<u64, SystemError> {
+    pub fn seek_add(&mut self) -> Result<u64, ShahError> {
         let pos = self.file.seek(SeekFrom::End(0))?;
         if pos == 0 {
             self.file.seek(SeekFrom::Start(T::N))?;
@@ -312,10 +312,10 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn seek_id(&mut self, id: GeneId) -> Result<(), SystemError> {
+    pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
         if id == 0 {
             log::warn!("gene id is zero");
-            return Err(SystemError::ZeroGeneId);
+            return Err(NotFound::ZeroGeneId)?;
         }
 
         let db_size = self.db_size()?;
@@ -323,7 +323,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
         if db_size < T::N || pos > db_size - T::N {
             log::warn!("invalid position: {pos}/{db_size}");
-            return Err(SystemError::GeneIdNotInDatabase);
+            return Err(NotFound::GeneIdNotInDatabase)?;
         }
 
         let rs = self.file.seek(SeekFrom::Start(pos))?;
@@ -334,42 +334,42 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
         if !entity.is_alive() {
-            return Err(SystemError::EntityNotAlive);
+            return Err(NotFound::EntityNotAlive)?;
         }
 
         let og = entity.gene();
         if gene.id != og.id {
             log::error!("invalid gene.id != og.id: {} != {}", gene.id, og.id);
-            return Err(SystemError::Database);
+            return Err(SystemError::MismatchGeneId)?;
         }
 
         if gene.pepper != og.pepper {
             log::warn!("bad gene {:?} != {:?}", gene.pepper, og.pepper);
-            return Err(SystemError::BadGenePepper);
+            return Err(NotFound::BadGenePepper)?;
         }
 
         if gene.iter != og.iter {
             log::warn!("bad iter {:?} != {:?}", gene.iter, og.iter);
-            return Err(SystemError::BadGeneIter);
+            return Err(NotFound::BadGeneIter)?;
         }
 
         Ok(())
     }
 
-    pub fn count(&mut self) -> Result<EntityCount, SystemError> {
+    pub fn count(&mut self) -> Result<EntityCount, ShahError> {
         let db_size = self.db_size()?;
         let total = db_size / T::N - 1;
         Ok(EntityCount { total, alive: self.live })
     }
 
-    pub fn set(&mut self, entity: &mut T) -> Result<(), SystemError> {
+    pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
-            return Err(SystemError::DeadSet);
+            return Err(NotFound::DeadSet)?;
         }
 
         let mut old_entity = T::default();
@@ -385,7 +385,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     pub fn del(
         &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         self.get(gene, entity)?;
 
         entity.set_alive(false);
@@ -417,7 +417,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     pub fn list(
         &mut self, page: u64, result: &mut [T; PAGE_SIZE],
-    ) -> Result<usize, SystemError> {
+    ) -> Result<usize, ShahError> {
         self.seek_id(page * PAGE_SIZE as u64 + 1)?;
         let size = self.file.read(result.as_binary_mut())?;
         let count = size / T::S;
@@ -432,7 +432,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
 
     pub fn pond_list(
         &mut self, pond: &mut Pond, result: &mut [T; PAGE_SIZE],
-    ) -> Result<(), SystemError> {
+    ) -> Result<(), ShahError> {
         let pond_gene = pond.gene;
         self.index.get(&pond_gene, pond)?;
 
@@ -442,7 +442,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         Ok(())
     }
 
-    pub fn pond_free(&mut self, pond: &mut Pond) -> Result<(), SystemError> {
+    pub fn pond_free(&mut self, pond: &mut Pond) -> Result<(), ShahError> {
         let mut buf = [T::default(); PAGE_SIZE];
 
         self.seek_id(pond.stack)?;
@@ -471,7 +471,7 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
         Ok(())
     }
 
-    pub fn cascade(&mut self, origene: &Gene) -> Result<(), SystemError> {
+    pub fn cascade(&mut self, origene: &Gene) -> Result<(), ShahError> {
         let mut origin = Origin::default();
         self.origins.get(origene, &mut origin)?;
 

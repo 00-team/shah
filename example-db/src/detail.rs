@@ -3,10 +3,10 @@ pub const DETAIL_BUF: usize = 255;
 
 pub(crate) mod db {
 
-    use shah::{db::snake::SnakeDb, error::SystemError};
+    use shah::{db::snake::SnakeDb, error::ShahError};
 
     #[allow(dead_code)]
-    pub fn setup() -> Result<SnakeDb, SystemError> {
+    pub fn setup() -> Result<SnakeDb, ShahError> {
         SnakeDb::new("detail")?.setup()
     }
 }

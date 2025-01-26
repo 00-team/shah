@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::binary::Binary;
+use crate::{binary::Binary, error::ShahError};
 use crate::error::SystemError;
 
 pub trait TrieAbc {
@@ -87,7 +87,7 @@ where
         }
     }
 
-    pub fn setup(mut self) -> Result<Self, SystemError> {
+    pub fn setup(mut self) -> Result<Self, ShahError> {
         let db_size = self.db_size().expect("could not read db_size");
         let cache_size = self.cache_len * Self::PS;
 
@@ -111,7 +111,7 @@ where
 
     pub fn convert_key(
         &self, key: &str,
-    ) -> Result<TrieConstKey<INDEX>, SystemError> {
+    ) -> Result<TrieConstKey<INDEX>, ShahError> {
         assert_eq!(key.len(), CACHE + INDEX);
 
         let mut tkey = TrieConstKey::<INDEX> { cache: 0, index: [0; INDEX] };
@@ -121,14 +121,14 @@ where
 
         for (i, c) in cache_key.chars().rev().enumerate() {
             let Ok(x) = self.abc.convert_char(c) else {
-                return Err(SystemError::BadTrieKey);
+                return Err(SystemError::BadTrieKey)?;
             };
             tkey.cache += (ABC_LEN.pow(i as u32) * x) as u64;
         }
 
         for (i, c) in index_key.chars().enumerate() {
             let Ok(x) = self.abc.convert_char(c) else {
-                return Err(SystemError::BadTrieKey);
+                return Err(SystemError::BadTrieKey)?;
             };
             tkey.index[i] = x;
         }
@@ -138,7 +138,7 @@ where
 
     pub fn get(
         &mut self, key: &TrieConstKey<INDEX>,
-    ) -> Result<Option<Val>, SystemError> {
+    ) -> Result<Option<Val>, ShahError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
         let mut node_value = [Val::default(); ABC_LEN];
@@ -176,7 +176,7 @@ where
 
     pub fn set(
         &mut self, key: &TrieConstKey<INDEX>, val: Val,
-    ) -> Result<Option<Val>, SystemError> {
+    ) -> Result<Option<Val>, ShahError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
         let mut single = 0u64;

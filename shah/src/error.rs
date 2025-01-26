@@ -40,6 +40,15 @@ pub enum ShahError {
     NotFound(NotFound),
 }
 
+impl ShahError {
+    pub fn not_found_ok(self) -> Result<(), ShahError> {
+        match self {
+            ShahError::NotFound(_) => Ok(()),
+            _ => Err(self),
+        }
+    }
+}
+
 impl From<ShahError> for ErrorCode {
     fn from(value: ShahError) -> Self {
         match value {

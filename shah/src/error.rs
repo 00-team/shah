@@ -135,6 +135,16 @@ pub enum ClientError<T> {
     User(T),
 }
 
+impl<T: IsNotFound> ClientError<T> {
+    pub fn not_found_ok(self) -> Result<(), ClientError<T>> {
+        if self.is_not_found() {
+            Ok(())
+        } else {
+            Err(self)
+        }
+    }
+}
+
 impl<T: From<u16> + Copy> From<ErrorCode> for ClientError<T> {
     fn from(value: ErrorCode) -> Self {
         match value.scope {

@@ -102,12 +102,9 @@ where
             }
 
             if !entity.is_alive() {
-                self.live -= 1;
                 let gene = entity.gene();
-                if gene.iter < ITER_EXHAUSTION {
-                    log::debug!("dead entity: {entity:?}");
-                    self.add_dead(gene);
-                }
+                log::debug!("dead entity: {entity:?}");
+                self.add_dead(gene);
             }
 
             f(&mut self, &entity);
@@ -258,9 +255,7 @@ where
         entity.set_alive(false);
         self.file.write_all(entity.as_binary())?;
 
-        if gene.iter < ITER_EXHAUSTION {
-            self.add_dead(gene);
-        }
+        self.add_dead(gene);
 
         Ok(())
     }

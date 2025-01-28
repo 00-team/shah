@@ -74,7 +74,6 @@ impl SnakeDb {
         self.index.dead_list.clear();
         let index_db_size = self.index.db_size()?;
         let mut head = SnakeHead::default();
-        let buf = head.as_binary_mut();
 
         if index_db_size < SnakeHead::N {
             self.index.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
@@ -89,23 +88,20 @@ impl SnakeDb {
         self.index.live = (index_db_size / SnakeHead::N) - 1;
         self.index.file.seek(SeekFrom::Start(SnakeHead::N))?;
         loop {
-            match self.index.file.read_exact(buf) {
+            match self.index.file.read_exact(head.as_binary_mut()) {
                 Ok(_) => {}
                 Err(e) => match e.kind() {
                     ErrorKind::UnexpectedEof => break,
                     _ => Err(e)?,
                 },
             }
-            {
-                let head = SnakeHead::from_binary_mut(buf);
-                if !head.is_alive() {
-                    self.index.live -= 1;
-                    log::debug!("dead head: {head:?}");
-                    self.index.add_dead(&head.gene);
-                } else if head.is_free() {
-                    if let Err(e) = self.add_free(*head) {
-                        log::warn!("add_free failed in setup: {e:?}");
-                    }
+
+            if !head.is_alive() {
+                log::debug!("dead head: {head:?}");
+                self.index.add_dead(&head.gene);
+            } else if head.is_free() {
+                if let Err(e) = self.add_free(head) {
+                    log::warn!("add_free failed in setup: {e:?}");
                 }
             }
         }

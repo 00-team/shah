@@ -4,6 +4,7 @@ pub mod dead_list;
 pub mod error;
 pub mod models;
 pub mod perms;
+pub mod schema;
 pub mod server;
 mod taker;
 pub(crate) mod utils;
@@ -15,7 +16,8 @@ pub use models::*;
 pub use taker::Taker;
 
 pub use shah_macros::{
-    api, enum_int, enum_code, model, perms, routes, Command, Duck, Entity,
+    api, enum_int, model, perms, routes, Command, Duck, Entity, EnumCode,
+    ShahSchema,
 };
 
 pub const PAGE_SIZE: usize = 0x20;

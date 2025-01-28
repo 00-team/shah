@@ -1,10 +1,10 @@
 #[cfg(feature = "serde")]
-use crate::{error::SystemError, Binary};
+use crate::{error::SystemError, Binary, ShahSchema};
 
 pub type GeneId = u64;
 
 #[crate::model]
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq, ShahSchema)]
 pub struct Gene {
     pub id: GeneId,
     pub iter: u8,
@@ -120,4 +120,26 @@ pub struct ReplyHead {
 pub struct Reply {
     pub head: ReplyHead,
     pub body: [u8; 1024 * 64],
+}
+
+#[crate::model]
+pub struct DbHead {
+    magic: [u8; 16],
+    iteration: u16,
+}
+
+impl DbHead {
+    pub const SHAH_PREFIX: char = '7';
+    pub fn set_custom_magic(&mut self, prefix: char, db: &'static str) {
+        self.magic[0] = 0x07;
+        self.magic[1..5].copy_from_slice(b"SHAH");
+        self.magic[5] = prefix as u8;
+        if db.len() > 10 {
+            panic!("database name should be at max 10 char");
+        }
+        self.magic[6..6 + db.len()].clone_from_slice(db.as_bytes());
+    }
+    pub fn set_magic(&mut self, db: &'static str) {
+        self.set_custom_magic(Self::SHAH_PREFIX, db)
+    }
 }

@@ -2,6 +2,7 @@ mod api;
 mod command;
 mod duck;
 mod entity;
+mod schema;
 mod enum_code;
 mod enum_int;
 mod model;
@@ -15,9 +16,9 @@ pub fn command(code: TokenStream) -> TokenStream {
     command::command(code)
 }
 
-#[proc_macro_attribute]
-pub fn enum_code(args: TokenStream, code: TokenStream) -> TokenStream {
-    enum_code::enum_code(args, code)
+#[proc_macro_derive(EnumCode)]
+pub fn enum_code(code: TokenStream) -> TokenStream {
+    enum_code::enum_code(code)
 }
 
 #[proc_macro_attribute]
@@ -43,6 +44,11 @@ pub fn entity(code: TokenStream) -> TokenStream {
 #[proc_macro_derive(Duck)]
 pub fn duck(code: TokenStream) -> TokenStream {
     duck::duck(code)
+}
+
+#[proc_macro_derive(ShahSchema)]
+pub fn schema(code: TokenStream) -> TokenStream {
+    schema::schema(code)
 }
 
 #[proc_macro]

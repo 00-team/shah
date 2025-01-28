@@ -109,6 +109,7 @@ pub enum SystemError {
     GeneFromHexErr,
     /// this may happen if id of gene on the disk is not the correct id
     MismatchGeneId,
+    InvalidSchemaData,
 }
 
 impl From<std::io::Error> for SystemError {

@@ -2,17 +2,21 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use quote_into::quote_into;
-use syn::{Fields, ItemEnum};
+use syn::Fields;
 
-pub(crate) fn enum_code(_args: TokenStream, code: TokenStream) -> TokenStream {
-    let output: TokenStream2 = code.clone().into();
-    let item = syn::parse_macro_input!(code as ItemEnum);
-
+pub(crate) fn enum_code(code: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(code as syn::DeriveInput);
+    let ident = &item.ident;
     let mut s = TokenStream2::new();
-    let ident = item.ident;
+
+    let data = match item.data {
+        syn::Data::Enum(de) => de,
+        _ => panic!("EnumCode derive macro is only for enums"),
+    };
+
     let cb = quote! { { .. } };
     let pp = quote! { ( .. ) };
-    let variants = item.variants.iter().enumerate().map(|(i, v)| {
+    let variants = data.variants.iter().enumerate().map(|(i, v)| {
         (
             i as u16,
             &v.ident,
@@ -24,10 +28,13 @@ pub(crate) fn enum_code(_args: TokenStream, code: TokenStream) -> TokenStream {
         )
     });
     quote_into! {s +=
-        #output
-
         impl From<#ident> for u16 {
             fn from(value: #ident) -> Self {
+                Self::from(&value)
+            }
+        }
+        impl From<&#ident> for u16 {
+            fn from(value: &#ident) -> Self {
                 match value {
                     #{variants.for_each(|(ix, vi, vf)|
                         quote_into!{s += #ident::#vi #vf => #ix,}

@@ -5,13 +5,14 @@ pub mod db {
     use shah::error::ShahError;
     use shah::Entity;
     use shah::Gene;
+    use shah::ShahSchema;
 
     use crate::models::ExampleError;
 
     pub type UserDb = EntityDb<User>;
 
     #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
     pub struct SessionInfo {
         pub client: u8,
         pub os: u8,
@@ -24,7 +25,7 @@ pub mod db {
     }
 
     #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy)]
+    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
     pub struct Session {
         ip: [u8; 4],
         info: SessionInfo,
@@ -33,7 +34,7 @@ pub mod db {
     }
 
     #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
+    #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
     pub struct User {
         // pub flags: u64,
         pub gene: Gene,

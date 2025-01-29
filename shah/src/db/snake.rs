@@ -21,7 +21,7 @@ pub struct SnakeFree {
 }
 
 #[shah::model]
-#[derive(Debug, Entity, Clone, Copy)]
+#[derive(Debug, Entity, Clone, Copy, shah::ShahSchema)]
 pub struct SnakeHead {
     pub gene: Gene,
     pub capacity: u64,
@@ -33,13 +33,15 @@ pub struct SnakeHead {
     pub flags: u32,
 }
 
+type SnakeIndexDb = EntityDb<SnakeHead, SnakeHead>;
+
 #[derive(Debug)]
 pub struct SnakeDb {
     pub file: File,
     pub live: u64,
     pub free: u64,
     pub free_list: Box<[Option<SnakeFree>; FREE_LIST_SIZE]>,
-    pub index: EntityDb<SnakeHead>,
+    pub index: SnakeIndexDb,
 }
 
 impl SnakeDb {
@@ -57,7 +59,7 @@ impl SnakeDb {
             free: 0,
             free_list: Box::new([None; BLOCK_SIZE]),
             file,
-            index: EntityDb::<SnakeHead>::new(&format!("{name}.index"))?,
+            index: SnakeIndexDb::new(&format!("{name}-index"), 0, None)?,
         };
 
         Ok(db)

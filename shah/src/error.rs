@@ -110,6 +110,8 @@ pub enum SystemError {
     /// this may happen if id of gene on the disk is not the correct id
     MismatchGeneId,
     InvalidSchemaData,
+    /// database name can only contain [a-Z] | - | [0-9]
+    InvalidDbName,
 }
 
 impl From<std::io::Error> for SystemError {

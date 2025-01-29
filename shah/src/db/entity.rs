@@ -1,7 +1,10 @@
 use crate::error::{NotFound, ShahError};
+use crate::schema::ShahSchema;
 use crate::{
-    Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
+    utils, Binary, DbHead, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION,
+    PAGE_SIZE,
 };
+use std::path::Path;
 use std::{
     fmt::Debug,
     fs::File,
@@ -9,6 +12,16 @@ use std::{
     marker::PhantomData,
     os::unix::fs::FileExt,
 };
+
+const META_OFFSET: u64 = DbHead::N + EntityMeta::N;
+const ENTITY_EXT: &str = "bin";
+const ENTITY_MAGIC: [u8; 16] = *b"\x07SHAH7entity\x00\x00\x00\x00";
+
+#[crate::model]
+struct EntityMeta {
+    item_size: u32,
+    schema: [u8; 2048],
+}
 
 #[derive(Debug)]
 pub struct EntityCount {
@@ -32,35 +45,93 @@ pub trait Entity {
     flag! {is_private, set_private}
 }
 
-#[derive(Debug)]
-pub struct EntityDb<T>
-where
-    T: Default + Entity + Debug + Clone + Binary,
+pub trait EntityDbItem:
+    Default + Entity + Debug + Clone + Binary + ShahSchema
 {
+}
+impl<T: Default + Entity + Debug + Clone + Binary + ShahSchema> EntityDbItem
+    for T
+{
+}
+
+#[derive(Debug)]
+pub struct EntityDb<T: EntityDbItem, Old: EntityDbItem = T> {
     pub file: File,
     pub live: u64,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     _e: PhantomData<T>,
+    migration: Option<Box<EntityMigration<Old, T>>>,
 }
 
-impl<T> EntityDb<T>
-where
-    T: Entity + Debug + Clone + Default + Binary,
-{
-    pub fn new(name: &str) -> Result<Self, ShahError> {
-        std::fs::create_dir_all("data/")?;
+#[derive(Debug)]
+pub struct EntityMigration<Old: EntityDbItem, New: EntityDbItem> {
+    pub db: EntityDb<Old, Old>,
+    pub converter: fn(Old) -> New,
+}
+
+impl<T: EntityDbItem, Old: EntityDbItem> EntityDb<T, Old> {
+    pub fn new(
+        name: &str, iteration: u16, migration: Option<EntityMigration<Old, T>>,
+    ) -> Result<Self, ShahError> {
+        utils::validate_db_name(name)?;
+
+        let mut path = Path::new("data/").join(name);
+        std::fs::create_dir_all(&path)?;
+
+        let mut db_list = Vec::<(String, u16, DbHead, EntityMeta)>::new();
+        let current_schema = T::shah_schema().to_bytes();
+
+        for item in path.read_dir()? {
+            let item = item?;
+            if !item.file_type()?.is_file() {
+                continue;
+            }
+            let filename = item.file_name();
+            let Some(filename) = filename.to_str() else { continue };
+            let mut fns = filename.splitn(3, '.');
+            let Some(oname) = fns.next() else { continue };
+            let Some(iter) = fns.next() else { continue };
+            let Some(ext) = fns.next() else { continue };
+
+            if oname != name || ext != ENTITY_EXT {
+                continue;
+            };
+            let Ok(iter) = iter.parse::<u16>() else { continue };
+
+            let mut file = std::fs::OpenOptions::new()
+                .read(true)
+                .open(path.join(filename))?;
+
+            let file_size = file.seek(SeekFrom::End(0))?;
+            if file_size < META_OFFSET {
+                continue;
+            }
+
+            let mut head = DbHead::default();
+            file.read_exact_at(head.as_binary_mut(), 0)?;
+            if head.magic() != ENTITY_MAGIC {
+                panic!("EntityDb<{filename}> magic does not match");
+            }
+            if iter != head.iteration {
+                panic!("EntityDb<{filename}> iteration does not match its metadata");
+            }
+            let mut meta = EntityMeta::default();
+            file.read_exact(meta.as_binary_mut())?;
+            db_list.push((filename.to_string(), iter, head, meta));
+        }
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(format!("data/{name}.bin"))?;
+            .open(path.join(format!("{name}.{iteration}.{ENTITY_EXT}")))?;
 
         let db = Self {
             live: 0,
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
             _e: PhantomData::<T>,
+            migration: migration.map(|v| Box::new(v)),
         };
 
         Ok(db)

@@ -2,7 +2,7 @@ pub mod db {
     use shah::{db::pond::PondDb, error::ShahError, Gene};
 
     #[shah::model]
-    #[derive(Debug, shah::Entity, shah::Duck, Clone, Copy)]
+    #[derive(Debug, shah::Entity, shah::Duck, Clone, Copy, shah::ShahSchema)]
     pub struct Note {
         pub gene: Gene,
         pub user: Gene,

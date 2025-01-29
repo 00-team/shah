@@ -125,7 +125,7 @@ pub struct Reply {
 #[crate::model]
 pub struct DbHead {
     magic: [u8; 16],
-    iteration: u16,
+    pub iteration: u16,
 }
 
 impl DbHead {
@@ -141,5 +141,8 @@ impl DbHead {
     }
     pub fn set_magic(&mut self, db: &'static str) {
         self.set_custom_magic(Self::SHAH_PREFIX, db)
+    }
+    pub fn magic(&self) -> [u8; 16] {
+        self.magic
     }
 }

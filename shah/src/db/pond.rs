@@ -15,7 +15,7 @@ use std::os::unix::fs::FileExt;
 //    if item > pond.max then move it to pond.past ...
 
 #[crate::model]
-#[derive(Debug, Clone, Copy, crate::Entity)]
+#[derive(Debug, Clone, Copy, crate::Entity, crate::ShahSchema)]
 pub struct Origin {
     pub gene: Gene,
     pub owner: Gene,
@@ -34,7 +34,7 @@ pub trait Duck {
 }
 
 #[crate::model]
-#[derive(Debug, crate::Entity, Clone)]
+#[derive(Debug, crate::Entity, Clone, crate::ShahSchema)]
 pub struct Pond {
     pub gene: Gene,
     pub next: Gene,
@@ -52,13 +52,16 @@ pub struct Pond {
     _pad: [u8; 4],
 }
 
+type PondIndexDb = EntityDb<Pond, Pond>;
+type OriginDb = EntityDb<Origin, Origin>;
+
 #[derive(Debug)]
 pub struct PondDb<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> {
     pub file: File,
     pub live: u64,
     pub free_list: DeadList<Gene, BLOCK_SIZE>,
-    pub index: EntityDb<Pond>,
-    pub origins: EntityDb<Origin>,
+    pub index: PondIndexDb,
+    pub origins: OriginDb,
     _e: PhantomData<T>,
 }
 
@@ -76,9 +79,9 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             file,
             live: 0,
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: EntityDb::<Pond>::new(&format!("{name}.pond.index"))?,
+            index: PondIndexDb::new(&format!("{name}-pond-index"), 0, None)?,
             // items: EntityDb::<Brood<T>>::new(&format!("{name}.pond.brood"))?,
-            origins: EntityDb::<Origin>::new(&format!("{name}.pond.origin"))?,
+            origins: OriginDb::new(&format!("{name}-pond-origin"), 0, None)?,
             _e: PhantomData,
         };
 

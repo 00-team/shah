@@ -5,10 +5,7 @@ mod phone;
 mod user;
 
 use crate::models::State;
-use example_db::user::db::User;
-use shah::{
-    db::snake::SnakeHead, error::{ShahError, SystemError}, schema::ShahSchema, Command, Gene, BLOCK_SIZE
-};
+use shah::{db::snake::SnakeHead, error::ShahError, Command, Gene, BLOCK_SIZE};
 use std::io::{stdout, Write};
 
 const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -102,14 +99,9 @@ pub fn detail_set(
     Ok(rethead)
 }
 
-fn main() -> Result<(), SystemError> {
+fn main() -> Result<(), ShahError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
-
-    let schema = User::shah_schema();
-    println!("schema: {schema:#?}");
-    let sb = schema.to_bytes();
-    println!("bytes: {} - {sb:?}", sb.len());
 
     let routes = shah::routes!(models::State, user, phone, detail);
 

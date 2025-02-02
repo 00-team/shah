@@ -1,15 +1,21 @@
-#[cfg(feature = "serde")]
-use crate::{error::SystemError, Binary, ShahSchema};
+use crate::schema::{Schema, ShahSchema};
+use crate::{error::SystemError, Binary};
 
 pub type GeneId = u64;
 
 #[crate::model]
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq, ShahSchema)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
 pub struct Gene {
     pub id: GeneId,
     pub iter: u8,
     pub pepper: [u8; 3],
     pub server: u32,
+}
+
+impl ShahSchema for Gene {
+    fn shah_schema() -> Schema {
+        Schema::Gene
+    }
 }
 
 impl Gene {
@@ -123,26 +129,70 @@ pub struct Reply {
 }
 
 #[crate::model]
+#[derive(Debug)]
+pub struct MigrationProgress {
+    pub total: u64,
+    pub progress: u64,
+}
+
+#[crate::model]
+#[derive(Debug, PartialEq, Eq)]
+pub struct ShahMagic {
+    sign: [u8; 5],
+    prefix: u8,
+    db: u16,
+}
+
+#[crate::enum_int(ty = u16)]
+#[derive(Debug, Default)]
+pub enum ShahMagicDb {
+    #[default]
+    Unknown,
+    Entity,
+    Pond,
+    Snake,
+    TrieConst,
+}
+
+impl ShahMagic {
+    const SIGN: [u8; 5] = *b"\x07SHAH";
+    const PREFIX: u8 = 7;
+
+    pub fn new(db: ShahMagicDb) -> Self {
+        Self { sign: Self::SIGN, prefix: Self::PREFIX, db: db.into() }
+    }
+
+    pub const fn new_const(db: u16) -> Self {
+        Self { sign: Self::SIGN, prefix: Self::PREFIX, db }
+    }
+
+    pub fn custom<Db: Into<u16>>(prefix: u8, db: Db) -> Self {
+        assert_ne!(
+            prefix,
+            Self::PREFIX,
+            "for custom databases you cannot use the shah prefix"
+        );
+        Self { sign: Self::SIGN, prefix, db: db.into() }
+    }
+}
+
+#[crate::model]
+#[derive(Debug)]
 pub struct DbHead {
-    magic: [u8; 16],
+    pub magic: ShahMagic,
     pub iteration: u16,
+    _pad: [u8; 6],
+    // in the iteration db
+    pub migration: MigrationProgress,
 }
 
 impl DbHead {
-    pub const SHAH_PREFIX: char = '7';
-    pub fn set_custom_magic(&mut self, prefix: char, db: &'static str) {
-        self.magic[0] = 0x07;
-        self.magic[1..5].copy_from_slice(b"SHAH");
-        self.magic[5] = prefix as u8;
-        if db.len() > 10 {
-            panic!("database name should be at max 10 char");
+    pub fn new(magic: ShahMagic, iteration: u16) -> Self {
+        Self {
+            magic,
+            iteration,
+            _pad: Default::default(),
+            migration: Default::default(),
         }
-        self.magic[6..6 + db.len()].clone_from_slice(db.as_bytes());
-    }
-    pub fn set_magic(&mut self, db: &'static str) {
-        self.set_custom_magic(Self::SHAH_PREFIX, db)
-    }
-    pub fn magic(&self) -> [u8; 16] {
-        self.magic
     }
 }

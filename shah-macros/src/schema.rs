@@ -20,10 +20,10 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
                 quote_into! {s += #ci::schema::Schema::Array {
                     length: #len,
                     kind: Box::new(#{quote_schema(elem, s, ci)}),
-                },}
+                }}
             }
             syn::Type::Path(t) => {
-                quote_into! {s += <#t as #ci::schema::ShahSchema>::shah_schema(),}
+                quote_into! {s += <#t as #ci::schema::ShahSchema>::shah_schema()}
             }
             _ => panic!("unknwon type: {ty:?} for ShahSchema"),
         }
@@ -32,13 +32,19 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     quote_into! {s +=
         impl #ci::schema::ShahSchema for #ident {
             fn shah_schema() -> #ci::schema::Schema {
-                #ci::schema::Schema::Model {
+                #ci::schema::Schema::Model(#ci::schema::SchemaModel {
                     name: String::from(#model_name),
                     size: core::mem::size_of::<#ident>() as u64,
                     fields: vec![#{
-                        data.fields.iter().for_each(|f| quote_schema(&f.ty, s, &ci))
+                        for f in data.fields.iter() {
+                            let ident = f.ident.clone().map(|v| v.to_string()).unwrap_or_default();
+                            quote_into! {s += (
+                                String::from(#ident),
+                                #{quote_schema(&f.ty, s, &ci)}
+                            ),};
+                        }
                     }]
-                }
+                })
             }
         }
     };

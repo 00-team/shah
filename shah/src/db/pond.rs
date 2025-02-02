@@ -79,9 +79,9 @@ impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
             file,
             live: 0,
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: PondIndexDb::new(&format!("{name}-pond-index"), 0, None)?,
+            index: PondIndexDb::new(&format!("{name}-pond-index"), 0)?,
             // items: EntityDb::<Brood<T>>::new(&format!("{name}.pond.brood"))?,
-            origins: OriginDb::new(&format!("{name}-pond-origin"), 0, None)?,
+            origins: OriginDb::new(&format!("{name}-pond-origin"), 0)?,
             _e: PhantomData,
         };
 

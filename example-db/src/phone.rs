@@ -27,7 +27,11 @@ pub mod db {
     #[cfg(test)]
     mod tests {
         use super::PhoneAbc;
-        use shah::{db::trie_const::TrieConst, Gene};
+        use shah::{
+            db::trie_const::TrieConst,
+            error::{NotFound, ShahError},
+            Gene,
+        };
         type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
         #[test]
@@ -52,11 +56,14 @@ pub mod db {
                 assert_eq!(k.cache, *cache);
                 assert_eq!(k.index, *index);
 
-                assert_eq!(db.get(&k).expect("get"), None);
-                assert_eq!(db.set(&k, a).expect("set"), None);
-                assert_eq!(db.get(&k).expect("get"), Some(a));
+                assert_eq!(
+                    db.get(&k).err().expect("get"),
+                    ShahError::NotFound(NotFound::NoTrieValue)
+                );
+                assert_eq!(db.set(&k, a).ok().expect("set"), None);
+                assert_eq!(db.get(&k).ok().expect("get"), a);
                 assert_eq!(db.set(&k, b).expect("set"), Some(a));
-                assert_eq!(db.get(&k).expect("get"), Some(b));
+                assert_eq!(db.get(&k).ok().expect("get"), b);
             }
         }
     }

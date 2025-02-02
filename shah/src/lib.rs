@@ -1,6 +1,7 @@
 mod binary;
 pub mod db;
 pub mod dead_list;
+pub mod state;
 pub mod error;
 pub mod models;
 pub mod perms;

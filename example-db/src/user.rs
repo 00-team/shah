@@ -53,7 +53,7 @@ mod old_db {
     }
 
     pub(crate) fn setup() -> Result<UserDb, ShahError> {
-        UserDb::new("user", 0, None)?.setup(|_, _| {})
+        UserDb::new("user", 0)?.setup(|_, _| {})
     }
 }
 
@@ -136,11 +136,11 @@ pub mod db {
     // then write a function or
 
     pub(crate) fn setup() -> Result<UserDb, ShahError> {
-        let migration = EntityMigration {
-            db: old_db::setup()?,
-            converter: |old| User::default(),
-        };
-        UserDb::new("user", 0, Some(migration))?.setup(|_, _| {})
+        // let migration = EntityMigration {
+        //     db: old_db::setup()?,
+        //     converter: |old| User::default(),
+        // };
+        UserDb::new("user", 0)?.setup(|_, _| {})
     }
 }
 

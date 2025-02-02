@@ -59,7 +59,7 @@ impl SnakeDb {
             free: 0,
             free_list: Box::new([None; BLOCK_SIZE]),
             file,
-            index: SnakeIndexDb::new(&format!("{name}-index"), 0, None)?,
+            index: SnakeIndexDb::new(&format!("{name}-index"), 0)?,
         };
 
         Ok(db)

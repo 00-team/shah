@@ -34,7 +34,7 @@ impl From<std::io::Error> for ErrorCode {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShahError {
     System(SystemError),
     NotFound(NotFound),
@@ -71,7 +71,7 @@ impl<T: Into<SystemError>> From<T> for ShahError {
 }
 
 #[shah::enum_int(ty = u16)]
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum NotFound {
     #[default]
     Unknown = 0,
@@ -93,7 +93,7 @@ impl From<NotFound> for ErrorCode {
 }
 
 #[shah::enum_int(ty = u16)]
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SystemError {
     #[default]
     Unknown = 0,
@@ -112,6 +112,8 @@ pub enum SystemError {
     InvalidSchemaData,
     /// database name can only contain [a-Z] | - | [0-9]
     InvalidDbName,
+    InvalidDbHead,
+    InvalidDbSchema,
 }
 
 impl From<std::io::Error> for SystemError {

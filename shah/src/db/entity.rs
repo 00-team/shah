@@ -82,9 +82,52 @@ pub struct EntityMigration<'a, Old: EntityDbItem, State> {
     pub state: &'a mut State,
 }
 
-struct EntitySetupTask {}
-impl Task for EntitySetupTask {
-    fn work(&mut self) {}
+struct EntitySetupTask<
+    'a,
+    T: EntityDbItem + EntityMigrateFrom<S, O>,
+    O: EntityDbItem,
+    S,
+> {
+    total: u64,
+    progress: u64,
+    db: &'a mut EntityDb<'a, T, O, S>,
+}
+impl<'a, T: EntityDbItem + EntityMigrateFrom<S, O>, O: EntityDbItem, S> Task
+    for EntitySetupTask<'a, T, O, S>
+{
+    fn work(&mut self) {
+        if self.total <= self.progress {
+            return; // Done
+        }
+
+        let a = (self.total - self.progress).min(10);
+        let mut entity = T::default();
+        for i in 0..a {
+            let id = (self.progress + i);
+            if id == 0 {
+                continue;
+            }
+
+            let pos = META_OFFSET + id * T::N;
+
+            match self.db.file.read_exact_at(entity.as_binary_mut(), pos) {
+                Ok(_) => {}
+                Err(e) => match e.kind() {
+                    ErrorKind::UnexpectedEof => break, // done
+                    // _ => Err(e)?,
+                    _ => {} // TODO: return task err
+                },
+            }
+
+            if !entity.is_alive() {
+                let gene = entity.gene();
+                log::debug!("dead entity: {entity:?}");
+                self.db.add_dead(gene);
+            }
+
+            // f(&mut self, &entity);
+        }
+    }
 }
 
 struct EntityMigrateTask {}
@@ -192,8 +235,11 @@ where
         self.migration = Some(Box::new(migration));
     }
 
-    pub fn tasks(&mut self) -> Vec<Box<dyn Task>> {
-        vec![Box::new(EntitySetupTask {}), Box::new(EntityMigrateTask {})]
+    pub fn tasks(&'a mut self) -> Vec<Box<dyn Task + 'a>> {
+        vec![
+            Box::new(EntitySetupTask { db: self, total: 0, progress: 0 }),
+            Box::new(EntityMigrateTask {}),
+        ]
     }
 
     pub fn file_size(&mut self) -> std::io::Result<u64> {

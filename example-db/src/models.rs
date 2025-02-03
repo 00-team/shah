@@ -1,5 +1,3 @@
-use std::io::Seek;
-
 use shah::{
     db::snake::SnakeDb,
     error::IsNotFound,
@@ -10,15 +8,15 @@ use shah::{
 use crate::{note::db::NoteDb, phone::db::PhoneDb, user::db::UserDb};
 
 #[derive(Debug)]
-pub struct State {
-    pub users: UserDb,
+pub struct State<'a> {
+    pub users: UserDb<'a>,
     pub phone: PhoneDb,
     pub detail: SnakeDb,
     pub notes: NoteDb,
 }
 
 struct UserDbMigTask<'a> {
-    state: &'a mut State,
+    _state: &'a mut State<'a>,
     total: u64,
     progress: u64,
 }
@@ -26,21 +24,22 @@ struct UserDbMigTask<'a> {
 impl<'a> Task for UserDbMigTask<'a> {
     fn work(&mut self) {
         for id in self.progress..(self.total - self.progress).min(10) {
-            self.state.users.file.seek_relative(id as i64);
+            log::info!("mig task: {id}");
+            // self.state.users.file.seek_relative(id as i64);
             self.progress += 1;
         }
     }
 }
 
-impl<'a> ShahState<'a> for State {
-    fn tasks(&'a mut self) -> &'a [impl Task] {
-        let usbm = UserDbMigTask { state: self, total: 11, progress: 0 };
+impl<'a> ShahState<'a> for State<'a> {
+    fn tasks(&'a mut self) -> Vec<impl Task> {
+        let usbm = UserDbMigTask { _state: self, total: 11, progress: 0 };
         // self.users.set_migration();
-        &[usbm]
+        vec![usbm]
     }
 }
 
-pub type ExampleApi = shah::Api<State>;
+pub type ExampleApi = shah::Api<State<'static>>;
 
 #[shah::enum_int(ty = u16)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -55,10 +54,11 @@ pub enum ExampleError {
 
 impl IsNotFound for ExampleError {
     fn is_not_found(&self) -> bool {
-        match self {
-            Self::UserNotFound | Self::BadPhone => true,
-            _ => false,
-        }
+        matches!(self, Self::UserNotFound | Self::BadPhone)
+        // match self {
+        //     Self::UserNotFound | Self::BadPhone => true,
+        //     _ => false,
+        // }
     }
 }
 

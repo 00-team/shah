@@ -7,7 +7,7 @@ mod old_db {
     use shah::Gene;
     use shah::ShahSchema;
 
-    pub type UserDb = EntityDb<User_0>;
+    pub type UserDb = EntityDb<'static, User_0>;
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -52,8 +52,8 @@ mod old_db {
         pub sessions: [Session_0; 3],
     }
 
-    pub(crate) fn setup() -> Result<UserDb, ShahError> {
-        UserDb::new("user", 0)?.setup(|_, _| {})
+    pub(crate) fn init() -> Result<UserDb, ShahError> {
+        UserDb::new("user", 0)
     }
 }
 
@@ -61,17 +61,16 @@ pub mod db {
     #![allow(dead_code)]
 
     use shah::db::entity::EntityDb;
-    use shah::db::entity::EntityMigration;
+    use shah::db::entity::EntityMigrateFrom;
     use shah::error::ShahError;
     use shah::Entity;
     use shah::Gene;
     use shah::ShahSchema;
 
     use crate::models::ExampleError;
+    use crate::models::State;
 
     use super::old_db;
-
-    pub type UserDb = EntityDb<User, old_db::User_0>;
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -131,16 +130,20 @@ pub mod db {
         }
     }
 
+    pub type UserDb<'a> = EntityDb<'a, User, old_db::User_0, State<'a>>;
+
+    impl<'a> EntityMigrateFrom<State<'a>, old_db::User_0> for User {
+        fn entity_migrate_from(_state: &mut State, _old: old_db::User_0) -> Self {
+            Self::default()
+        }
+    }
+
     // call some macro here to read the previous iteration schema from file
     // and make it into a struct
     // then write a function or
 
-    pub(crate) fn setup() -> Result<UserDb, ShahError> {
-        // let migration = EntityMigration {
-        //     db: old_db::setup()?,
-        //     converter: |old| User::default(),
-        // };
-        UserDb::new("user", 0)?.setup(|_, _| {})
+    pub(crate) fn setup<'a>() -> Result<UserDb<'a>, ShahError> {
+        UserDb::new("user", 1)
     }
 }
 

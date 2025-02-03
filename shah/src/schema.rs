@@ -1,4 +1,4 @@
-use crate::error::{ShahError, SystemError};
+use crate::error::{DbError, ShahError};
 
 #[derive(Debug, crate::EnumCode, PartialEq, Eq)]
 pub enum Schema {
@@ -47,7 +47,7 @@ impl Schema {
             }
             Self::Array { length, kind } => {
                 out.extend_from_slice(&(*length).to_le_bytes());
-                check_schema(&mut out, &kind);
+                check_schema(&mut out, kind);
             }
             _ => {}
         }
@@ -89,53 +89,45 @@ impl Schema {
             }};
         }
 
-        loop {
-            match *it.next()? {
-                0 => {
-                    let name = from_iter!(str);
-                    let size = from_iter!(u64);
-                    let fields_len = from_iter!(u16);
-                    let mut fields = Vec::<(String, Schema)>::with_capacity(
-                        fields_len as usize,
-                    );
-                    for _ in 0..fields_len {
-                        let ident = from_iter!(str);
-                        let kind = match *it.clone().next()? {
-                            0 | 1 => Self::from_iter(it)?,
-                            c => {
-                                it.next();
-                                Self::from_code(c)?
-                            }
-                        };
-                        fields.push((ident, kind));
-                    }
-                    return Some(Schema::Model(SchemaModel {
-                        name,
-                        size,
-                        fields,
-                    }));
-                }
-                1 => {
-                    let length = from_iter!(u64);
-                    let kind = Box::new(match *it.clone().next()? {
+        match *it.next()? {
+            0 => {
+                let name = from_iter!(str);
+                let size = from_iter!(u64);
+                let flen = from_iter!(u16) as usize;
+                let mut fields = Vec::<(String, Schema)>::with_capacity(flen);
+                for _ in 0..flen {
+                    let ident = from_iter!(str);
+                    let kind = match *it.clone().next()? {
                         0 | 1 => Self::from_iter(it)?,
                         c => {
                             it.next();
                             Self::from_code(c)?
                         }
-                    });
-                    return Some(Schema::Array { length, kind });
+                    };
+                    fields.push((ident, kind));
                 }
-                _ => break,
-            }
-        }
 
-        None
+                Some(Schema::Model(SchemaModel { name, size, fields }))
+            }
+            1 => {
+                let length = from_iter!(u64);
+                let kind = Box::new(match *it.clone().next()? {
+                    0 | 1 => Self::from_iter(it)?,
+                    c => {
+                        it.next();
+                        Self::from_code(c)?
+                    }
+                });
+
+                Some(Schema::Array { length, kind })
+            }
+            _ => None,
+        }
     }
 
     pub fn decode(value: &[u8]) -> Result<Self, ShahError> {
         let Some(schema) = Self::from_iter(&mut value.iter()) else {
-            return Err(SystemError::InvalidSchemaData)?;
+            return Err(DbError::InvalidSchemaData)?;
         };
         Ok(schema)
     }

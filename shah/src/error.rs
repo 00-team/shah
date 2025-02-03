@@ -14,6 +14,10 @@ impl ErrorCode {
         Self { scope: 2, code: code.into() }
     }
 
+    pub fn database<T: Into<u16>>(code: T) -> Self {
+        Self { scope: 3, code: code.into() }
+    }
+
     pub fn user<T: Into<u16>>(code: T) -> Self {
         Self { scope: 127, code: code.into() }
     }
@@ -38,6 +42,7 @@ impl From<std::io::Error> for ErrorCode {
 pub enum ShahError {
     System(SystemError),
     NotFound(NotFound),
+    Db(DbError),
 }
 
 impl ShahError {
@@ -54,6 +59,7 @@ impl From<ShahError> for ErrorCode {
         match value {
             ShahError::System(err) => Self::system(err),
             ShahError::NotFound(err) => Self::not_found(err),
+            ShahError::Db(err) => Self::database(err),
         }
     }
 }
@@ -61,6 +67,12 @@ impl From<ShahError> for ErrorCode {
 impl From<NotFound> for ShahError {
     fn from(value: NotFound) -> Self {
         Self::NotFound(value)
+    }
+}
+
+impl From<DbError> for ShahError {
+    fn from(value: DbError) -> Self {
+        Self::Db(value)
     }
 }
 
@@ -94,6 +106,19 @@ impl From<NotFound> for ErrorCode {
 
 #[shah::enum_int(ty = u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum DbError {
+    #[default]
+    Unknown = 0,
+    InvalidSchemaData,
+    /// database name can only contain [a-Z] | - | [0-9]
+    InvalidDbName,
+    InvalidDbHead,
+    InvalidDbSchema,
+    BadInit,
+}
+
+#[shah::enum_int(ty = u16)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SystemError {
     #[default]
     Unknown = 0,
@@ -109,11 +134,6 @@ pub enum SystemError {
     GeneFromHexErr,
     /// this may happen if id of gene on the disk is not the correct id
     MismatchGeneId,
-    InvalidSchemaData,
-    /// database name can only contain [a-Z] | - | [0-9]
-    InvalidDbName,
-    InvalidDbHead,
-    InvalidDbSchema,
 }
 
 impl From<std::io::Error> for SystemError {
@@ -174,9 +194,10 @@ impl<T: IsNotFound> IsNotFound for ClientError<T> {
 
 impl IsNotFound for ShahError {
     fn is_not_found(&self) -> bool {
-        match self {
-            Self::NotFound(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::NotFound(_))
+        // match self {
+        //     Self::NotFound(_) => true,
+        //     _ => false,
+        // }
     }
 }

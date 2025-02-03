@@ -1,13 +1,14 @@
 use super::entity::{Entity, EntityCount, EntityDb};
 use crate::error::{IsNotFound, NotFound, ShahError, SystemError};
 use crate::{
-    Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
+    utils, Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE
 };
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
+use std::path::Path;
 
 // NOTE's for sorted ponds.
 // 1. we dont need to sort items in each "stack" and we can just leave that
@@ -52,11 +53,20 @@ pub struct Pond {
     _pad: [u8; 4],
 }
 
-type PondIndexDb = EntityDb<Pond, Pond>;
-type OriginDb = EntityDb<Origin, Origin>;
+type PondIndexDb = EntityDb<'static, Pond>;
+type OriginDb = EntityDb<'static, Origin>;
+
+pub trait PondItem:
+    Default + Entity + Debug + Clone + Copy + Binary + Duck
+{
+}
+impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondItem
+    for T
+{
+}
 
 #[derive(Debug)]
-pub struct PondDb<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> {
+pub struct PondDb<T: PondItem> {
     pub file: File,
     pub live: u64,
     pub free_list: DeadList<Gene, BLOCK_SIZE>,
@@ -65,23 +75,34 @@ pub struct PondDb<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> {
     _e: PhantomData<T>,
 }
 
-impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondDb<T> {
-    pub fn new(name: &str) -> Result<Self, ShahError> {
-        std::fs::create_dir_all("data/")?;
+impl<T: PondItem> PondDb<T> {
+    pub fn new(path: &str) -> Result<Self, ShahError> {
+
+        let data_path = Path::new("data/").join(path);
+        let name = data_path
+            .file_name()
+            .and_then(|v| v.to_str())
+            .expect("could not get file_name from path: {path}");
+
+        utils::validate_db_name(name)?;
+
+        std::fs::create_dir_all(&data_path)?;
+
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(format!("data/{name}.pond.items.bin"))?;
+            .truncate(false)
+            .open(data_path.join("items.pond.shah"))?;
 
         let db = Self {
             file,
             live: 0,
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: PondIndexDb::new(&format!("{name}-pond-index"), 0)?,
+            index: PondIndexDb::new(&format!("{path}/index"), 0)?,
             // items: EntityDb::<Brood<T>>::new(&format!("{name}.pond.brood"))?,
-            origins: OriginDb::new(&format!("{name}-pond-origin"), 0)?,
+            origins: OriginDb::new(&format!("{path}/origin"), 0)?,
             _e: PhantomData,
         };
 

@@ -78,7 +78,7 @@ fn handle_order<T>(
             reply.head.error = 0;
             reply.head.size = output_size as u32;
             send(
-                &server,
+                server,
                 &reply.as_binary()[..ReplyHead::S + output_size],
                 &addr,
             );
@@ -97,7 +97,7 @@ fn handle_order<T>(
         Err(e) => {
             reply.head.error = e.as_u32();
             reply.head.size = 0;
-            send(&server, reply.head.as_binary(), &addr);
+            send(server, reply.head.as_binary(), &addr);
             log::debug!(
                 "reply {}::{}: err({:x}) {}μs",
                 scope.name,

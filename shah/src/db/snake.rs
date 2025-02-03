@@ -1,12 +1,13 @@
 use super::entity::{Entity, EntityDb};
 use crate::{
     error::{NotFound, ShahError, SystemError},
-    Binary, Gene, BLOCK_SIZE,
+    utils, Binary, Gene, BLOCK_SIZE,
 };
 use shah_macros::Entity;
 use std::{
     fs::File,
     io::{ErrorKind, Read, Seek, SeekFrom, Write},
+    path::Path,
 };
 
 /// TOLERABLE CAPACITY DIFFERENCE
@@ -33,7 +34,7 @@ pub struct SnakeHead {
     pub flags: u32,
 }
 
-type SnakeIndexDb = EntityDb<SnakeHead, SnakeHead>;
+type SnakeIndexDb = EntityDb<'static, SnakeHead>;
 
 #[derive(Debug)]
 pub struct SnakeDb {
@@ -45,21 +46,30 @@ pub struct SnakeDb {
 }
 
 impl SnakeDb {
-    pub fn new(name: &str) -> Result<Self, ShahError> {
-        std::fs::create_dir_all("data/")?;
+    pub fn new(path: &str) -> Result<Self, ShahError> {
+        let data_path = Path::new("data/").join(path);
+        let name = data_path
+            .file_name()
+            .and_then(|v| v.to_str())
+            .expect("could not get file_name from path: {path}");
+
+        utils::validate_db_name(name)?;
+
+        std::fs::create_dir_all(&data_path)?;
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(format!("data/{name}.snake.bin"))?;
+            .truncate(false)
+            .open(data_path.join("data.snake.shah"))?;
 
         let db = Self {
             live: 0,
             free: 0,
             free_list: Box::new([None; BLOCK_SIZE]),
             file,
-            index: SnakeIndexDb::new(&format!("{name}-index"), 0)?,
+            index: SnakeIndexDb::new(&format!("{path}/index"), 0)?,
         };
 
         Ok(db)
@@ -74,7 +84,7 @@ impl SnakeDb {
         // i have to setup index manually
         self.index.live = 0;
         self.index.dead_list.clear();
-        let index_db_size = self.index.db_size()?;
+        let index_db_size = self.index.file_size()?;
         let mut head = SnakeHead::default();
 
         if index_db_size < SnakeHead::N {

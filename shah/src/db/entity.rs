@@ -1,5 +1,6 @@
-use crate::error::{NotFound, ShahError, SystemError};
+use crate::error::{DbError, NotFound, ShahError};
 use crate::schema::{Schema, ShahSchema};
+use crate::state::Task;
 use crate::{
     utils, Binary, DbHead, DeadList, Gene, GeneId, ShahMagic, ShahMagicDb,
     BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
@@ -55,136 +56,147 @@ impl<T: Default + Entity + Debug + Clone + Binary + ShahSchema> EntityDbItem
 }
 
 #[derive(Debug)]
-pub struct EntityDb<T: EntityDbItem, Old: EntityDbItem = T> {
+pub struct EntityDb<'a, T: EntityDbItem, Old: EntityDbItem = T, State = ()>
+where
+    T: EntityMigrateFrom<State, Old>,
+{
     pub file: File,
     pub live: u64,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
+    migration: Option<Box<EntityMigration<'a, Old, State>>>,
     _e: PhantomData<T>,
-    migration: Option<Box<EntityMigration<Old, T>>>,
+}
+
+pub trait EntityMigrateFrom<State, Old: EntityDbItem> {
+    fn entity_migrate_from(state: &mut State, old: Old) -> Self;
+}
+impl<State, T: EntityDbItem> EntityMigrateFrom<State, T> for T {
+    fn entity_migrate_from(_: &mut State, old: T) -> Self {
+        old
+    }
 }
 
 #[derive(Debug)]
-pub struct EntityMigration<Old: EntityDbItem, New: EntityDbItem> {
-    pub db: EntityDb<Old, Old>,
-    pub converter: fn(Old) -> New,
+pub struct EntityMigration<'a, Old: EntityDbItem, State> {
+    pub from: EntityDb<'static, Old>,
+    pub state: &'a mut State,
 }
 
-impl<T: EntityDbItem, Old: EntityDbItem> EntityDb<T, Old> {
-    pub fn new(name: &str, iteration: u16) -> Result<Self, ShahError> {
+struct EntitySetupTask {}
+impl Task for EntitySetupTask {
+    fn work(&mut self) {}
+}
+
+struct EntityMigrateTask {}
+impl Task for EntityMigrateTask {
+    fn work(&mut self) {}
+}
+
+impl<'a, State, T: EntityDbItem, Old: EntityDbItem> EntityDb<'a, T, Old, State>
+where
+    T: EntityMigrateFrom<State, Old>,
+{
+    pub fn new(path: &str, iteration: u16) -> Result<Self, ShahError> {
+        let path = Path::new("data/").join(path);
+        let name = path
+            .file_name()
+            .and_then(|v| v.to_str())
+            .expect("could not get file_name from path: {path}");
+
         utils::validate_db_name(name)?;
 
-        let mut path = Path::new("data/").join(name);
         std::fs::create_dir_all(&path)?;
 
-        // let mut db_list = Vec::<(String, u16, DbHead, EntityMeta)>::new();
-        // let current_schema = T::shah_schema().to_bytes();
-        //
-        // for item in path.read_dir()? {
-        //     let item = item?;
-        //     if !item.file_type()?.is_file() {
-        //         continue;
-        //     }
-        //     let filename = item.file_name();
-        //     let Some(filename) = filename.to_str() else { continue };
-        //     let mut fns = filename.splitn(3, '.');
-        //     let Some(oname) = fns.next() else { continue };
-        //     let Some(iter) = fns.next() else { continue };
-        //     let Some(ext) = fns.next() else { continue };
-        //
-        //     if oname != name || ext != ENTITY_EXT {
-        //         continue;
-        //     };
-        //     let Ok(iter) = iter.parse::<u16>() else { continue };
-        //
-        //     let mut file = std::fs::OpenOptions::new()
-        //         .read(true)
-        //         .open(path.join(filename))?;
-        //
-        //     let file_size = file.seek(SeekFrom::End(0))?;
-        //     if file_size < META_OFFSET {
-        //         continue;
-        //     }
-        //
-        //     let mut head = DbHead::default();
-        //     file.read_exact_at(head.as_binary_mut(), 0)?;
-        //     if head.magic != ENTITY_MAGIC {
-        //         panic!("EntityDb<{filename}> magic does not match");
-        //     }
-        //     if iter != head.iteration {
-        //         panic!("EntityDb<{filename}> iteration does not match its metadata");
-        //     }
-        //     let mut meta = EntityMeta::default();
-        //     file.read_exact(meta.as_binary_mut())?;
-        //     db_list.push((filename.to_string(), iter, head, meta));
-        // }
-
-        let mut file = std::fs::OpenOptions::new()
+        let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(path.join(format!("{name}.{iteration}.shah")))?;
 
-        let file_size = file.seek(SeekFrom::End(0))?;
-        file.seek(SeekFrom::Start(0))?;
+        let mut db = Self {
+            live: 0,
+            dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
+            file,
+            _e: PhantomData::<T>,
+            migration: None,
+        };
+
+        db.check_db_head(iteration)?;
+        db.check_schema()?;
+
+        Ok(db)
+    }
+
+    fn check_db_head(&mut self, iteration: u16) -> Result<(), ShahError> {
+        let db_size = self.file_size()?;
+        self.file.seek(SeekFrom::Start(0))?;
 
         let mut head = DbHead::default();
-        let mut schema = EntityMeta::default();
 
-        if file_size < DbHead::N {
+        if db_size < DbHead::N {
             head.magic = ENTITY_MAGIC;
             head.iteration = iteration;
-            file.write_all(head.as_binary())?;
+            self.file.write_all(head.as_binary())?;
         } else {
-            file.read_exact_at(head.as_binary_mut(), 0)?;
+            self.file.read_exact_at(head.as_binary_mut(), 0)?;
             if head.magic != ENTITY_MAGIC {
                 log::error!(
                     "invalid db magic: {:?} != {ENTITY_MAGIC:?}",
                     head.magic
                 );
-                return Err(SystemError::InvalidDbHead)?;
+                return Err(DbError::InvalidDbHead)?;
             }
             if head.iteration != iteration {
                 log::error!("invalid {} != {iteration}", head.iteration);
-                return Err(SystemError::InvalidDbHead)?;
+                return Err(DbError::InvalidDbHead)?;
             }
         }
 
-        if file_size < META_OFFSET {
+        Ok(())
+    }
+
+    fn check_schema(&mut self) -> Result<(), ShahError> {
+        let db_size = self.file_size()?;
+        let mut schema = EntityMeta::default();
+
+        if db_size < DbHead::N + EntityMeta::N {
             schema.item_size = T::N;
-            // schema.schema = ;
             let svec = T::shah_schema().encode();
             schema.schema[0..svec.len()].clone_from_slice(&svec);
-            file.write_all_at(schema.as_binary(), DbHead::N)?;
+            self.file.write_all_at(schema.as_binary(), DbHead::N)?;
         } else {
-            file.read_exact_at(schema.as_binary_mut(), DbHead::N)?;
+            self.file.read_exact_at(schema.as_binary_mut(), DbHead::N)?;
             if schema.item_size != T::N {
                 log::error!(
                     "schema.item_size != current item size. {} != {}",
                     schema.item_size,
                     T::N
                 );
-                return Err(SystemError::InvalidDbSchema)?;
+                return Err(DbError::InvalidDbSchema)?;
             }
 
             let schema = Schema::decode(&schema.schema)?;
             if schema != T::shah_schema() {
                 log::error!("mismatch current item schema vs db item schema. did you forgot to update the iternation?");
-                return Err(SystemError::InvalidDbSchema)?;
+                return Err(DbError::InvalidDbSchema)?;
             }
         }
 
-        let db = Self {
-            live: 0,
-            dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
-            file,
-            _e: PhantomData::<T>,
-            migration: None, // migration: migration.map(|v| Box::new(v)),
-        };
-
-        Ok(db)
+        Ok(())
     }
 
-    pub fn db_size(&mut self) -> std::io::Result<u64> {
+    pub fn set_migration(
+        &mut self, migration: EntityMigration<'a, Old, State>,
+    ) {
+        self.migration = Some(Box::new(migration));
+    }
+
+    pub fn tasks(&mut self) -> Vec<Box<dyn Task>> {
+        vec![Box::new(EntitySetupTask {}), Box::new(EntityMigrateTask {})]
+    }
+
+    pub fn file_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
     }
 
@@ -194,23 +206,27 @@ impl<T: EntityDbItem, Old: EntityDbItem> EntityDb<T, Old> {
     {
         self.live = 0;
         self.dead_list.clear();
-        let db_size = self.db_size()?;
+        let file_size = self.file_size()?;
+        if file_size < META_OFFSET {
+            return Err(DbError::BadInit)?;
+        }
+
         let mut entity = T::default();
 
-        if db_size < T::N {
-            self.file.seek(SeekFrom::Start(T::N - 1))?;
+        if file_size < META_OFFSET + T::N {
+            self.file.seek(SeekFrom::Start(META_OFFSET + T::N - 1))?;
             self.file.write_all(&[0u8])?;
             return Ok(self);
         }
 
-        if db_size == T::N {
+        if file_size == META_OFFSET + T::N {
             return Ok(self);
         }
 
-        self.live = (db_size / T::N) - 1;
-        return Ok(self);
+        self.live = ((file_size - META_OFFSET) / T::N) - 1;
+        // return Ok(self);
 
-        self.file.seek(SeekFrom::Start(T::N))?;
+        self.file.seek(SeekFrom::Start(META_OFFSET + T::N))?;
         loop {
             match self.file.read_exact(entity.as_binary_mut()) {
                 Ok(_) => {}
@@ -238,7 +254,7 @@ impl<T: EntityDbItem, Old: EntityDbItem> EntityDb<T, Old> {
             return Err(NotFound::ZeroGeneId)?;
         }
 
-        let db_size = self.db_size()?;
+        let db_size = self.file_size()?;
         let pos = id * T::N;
 
         if pos > db_size - T::N {
@@ -334,7 +350,7 @@ impl<T: EntityDbItem, Old: EntityDbItem> EntityDb<T, Old> {
     }
 
     pub fn count(&mut self) -> Result<EntityCount, ShahError> {
-        let db_size = self.db_size()?;
+        let db_size = self.file_size()?;
         let total = db_size / T::N - 1;
         Ok(EntityCount { total, alive: self.live })
     }

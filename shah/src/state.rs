@@ -3,5 +3,5 @@ pub trait Task {
 }
 
 pub trait ShahState<'a> {
-    fn tasks(&mut self) -> &'a [impl Task];
+    fn tasks(&'a mut self) -> Vec<impl Task>;
 }

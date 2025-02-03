@@ -1,4 +1,4 @@
-use crate::error::SystemError;
+use crate::error::{DbError, ShahError};
 
 #[cfg(target_arch = "x86_64")]
 /// getrandom syscall
@@ -28,13 +28,13 @@ pub(crate) fn getrandom(buf: &mut [u8]) {
     }
 }
 
-pub(crate) fn validate_db_name(name: &str) -> Result<(), SystemError> {
-    if name.len() < 1 || name.len() > 64 {
-        return Err(SystemError::InvalidDbName);
+pub(crate) fn validate_db_name(name: &str) -> Result<(), ShahError> {
+    if name.is_empty() || name.len() > 64 {
+        return Err(DbError::InvalidDbName)?;
     }
     for c in name.chars() {
         if !c.is_ascii_alphanumeric() && c != '-' {
-            return Err(SystemError::InvalidDbName);
+            return Err(DbError::InvalidDbName)?;
         }
     }
     Ok(())

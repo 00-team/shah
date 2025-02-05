@@ -106,10 +106,14 @@ impl<
 
         std::fs::create_dir_all(&path)?;
 
+        if RO {
+            log::info!("opening {name}.{iteration} entity db as READ ONLY");
+        }
+
         let file = std::fs::OpenOptions::new()
             .read(true)
-            .write(true)
-            .create(true)
+            .write(!RO)
+            .create(!RO)
             .truncate(false)
             .open(path.join(format!("{name}.{iteration}.shah")))?;
 
@@ -202,7 +206,9 @@ impl<
             self.file.read_exact_at(schema.as_binary_mut(), DbHead::N)?;
             if schema.item_size != T::N {
                 log::error!(
-                    "schema.item_size != current item size. {} != {}",
+                    "<EntityDb {}.{}> schema.item_size != current item size. {} != {}",
+                    self.name,
+                    self.iteration,
                     schema.item_size,
                     T::N
                 );
@@ -211,7 +217,12 @@ impl<
 
             let schema = Schema::decode(&schema.schema)?;
             if schema != T::shah_schema() {
-                log::error!("mismatch current item schema vs db item schema. did you forgot to update the iternation?");
+                log::error!(
+                    "<EntityDb {}.{}> mismatch schema.
+                    did you forgot to update the iternation?",
+                    self.name,
+                    self.iteration
+                );
                 return Err(DbError::InvalidDbSchema)?;
             }
         }
@@ -430,14 +441,12 @@ impl<
         gene.server = 0;
         gene.iter = 0;
 
-        if gene.id != 0 {
-            if let Ok(_) = self.seek_id(gene.id) {
-                let mut og = Gene::default();
-                if let Ok(_) = self.file.read_exact(og.as_binary_mut()) {
-                    if og.iter < ITER_EXHAUSTION {
-                        gene.iter = og.iter + 1;
-                        return Ok(gene);
-                    }
+        if gene.id != 0 && self.seek_id(gene.id).is_ok() {
+            let mut og = Gene::default();
+            if self.file.read_exact(og.as_binary_mut()).is_ok() {
+                if og.iter < ITER_EXHAUSTION {
+                    gene.iter = og.iter + 1;
+                    return Ok(gene);
                 }
             }
         }

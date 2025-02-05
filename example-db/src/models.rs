@@ -16,10 +16,10 @@ pub struct State {
 
 impl State {
     pub fn init(mut self) -> Result<Self, ShahError> {
-        // self.users.set_migration(EntityMigration {
-        //     from: user::old_db::init()?,
-        //     state: (),
-        // });
+        self.users.set_migration(EntityMigration {
+            from: user::db::old_init()?,
+            state: (),
+        });
 
         Ok(self)
     }

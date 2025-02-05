@@ -34,13 +34,33 @@ pub mod db {
 
     #[shah::model]
     #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
+    pub struct User_0 {
+        // pub flags: u64,
+        pub gene: Gene,
+        pub agent: Gene,
+        pub review: Gene,
+        pub photo: Gene,
+        #[str]
+        phone: [u8; 12],
+        pub cc: u16,
+        #[entity_flags]
+        pub entity_flags: u8,
+        #[flags(banned)]
+        pub flags: u8,
+        #[str]
+        pub name: [u8; 48],
+        pub sessions: [Session; 3],
+    }
+
+    #[shah::model]
+    #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
     pub struct User {
         // pub flags: u64,
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
         pub photo: Gene,
-        // pub reviews: [u64; 3],
+        pub reviews: [u64; 3],
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
@@ -68,20 +88,33 @@ pub mod db {
         }
     }
 
-    pub type UserDb = EntityDb<User>;
+    pub type OldUserDb = EntityDb<User_0, User_0, (), true>;
+    pub type UserDb = EntityDb<User, User_0>;
 
-    // impl<'a> EntityMigrateFrom<old_db::User_0> for User {
-    //     fn entity_migrate_from(_old: old_db::User_0, _: ()) -> Self {
-    //         Self::default()
-    //     }
-    // }
+    impl EntityMigrateFrom<User_0> for User {
+        fn entity_migrate_from(old: User_0, _: ()) -> Result<Self, ShahError> {
+            Ok(Self {
+                gene: old.gene,
+                agent: old.agent,
+                review: old.review,
+                reviews: [0, 0, 0],
+                photo: old.photo,
+                phone: old.phone,
+                cc: old.cc,
+                entity_flags: old.entity_flags,
+                flags: old.flags,
+                name: old.name,
+                sessions: old.sessions,
+            })
+        }
+    }
 
-    // call some macro here to read the previous iteration schema from file
-    // and make it into a struct
-    // then write a function or
+    pub(crate) fn init() -> Result<UserDb, ShahError> {
+        UserDb::new("user", 1)
+    }
 
-    pub(crate) fn setup() -> Result<UserDb, ShahError> {
-        UserDb::new("user", 0)
+    pub(crate) fn old_init() -> Result<OldUserDb, ShahError> {
+        OldUserDb::new("user", 0)
     }
 }
 

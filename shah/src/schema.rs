@@ -1,6 +1,6 @@
 use crate::error::{DbError, ShahError};
 
-#[derive(Debug, crate::EnumCode, PartialEq, Eq)]
+#[derive(Debug, crate::EnumCode)]
 pub enum Schema {
     Model(SchemaModel),
     Array { length: u64, kind: Box<Schema> },
@@ -16,6 +16,33 @@ pub enum Schema {
     F64,
     Bool,
     Gene, // 13
+}
+
+impl PartialEq for Schema {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Model(sm) => match other {
+                Self::Model(om) => sm == om,
+                _ => false,
+            },
+            Self::Array { length: sl, kind: sk } => match other {
+                Self::Array { length: ol, kind: ok } => sl == ol && sk == ok,
+                _ => false,
+            },
+            Self::U8 => matches!(other, Self::U8),
+            Self::U16 => matches!(other, Self::U16),
+            Self::U32 => matches!(other, Self::U32),
+            Self::U64 => matches!(other, Self::U64),
+            Self::I8 => matches!(other, Self::I8),
+            Self::I16 => matches!(other, Self::I16),
+            Self::I32 => matches!(other, Self::I32),
+            Self::I64 => matches!(other, Self::I64),
+            Self::F32 => matches!(other, Self::F32),
+            Self::F64 => matches!(other, Self::F64),
+            Self::Bool => matches!(other, Self::Bool),
+            Self::Gene => matches!(other, Self::Gene),
+        }
+    }
 }
 
 impl Schema {
@@ -133,11 +160,30 @@ impl Schema {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct SchemaModel {
     pub name: String,
     pub size: u64,
     pub fields: Vec<(String, Schema)>,
+}
+
+impl PartialEq for SchemaModel {
+    fn eq(&self, other: &Self) -> bool {
+        if self.size != other.size {
+            return false;
+        }
+        if self.fields.len() != other.fields.len() {
+            return false;
+        }
+
+        for (i, (_, s)) in self.fields.iter().enumerate() {
+            if *s != other.fields[i].1 {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 pub trait ShahSchema {
@@ -168,4 +214,99 @@ impl_primitive! {
     f32, F32,
     f64, F64,
     bool, Bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::schema::{Schema, SchemaModel};
+
+    #[test]
+    fn comp() {
+        const NAMES: [&str; 9] = [
+            "name 1", "name 2", "name 3", "name 4", "name 5", "name 6",
+            "name 7", "name 8", "name 9",
+        ];
+        fn s(n: usize) -> String {
+            NAMES[n.clamp(0, NAMES.len() - 1)].to_string()
+        }
+
+        assert_ne!(Schema::Gene, Schema::U8);
+        assert_ne!(
+            Schema::Gene,
+            Schema::Array { length: 1, kind: Box::new(Schema::U8) }
+        );
+        assert_ne!(
+            Schema::Array { length: 2, kind: Box::new(Schema::U16) },
+            Schema::Array { length: 1, kind: Box::new(Schema::U16) }
+        );
+        assert_ne!(
+            Schema::Array { length: 5, kind: Box::new(Schema::U16) },
+            Schema::Array { length: 5, kind: Box::new(Schema::I64) }
+        );
+        assert_ne!(
+            Schema::Gene,
+            Schema::Model(SchemaModel { fields: vec![], size: 12, name: s(0) })
+        );
+
+        assert_ne!(
+            Schema::Model(SchemaModel {
+                name: s(2),
+                size: 480,
+                fields: vec![]
+            }),
+            Schema::Model(SchemaModel { name: s(3), size: 44, fields: vec![] }),
+        );
+
+        assert_ne!(
+            Schema::Model(SchemaModel {
+                name: s(2),
+                size: 44,
+                fields: vec![(s(0), Schema::U8), (s(0), Schema::U8)]
+            }),
+            Schema::Model(SchemaModel {
+                name: s(3),
+                size: 44,
+                fields: vec![(s(5), Schema::U8)]
+            }),
+        );
+
+        assert_ne!(
+            Schema::Model(SchemaModel {
+                name: s(2),
+                size: 44,
+                fields: vec![(s(0), Schema::U32)]
+            }),
+            Schema::Model(SchemaModel {
+                name: s(3),
+                size: 44,
+                fields: vec![(s(5), Schema::U8)]
+            }),
+        );
+
+        assert_eq!(Schema::Gene, Schema::Gene);
+        assert_eq!(Schema::U8, Schema::U8);
+        assert_eq!(Schema::I16, Schema::I16);
+
+        assert_eq!(
+            Schema::Array { length: 1, kind: Box::new(Schema::U16) },
+            Schema::Array { length: 1, kind: Box::new(Schema::U16) }
+        );
+        assert_eq!(
+            Schema::Model(SchemaModel { name: s(2), size: 44, fields: vec![] }),
+            Schema::Model(SchemaModel { name: s(5), size: 44, fields: vec![] }),
+        );
+
+        assert_eq!(
+            Schema::Model(SchemaModel {
+                name: s(2),
+                size: 44,
+                fields: vec![(s(0), Schema::U8)]
+            }),
+            Schema::Model(SchemaModel {
+                name: s(3),
+                size: 44,
+                fields: vec![(s(5), Schema::U8)]
+            }),
+        );
+    }
 }

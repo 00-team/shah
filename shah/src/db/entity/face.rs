@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{schema::ShahSchema, Binary, Gene};
+use crate::{error::ShahError, schema::ShahSchema, Binary, Gene};
 
 macro_rules! flag {
     ($name:ident, $set:ident) => {
@@ -27,11 +27,11 @@ impl<T: Default + Entity + Debug + Clone + Binary + ShahSchema> EntityItem
 {
 }
 
-pub trait EntityMigrateFrom<Old: EntityItem, State = ()> {
-    fn entity_migrate_from(old: Old, state: State) -> Self;
+pub trait EntityMigrateFrom<Old: EntityItem, State = ()>: Sized {
+    fn entity_migrate_from(old: Old, state: State) -> Result<Self, ShahError>;
 }
 impl<Old: EntityItem, State> EntityMigrateFrom<Old, State> for Old {
-    fn entity_migrate_from(old: Old, _: State) -> Self {
-        old
+    fn entity_migrate_from(old: Old, _: State) -> Result<Self, ShahError> {
+        Ok(old)
     }
 }

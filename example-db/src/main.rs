@@ -5,7 +5,7 @@ mod phone;
 mod user;
 
 
-use std::io::Write;
+// use std::io::Write;
 
 use shah::{error::ShahError, Command};
 
@@ -107,15 +107,15 @@ fn main() -> Result<(), ShahError> {
 
     // let routes = shah::routes!(models::State, user, phone);
 
-    let mut state = models::State {
-        users: user::db::setup().expect("user setup"),
+    let mut _state = models::State {
+        users: user::db::init().expect("user init"),
         phone: phone::db::setup().expect("phone setup"),
         // detail: detail::db::setup().expect("detail setup"),
         // notes: note::db::setup().expect("note setup"),
     }
     .init()?;
 
-    let mut user = user::db::User::default();
+    let mut _user = user::db::User::default();
     // state.users.add(&mut user)?;
 
     // loop {
@@ -126,19 +126,19 @@ fn main() -> Result<(), ShahError> {
 
     // println!("tasks: {tasks:?}");
 
-    match shah::command() {
-        Commands::Gg => {
-            for i in 0..200 {
-                user.gene.id = 0;
-                user.set_name(&format!("user: {i}"));
-                state.users.add(&mut user)?;
-            }
-        }
-        Commands::Help => {
-            std::io::stdout().write_all(Commands::help().as_bytes()).unwrap();
-        }
-        _ => {}
-    }
+    // match shah::command() {
+    //     Commands::Gg => {
+    //         for i in 0..200 {
+    //             user.gene.id = 0;
+    //             user.set_name(&format!("user: {i}"));
+    //             state.users.add(&mut user)?;
+    //         }
+    //     }
+    //     Commands::Help => {
+    //         std::io::stdout().write_all(Commands::help().as_bytes()).unwrap();
+    //     }
+    //     _ => {}
+    // }
     //     Commands::Run => {
     //         shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
     //     }

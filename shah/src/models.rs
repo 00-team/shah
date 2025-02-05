@@ -1,3 +1,4 @@
+use crate::error::{NotFound, ShahError};
 use crate::schema::{Schema, ShahSchema};
 use crate::{error::SystemError, Binary};
 
@@ -32,6 +33,40 @@ impl Gene {
 
     pub fn is_some(&self) -> bool {
         !self.is_none()
+    }
+
+    pub fn validate(&self) -> Result<(), ShahError> {
+        if self.id == 0 {
+            return Err(NotFound::GeneIdZero)?;
+        }
+        if !cfg!(debug_assertions) && self.server == 0 {
+            return Err(NotFound::GeneServerZero)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn check(&self, other: &Self) -> Result<(), ShahError> {
+        if self.id != other.id {
+            log::error!("mismatch gene id {} != {}", self.id, other.id);
+            return Err(SystemError::GeneIdMismatch)?;
+        }
+
+        if self.iter != other.iter {
+            log::warn!("mismatch gene iter {} != {}", self.iter, other.iter);
+            return Err(NotFound::GeneIterMismatch)?;
+        }
+
+        if self.pepper != other.pepper {
+            log::warn!(
+                "mismatch gene pepper {:?} != {:?}",
+                self.pepper,
+                other.pepper
+            );
+            return Err(NotFound::GenePepperMismatch)?;
+        }
+
+        Ok(())
     }
 }
 

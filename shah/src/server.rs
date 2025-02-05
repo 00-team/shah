@@ -8,7 +8,7 @@ use std::{
 
 const ORDER_SIZE: usize = 1024 * 64;
 
-pub fn run<'a, T: ShahState<'a> + Debug>(
+pub fn run<'a, 't, T: ShahState<'a, 't> + Debug>(
     path: &str, state: &mut T, routes: &[Scope<T>],
 ) -> io::Result<()> {
     let _ = std::fs::remove_file(path);

@@ -1,45 +1,31 @@
 use shah::{
-    db::snake::SnakeDb,
-    error::IsNotFound,
-    state::{ShahState, Task},
+    db::entity::EntityMigration,
+    error::{IsNotFound, ShahError},
     ErrorCode,
 };
 
-use crate::{note::db::NoteDb, phone::db::PhoneDb, user::db::UserDb};
+use crate::{phone::db::PhoneDb, user};
 
 #[derive(Debug)]
-pub struct State<'a> {
-    pub users: UserDb<'a>,
+pub struct State {
+    pub users: user::db::UserDb,
     pub phone: PhoneDb,
-    pub detail: SnakeDb,
-    pub notes: NoteDb,
+    // pub detail: SnakeDb,
+    // pub notes: NoteDb,
 }
 
-struct UserDbMigTask<'a> {
-    _state: &'a mut State<'a>,
-    total: u64,
-    progress: u64,
-}
+impl State {
+    pub fn init(mut self) -> Result<Self, ShahError> {
+        // self.users.set_migration(EntityMigration {
+        //     from: user::old_db::init()?,
+        //     state: (),
+        // });
 
-impl<'a> Task for UserDbMigTask<'a> {
-    fn work(&mut self) {
-        for id in self.progress..(self.total - self.progress).min(10) {
-            log::info!("mig task: {id}");
-            // self.state.users.file.seek_relative(id as i64);
-            self.progress += 1;
-        }
+        Ok(self)
     }
 }
 
-impl<'a> ShahState<'a> for State<'a> {
-    fn tasks(&'a mut self) -> Vec<impl Task> {
-        let usbm = UserDbMigTask { _state: self, total: 11, progress: 0 };
-        // self.users.set_migration();
-        vec![usbm]
-    }
-}
-
-pub type ExampleApi = shah::Api<State<'static>>;
+// pub type ExampleApi = shah::Api<State<'static>>;
 
 #[shah::enum_int(ty = u16)]
 #[derive(Debug, Default, Clone, Copy)]

@@ -87,14 +87,15 @@ impl<T: Into<SystemError>> From<T> for ShahError {
 pub enum NotFound {
     #[default]
     Unknown = 0,
-    ZeroGeneId,
-    BadGeneIter,
-    GeneIdNotInDatabase,
+    GeneIdZero,
+    GeneServerZero,
+    GeneIterMismatch,
+    GenePepperMismatch,
+    OutOfBounds,
     EntityNotAlive,
     /// using set for deleting aka seting alive to false without .del(...)
     DeadSet,
     SnakeIsFree,
-    BadGenePepper,
     NoTrieValue,
 }
 
@@ -133,7 +134,7 @@ pub enum SystemError {
     /// could count parse gene from hex string
     GeneFromHexErr,
     /// this may happen if id of gene on the disk is not the correct id
-    MismatchGeneId,
+    GeneIdMismatch,
 }
 
 impl From<std::io::Error> for SystemError {

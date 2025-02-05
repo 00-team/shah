@@ -1,7 +1,11 @@
-pub trait Task {
-    fn work(&mut self);
+use std::fmt::Debug;
+
+use crate::error::ShahError;
+
+pub trait Task: Debug {
+    fn work(&mut self) -> Result<bool, ShahError>;
 }
 
-pub trait ShahState<'a> {
-    fn tasks(&'a mut self) -> Vec<impl Task>;
+pub trait ShahState<'a, 't> {
+    fn tasks(&'a mut self) -> Result<Vec<Box<dyn Task + 't>>, ShahError>;
 }

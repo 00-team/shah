@@ -1,62 +1,3 @@
-mod old_db {
-    #![allow(dead_code)]
-
-    use shah::db::entity::EntityDb;
-    use shah::error::ShahError;
-    use shah::Entity;
-    use shah::Gene;
-    use shah::ShahSchema;
-
-    pub type UserDb = EntityDb<'static, User_0>;
-
-    #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
-    pub struct SessionInfo_0 {
-        pub client: u8,
-        pub os: u8,
-        pub browser: u8,
-        pub device: u8,
-        pub client_version: u16,
-        pub os_version: u16,
-        pub browser_version: u16,
-        _pad: [u8; 2],
-    }
-
-    #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
-    pub struct Session_0 {
-        ip: [u8; 4],
-        info: SessionInfo_0,
-        timestamp: u64,
-        token: [u8; 64],
-    }
-
-    #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
-    pub struct User_0 {
-        // pub flags: u64,
-        pub gene: Gene,
-        pub agent: Gene,
-        pub review: Gene,
-        pub photo: Gene,
-        pub reviews: [u64; 3],
-        #[str(set = false)]
-        phone: [u8; 12],
-        pub cc: u16,
-        #[entity_flags]
-        pub entity_flags: u8,
-        #[flags(banned)]
-        pub flags: u8,
-        #[str]
-        pub name: [u8; 48],
-        pub sessions: [Session_0; 3],
-    }
-
-    pub(crate) fn init() -> Result<UserDb, ShahError> {
-        UserDb::new("user", 0)
-    }
-}
-
 pub mod db {
     #![allow(dead_code)]
 
@@ -68,9 +9,6 @@ pub mod db {
     use shah::ShahSchema;
 
     use crate::models::ExampleError;
-    use crate::models::State;
-
-    use super::old_db;
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -102,7 +40,7 @@ pub mod db {
         pub agent: Gene,
         pub review: Gene,
         pub photo: Gene,
-        pub reviews: [u64; 3],
+        // pub reviews: [u64; 3],
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
@@ -130,20 +68,20 @@ pub mod db {
         }
     }
 
-    pub type UserDb<'a> = EntityDb<'a, User, old_db::User_0, State<'a>>;
+    pub type UserDb = EntityDb<User>;
 
-    impl<'a> EntityMigrateFrom<State<'a>, old_db::User_0> for User {
-        fn entity_migrate_from(_state: &mut State, _old: old_db::User_0) -> Self {
-            Self::default()
-        }
-    }
+    // impl<'a> EntityMigrateFrom<old_db::User_0> for User {
+    //     fn entity_migrate_from(_old: old_db::User_0, _: ()) -> Self {
+    //         Self::default()
+    //     }
+    // }
 
     // call some macro here to read the previous iteration schema from file
     // and make it into a struct
     // then write a function or
 
-    pub(crate) fn setup<'a>() -> Result<UserDb<'a>, ShahError> {
-        UserDb::new("user", 1)
+    pub(crate) fn setup() -> Result<UserDb, ShahError> {
+        UserDb::new("user", 0)
     }
 }
 

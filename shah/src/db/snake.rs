@@ -34,7 +34,7 @@ pub struct SnakeHead {
     pub flags: u32,
 }
 
-type SnakeIndexDb = EntityDb<'static, SnakeHead>;
+type SnakeIndexDb = EntityDb<SnakeHead>;
 
 #[derive(Debug)]
 pub struct SnakeDb {

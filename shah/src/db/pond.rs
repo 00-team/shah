@@ -1,7 +1,8 @@
 use super::entity::{Entity, EntityCount, EntityDb};
-use crate::error::{IsNotFound, NotFound, ShahError, SystemError};
+use crate::error::{IsNotFound, NotFound, ShahError};
 use crate::{
-    utils, Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE
+    utils, Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION,
+    PAGE_SIZE,
 };
 use std::fmt::Debug;
 use std::fs::File;
@@ -53,8 +54,8 @@ pub struct Pond {
     _pad: [u8; 4],
 }
 
-type PondIndexDb = EntityDb<'static, Pond>;
-type OriginDb = EntityDb<'static, Origin>;
+type PondIndexDb = EntityDb<Pond>;
+type OriginDb = EntityDb<Origin>;
 
 pub trait PondItem:
     Default + Entity + Debug + Clone + Copy + Binary + Duck
@@ -77,7 +78,6 @@ pub struct PondDb<T: PondItem> {
 
 impl<T: PondItem> PondDb<T> {
     pub fn new(path: &str) -> Result<Self, ShahError> {
-
         let data_path = Path::new("data/").join(path);
         let name = data_path
             .file_name()
@@ -87,7 +87,6 @@ impl<T: PondItem> PondDb<T> {
         utils::validate_db_name(name)?;
 
         std::fs::create_dir_all(&data_path)?;
-
 
         let file = std::fs::OpenOptions::new()
             .read(true)
@@ -113,15 +112,15 @@ impl<T: PondItem> PondDb<T> {
         self.live = 0;
         self.free_list.clear();
 
-        self.origins = self.origins.setup(|_, _| {})?;
-        self.index = self.index.setup(|_, pond| {
-            if pond.is_alive() && pond.is_free() && pond.empty > 0 {
-                self.free_list.push(pond.gene);
-                if pond.next.id != 0 || pond.past.id != 0 {
-                    log::warn!("invalid pond: {pond:?}. free ponds must not have siblings");
-                }
-            }
-        })?;
+        // self.origins = self.origins.setup(|_, _| {})?;
+        // self.index = self.index.setup(|_, pond| {
+        //     if pond.is_alive() && pond.is_free() && pond.empty > 0 {
+        //         self.free_list.push(pond.gene);
+        //         if pond.next.id != 0 || pond.past.id != 0 {
+        //             log::warn!("invalid pond: {pond:?}. free ponds must not have siblings");
+        //         }
+        //     }
+        // })?;
 
         // let db_size = self.db_size()?;
         // if db_size < T::N {
@@ -342,7 +341,7 @@ impl<T: PondItem> PondDb<T> {
     pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
         if id == 0 {
             log::warn!("gene id is zero");
-            return Err(NotFound::ZeroGeneId)?;
+            return Err(NotFound::GeneIdZero)?;
         }
 
         let db_size = self.db_size()?;
@@ -350,7 +349,7 @@ impl<T: PondItem> PondDb<T> {
 
         if db_size < T::N || pos > db_size - T::N {
             log::warn!("invalid position: {pos}/{db_size}");
-            return Err(NotFound::GeneIdNotInDatabase)?;
+            return Err(NotFound::OutOfBounds)?;
         }
 
         let rs = self.file.seek(SeekFrom::Start(pos))?;
@@ -362,6 +361,8 @@ impl<T: PondItem> PondDb<T> {
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
+        gene.validate()?;
+
         self.seek_id(gene.id)?;
         self.file.read_exact(entity.as_binary_mut())?;
 
@@ -369,21 +370,7 @@ impl<T: PondItem> PondDb<T> {
             return Err(NotFound::EntityNotAlive)?;
         }
 
-        let og = entity.gene();
-        if gene.id != og.id {
-            log::error!("invalid gene.id != og.id: {} != {}", gene.id, og.id);
-            return Err(SystemError::MismatchGeneId)?;
-        }
-
-        if gene.pepper != og.pepper {
-            log::warn!("bad gene {:?} != {:?}", gene.pepper, og.pepper);
-            return Err(NotFound::BadGenePepper)?;
-        }
-
-        if gene.iter != og.iter {
-            log::warn!("bad iter {:?} != {:?}", gene.iter, og.iter);
-            return Err(NotFound::BadGeneIter)?;
-        }
+        gene.check(entity.gene())?;
 
         Ok(())
     }

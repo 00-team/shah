@@ -1,7 +1,9 @@
 mod face;
+mod migration;
 // mod task;
 
 pub use face::*;
+pub use migration::*;
 
 use crate::models::*;
 use crate::*;
@@ -11,7 +13,6 @@ use std::{
     fmt::Debug,
     fs::File,
     io::{ErrorKind, Read, Seek, SeekFrom, Write},
-    marker::PhantomData,
     os::unix::fs::FileExt,
 };
 
@@ -100,26 +101,18 @@ pub struct EntityDb<
     T: EntityItem + EntityMigrateFrom<Old, State>,
     Old: EntityItem = T,
     State: Debug = (),
-    const RO: bool = false,
 > {
     pub file: File,
     pub live: u64,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     iteration: u16,
-    migration: Option<Box<EntityMigration<Old, State>>>,
-    _e: PhantomData<T>,
-    setup_task: SetupTask,
     name: String,
+    migration: Option<EntityMigration<Old, State>>,
+    setup_task: SetupTask,
     tasks: TaskArray<
         2,
-        fn(&mut EntityDb<T, Old, State, RO>) -> Result<bool, ShahError>,
+        fn(&mut EntityDb<T, Old, State>) -> Result<bool, ShahError>,
     >,
-}
-
-#[derive(Debug)]
-pub struct EntityMigration<Old: EntityItem, State> {
-    pub from: EntityDb<Old, Old, (), true>,
-    pub state: State,
 }
 
 /// if an io operation was performed check for order's
@@ -127,11 +120,10 @@ pub struct EntityMigration<Old: EntityItem, State> {
 type Performed = bool;
 
 impl<
-        const RO: bool,
         State: Debug,
         T: EntityItem + EntityMigrateFrom<Old, State>,
         Old: EntityItem,
-    > EntityDb<T, Old, State, RO>
+    > EntityDb<T, Old, State>
 {
     pub fn new(path: &str, iteration: u16) -> Result<Self, ShahError> {
         let path = Path::new("data/").join(path);
@@ -144,14 +136,10 @@ impl<
 
         std::fs::create_dir_all(&path)?;
 
-        if RO {
-            log::info!("opening {name}.{iteration} entity db as READ ONLY");
-        }
-
         let file = std::fs::OpenOptions::new()
             .read(true)
-            .write(!RO)
-            .create(!RO)
+            .write(true)
+            .create(true)
             .truncate(false)
             .open(path.join(format!("{name}.{iteration}.shah")))?;
 
@@ -160,7 +148,6 @@ impl<
             live: 0,
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
-            _e: PhantomData::<T>,
             iteration,
             migration: None,
             setup_task: SetupTask::default(),
@@ -270,7 +257,7 @@ impl<
     }
 
     pub fn set_migration(&mut self, migration: EntityMigration<Old, State>) {
-        self.migration = Some(Box::new(migration));
+        self.migration = Some(migration);
     }
 
     // pub fn tasks<'t, 'edb: 't>(&'edb mut self) -> Result<Vec<Box<dyn Task + 't>>, ShahError> {
@@ -346,9 +333,7 @@ impl<
             return Ok(false);
         };
 
-        log::info!("mig.from.name: {}", mig.from.name);
-        // mig.from;
-        // mig.state;
+        log::info!("mig.from: {:?}", mig.from);
 
         Ok(true)
     }

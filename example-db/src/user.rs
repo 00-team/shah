@@ -1,7 +1,7 @@
 pub mod db {
     #![allow(dead_code)]
 
-    use shah::db::entity::{EntityDb, EntityMigrateFrom};
+    use shah::db::entity::{EntityDb, EntityMigrateFrom, EntityMigrationDb};
     use shah::models::Gene;
     use shah::{Entity, ShahError, ShahSchema};
 
@@ -85,7 +85,7 @@ pub mod db {
         }
     }
 
-    pub type OldUserDb = EntityDb<User_0, User_0, (), true>;
+    pub type OldUserDb = EntityMigrationDb<User_0>;
     pub type UserDb = EntityDb<User, User_0>;
 
     impl EntityMigrateFrom<User_0> for User {

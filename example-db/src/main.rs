@@ -4,7 +4,6 @@ mod models;
 mod phone;
 mod user;
 
-
 // use std::io::Write;
 
 use shah::{error::ShahError, Command};
@@ -118,23 +117,27 @@ fn main() -> Result<(), ShahError> {
     let mut _user = user::db::User::default();
     // state.users.add(&mut user)?;
 
-    log::info!("users: {}", state.users.live);
-
-    loop {
-        log::info!("========================");
-        state.users.work()?;
-        std::thread::sleep(std::time::Duration::from_secs(2));
-    }
+    // log::info!("users: {}", state.users.live);
+    //
+    // loop {
+    //     log::info!("========================");
+    //     state.users.work()?;
+    //     std::thread::sleep(std::time::Duration::from_secs(2));
+    // }
 
     // println!("tasks: {tasks:?}");
 
+    // for i in 0..200 {
+    //     user.gene.id = 0;
+    //     user.set_name(&format!("user: {i}"));
+    //     state.users.add(&mut user)?;
+    // }
+    //
+    Ok(())
+
     // match shah::command() {
     //     Commands::Gg => {
-    //         for i in 0..200 {
-    //             user.gene.id = 0;
-    //             user.set_name(&format!("user: {i}"));
-    //             state.users.add(&mut user)?;
-    //         }
+
     //     }
     //     Commands::Help => {
     //         std::io::stdout().write_all(Commands::help().as_bytes()).unwrap();

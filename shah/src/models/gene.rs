@@ -1,6 +1,5 @@
-use crate::error::{NotFound, ShahError};
-use crate::schema::{Schema, ShahSchema};
-use crate::{error::SystemError, Binary};
+use super::{Binary, Schema, ShahSchema};
+use crate::error::{NotFound, ShahError, SystemError};
 
 pub type GeneId = u64;
 
@@ -22,6 +21,8 @@ impl ShahSchema for Gene {
 impl Gene {
     #[cfg(feature = "serde")]
     pub fn as_hex(&self) -> String {
+        use super::Binary;
+
         let mut dst = [0u8; Gene::S * 2];
         let out = faster_hex::hex_encode(self.as_binary(), &mut dst).unwrap();
         out.to_string()
@@ -133,101 +134,6 @@ impl<'de> serde::Deserialize<'de> for Gene {
         match deserializer.deserialize_str(StrVisitor)?.parse::<Gene>() {
             Ok(v) => Ok(v),
             Err(_) => Err(serde::de::Error::custom("expected str")),
-        }
-    }
-}
-
-#[crate::model]
-#[derive(Debug)]
-pub struct OrderHead {
-    pub size: u32,
-    pub scope: u8,
-    pub route: u8,
-    _pad: [u8; 2],
-    pub id: u64,
-}
-
-#[crate::model]
-#[derive(Debug)]
-pub struct ReplyHead {
-    pub id: u64,
-    pub size: u32,
-    pub error: u32,
-    pub elapsed: u64,
-}
-
-#[crate::model]
-#[derive(Debug)]
-pub struct Reply {
-    pub head: ReplyHead,
-    pub body: [u8; 1024 * 64],
-}
-
-#[crate::model]
-#[derive(Debug)]
-pub struct MigrationProgress {
-    pub total: u64,
-    pub progress: u64,
-}
-
-#[crate::model]
-#[derive(Debug, PartialEq, Eq)]
-pub struct ShahMagic {
-    sign: [u8; 5],
-    prefix: u8,
-    db: u16,
-}
-
-#[crate::enum_int(ty = u16)]
-#[derive(Debug, Default)]
-pub enum ShahMagicDb {
-    #[default]
-    Unknown,
-    Entity,
-    Pond,
-    Snake,
-    TrieConst,
-}
-
-impl ShahMagic {
-    const SIGN: [u8; 5] = *b"\x07SHAH";
-    const PREFIX: u8 = 7;
-
-    pub fn new(db: ShahMagicDb) -> Self {
-        Self { sign: Self::SIGN, prefix: Self::PREFIX, db: db.into() }
-    }
-
-    pub const fn new_const(db: u16) -> Self {
-        Self { sign: Self::SIGN, prefix: Self::PREFIX, db }
-    }
-
-    pub fn custom<Db: Into<u16>>(prefix: u8, db: Db) -> Self {
-        assert_ne!(
-            prefix,
-            Self::PREFIX,
-            "for custom databases you cannot use the shah prefix"
-        );
-        Self { sign: Self::SIGN, prefix, db: db.into() }
-    }
-}
-
-#[crate::model]
-#[derive(Debug)]
-pub struct DbHead {
-    pub magic: ShahMagic,
-    pub iteration: u16,
-    _pad: [u8; 6],
-    // in the iteration db
-    pub migration: MigrationProgress,
-}
-
-impl DbHead {
-    pub fn new(magic: ShahMagic, iteration: u16) -> Self {
-        Self {
-            magic,
-            iteration,
-            _pad: Default::default(),
-            migration: Default::default(),
         }
     }
 }

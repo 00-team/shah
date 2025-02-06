@@ -218,7 +218,7 @@ impl_primitive! {
 
 #[cfg(test)]
 mod tests {
-    use crate::schema::{Schema, SchemaModel};
+    use super::{Schema, SchemaModel};
 
     #[test]
     fn comp() {

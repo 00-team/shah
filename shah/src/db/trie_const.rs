@@ -7,8 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{binary::Binary, error::{NotFound, ShahError}};
-use crate::error::SystemError;
+use crate::{models::Binary, NotFound, ShahError, SystemError};
 
 pub trait TrieAbc {
     #[allow(clippy::result_unit_err)]
@@ -136,9 +135,7 @@ where
         Ok(tkey)
     }
 
-    pub fn get(
-        &mut self, key: &TrieConstKey<INDEX>,
-    ) -> Result<Val, ShahError> {
+    pub fn get(&mut self, key: &TrieConstKey<INDEX>) -> Result<Val, ShahError> {
         let mut pos = key.cache * Self::PS;
         let mut node = [0u64; ABC_LEN];
         let mut node_value = [Val::default(); ABC_LEN];

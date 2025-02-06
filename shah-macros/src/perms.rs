@@ -15,7 +15,7 @@ pub fn perms(code: TokenStream) -> TokenStream {
             continue;
         }
         let (byte, bit) = (idx / 8, (idx % 8) as u8);
-        quote_into! {s += pub const #ident: #ci::perms::Perm = (#byte, #bit); };
+        quote_into! {s += pub const #ident: #ci::models::Perm = (#byte, #bit); };
     }
 
     s.into()

@@ -5,6 +5,7 @@ use quote_into::quote_into;
 
 pub(crate) fn command(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::ItemEnum);
+    let ci = crate::crate_ident();
 
     let mut s = TokenStream2::new();
     let ident = &item.ident;
@@ -102,7 +103,7 @@ pub(crate) fn command(code: TokenStream) -> TokenStream {
     quote_into!(h += help.push('\n'); help);
 
     quote_into! {s +=
-        impl shah::Command for #ident {
+        impl #ci::Command for #ident {
             fn parse(mut args: std::env::Args) -> Self {
                 let Some(cmd) = args.next() else { return Self::default() };
 

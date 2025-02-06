@@ -1,7 +1,7 @@
 use crate::crate_ident;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
 use syn::punctuated::Punctuated;
 
@@ -29,6 +29,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     let mut uses = TokenStream2::new();
     let mut user_funcs = Vec::<syn::ItemFn>::new();
     let mut user_client = TokenStream2::new();
+    let bin = quote! { #ci::models::Binary };
 
     for item in content.iter() {
         match &item {
@@ -141,8 +142,8 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 let vid = format_ident!("ov{}", i);
 
                 quote_into! {output_var +=
-                    let (#vid, out) = out.split_at_mut(<#t as #ci::Binary>::S);
-                    let #vid = <#t as #ci::Binary>::from_binary_mut(#vid);
+                    let (#vid, out) = out.split_at_mut(<#t as #bin>::S);
+                    let #vid = <#t as #bin>::from_binary_mut(#vid);
                 };
             }
             quote_into! {output_var += let output = (#{
@@ -156,13 +157,13 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
             quote_into! {bf += 0};
             let mut input_var = TokenStream2::new();
             for t in inp.iter() {
-                quote_into! {input_var += <#t as #ci::Binary>::from_binary(&inp[#bf..#bf + <#t as #ci::Binary>::S]),};
-                quote_into! {bf += + <#t as #ci::Binary>::S};
+                quote_into! {input_var += <#t as #bin>::from_binary(&inp[#bf..#bf + <#t as #bin>::S]),};
+                quote_into! {bf += + <#t as #bin>::S};
             }
 
             let mut out_size = TokenStream2::new();
             quote_into!(out_size += 0);
-            out.iter().for_each(|t| quote_into! {out_size += + <#t as #ci::Binary>::S });
+            out.iter().for_each(|t| quote_into! {out_size += + <#t as #bin>::S });
 
             quote_into! {s +=
                 #[allow(dead_code)]
@@ -180,17 +181,17 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         }
 
         let routes_len = routes.len();
-        quote_into! {s += pub(crate) const ROUTES: [#ci::Api<#state>; #routes_len] = [#{
+        quote_into! {s += pub(crate) const ROUTES: [#ci::models::Api<#state>; #routes_len] = [#{
             for Route { api_ident, ident, inp, .. } in routes.iter() {
                 let mut input_size = TokenStream2::new();
                 quote_into!(input_size += 0);
 
                 for t in inp.iter() {
-                    quote_into! {input_size += + <#t as #ci::Binary>::S }
+                    quote_into! {input_size += + <#t as #bin>::S }
                 }
 
                 let name = ident.to_string();
-                quote_into! {s += #ci::Api::<#state> {
+                quote_into! {s += #ci::models::Api::<#state> {
                     name: #name,
                     caller: #api_ident,
                     input_size: #input_size,
@@ -214,23 +215,23 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         let mut input_size = TokenStream2::new();
         quote_into!(input_size += 0);
         for t in inp.iter() {
-            quote_into!(input_size += + <#t as #ci::Binary>::S);
+            quote_into!(input_size += + <#t as #bin>::S);
         }
 
         let mut bf = TokenStream2::new();
         quote_into! {bf += 0};
         let mut output_result = TokenStream2::new();
         for t in out.iter() {
-            quote_into! {output_result += <#t as #ci::Binary>::from_binary(&reply.body[#bf..#bf + <#t as #ci::Binary>::S]).clone(),};
-            quote_into! {bf += + <#t as #ci::Binary>::S};
+            quote_into! {output_result += <#t as #bin>::from_binary(&reply.body[#bf..#bf + <#t as #bin>::S]).clone(),};
+            quote_into! {bf += + <#t as #bin>::S};
         }
 
         let mut bf = TokenStream2::new();
         quote_into! {bf += 0};
         let mut input_result = TokenStream2::new();
         for (i, t) in inputs.clone() {
-            quote_into! {input_result += order_body[#bf..#bf + <#t as #ci::Binary>::S].clone_from_slice(<#t as #ci::Binary>::as_binary(#i));};
-            quote_into! {bf += + <#t as #ci::Binary>::S};
+            quote_into! {input_result += order_body[#bf..#bf + <#t as #bin>::S].clone_from_slice(<#t as #bin>::as_binary(#i));};
+            quote_into! {bf += + <#t as #bin>::S};
         }
 
         quote_into! {c +=
@@ -240,9 +241,9 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 #{inputs.clone().for_each(|(i, t)| quote_into!(c += #i: &#t, ))}
             ) -> Result<(#{out.iter().for_each(|t| quote_into!(c += #t,))}), #ci::ClientError<#user_error>> {
             // ) -> Result<(), #ci::ClientError<#user_error>> {
-                let mut order = [0u8; #input_size + <#ci::OrderHead as #ci::Binary>::S];
-                let (order_head, order_body) = order.split_at_mut(<#ci::OrderHead as #ci::Binary>::S);
-                let order_head = <#ci::OrderHead as #ci::Binary>::from_binary_mut(order_head);
+                let mut order = [0u8; #input_size + <#ci::models::OrderHead as #bin>::S];
+                let (order_head, order_body) = order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
+                let order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(order_head);
                 order_head.scope = #api_scope as u8;
                 order_head.route = #rdx as u8;
                 order_head.size = (#input_size) as u32;

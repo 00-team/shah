@@ -29,7 +29,7 @@ pub fn routes(code: TokenStream) -> TokenStream {
 
     let mut s = TokenStream2::new();
     quote_into! {s +=
-        let mut routes: [Option<#ci::Scope<#state>>; #len] = [const {None}; #len];
+        let mut routes: [Option<#ci::models::Scope<#state>>; #len] = [const {None}; #len];
     };
     for i in idents {
         let si = i.to_string();
@@ -40,7 +40,7 @@ pub fn routes(code: TokenStream) -> TokenStream {
                     #i::api::SCOPE, scope.name, #si
                 );
             }
-            routes[#i::api::SCOPE] = Some(#ci::Scope::<#state> {
+            routes[#i::api::SCOPE] = Some(#ci::models::Scope::<#state> {
                 routes: #i::api::ROUTES.as_slice(),
                 scope: #i::api::SCOPE,
                 name: #si,

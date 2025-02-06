@@ -304,7 +304,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }
 
 
-        impl #generics #ci::Binary for #ident #gnb {}
+        impl #generics #ci::models::Binary for #ident #gnb {}
 
         // impl #ci::FromBytes for #ident {
         //     fn from_bytes(data: &[u8]) -> Self {

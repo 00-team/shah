@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
-use crate::{error::ShahError, schema::ShahSchema, Binary, Gene};
+use crate::models::{Binary, Gene, ShahSchema};
+use crate::ShahError;
 
 macro_rules! flag {
     ($name:ident, $set:ident) => {

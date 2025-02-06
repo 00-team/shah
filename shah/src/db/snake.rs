@@ -1,9 +1,7 @@
 use super::entity::{Entity, EntityDb};
-use crate::{
-    error::{NotFound, ShahError, SystemError},
-    utils, Binary, Gene, BLOCK_SIZE,
-};
-use shah_macros::Entity;
+use crate::models::{Binary, Gene};
+use crate::{utils, Entity, NotFound, ShahError, SystemError, BLOCK_SIZE};
+
 use std::{
     fs::File,
     io::{ErrorKind, Read, Seek, SeekFrom, Write},

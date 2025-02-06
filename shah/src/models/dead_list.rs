@@ -1,8 +1,6 @@
-use std::num::Saturating;
-
 #[derive(Debug)]
 pub struct DeadList<T, const CAP: usize> {
-    len: Saturating<usize>,
+    len: usize,
     arr: Box<[Option<T>; CAP]>,
 }
 
@@ -14,7 +12,7 @@ impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
 
 impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     pub fn new() -> Self {
-        Self { len: Saturating(0), arr: Box::new([const { None }; CAP]) }
+        Self { len: 0, arr: Box::new([const { None }; CAP]) }
     }
 
     pub fn push(&mut self, value: T) {
@@ -22,7 +20,7 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
             return;
         }
         let mut empty_slot: Option<usize> = None;
-        let mut travel = Saturating(0usize);
+        let mut travel = 0usize;
         for (i, slot) in self.arr.iter().enumerate() {
             if let Some(item) = slot {
                 if *item == value {
@@ -45,7 +43,7 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     }
 
     pub const fn len(&self) -> usize {
-        self.len.0
+        self.len
     }
 
     pub const fn is_full(&self) -> bool {
@@ -60,13 +58,15 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
         if self.is_empty() {
             return None;
         }
-        let mut travel = Saturating(0usize);
+        let mut travel = 0usize;
         for slot in self.arr.iter_mut() {
             if let Some(item) = slot {
                 if f(item) {
                     let v = item.clone();
                     *slot = None;
-                    self.len -= 1;
+                    if self.len > 0 {
+                        self.len -= 1;
+                    }
                     return Some(v);
                 }
                 travel += 1;
@@ -81,7 +81,7 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
 
     pub fn clear(&mut self) {
         self.arr.fill(None);
-        self.len = Saturating(0);
+        self.len = 0;
     }
 }
 

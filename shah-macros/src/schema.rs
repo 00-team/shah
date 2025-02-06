@@ -17,22 +17,22 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     fn quote_schema(ty: &syn::Type, s: &mut TokenStream2, ci: &syn::Ident) {
         match ty {
             syn::Type::Array(syn::TypeArray { len, elem, .. }) => {
-                quote_into! {s += #ci::schema::Schema::Array {
+                quote_into! {s += #ci::models::Schema::Array {
                     length: #len,
                     kind: Box::new(#{quote_schema(elem, s, ci)}),
                 }}
             }
             syn::Type::Path(t) => {
-                quote_into! {s += <#t as #ci::schema::ShahSchema>::shah_schema()}
+                quote_into! {s += <#t as #ci::models::ShahSchema>::shah_schema()}
             }
             _ => panic!("unknwon type: {ty:?} for ShahSchema"),
         }
     }
 
     quote_into! {s +=
-        impl #ci::schema::ShahSchema for #ident {
-            fn shah_schema() -> #ci::schema::Schema {
-                #ci::schema::Schema::Model(#ci::schema::SchemaModel {
+        impl #ci::models::ShahSchema for #ident {
+            fn shah_schema() -> #ci::models::Schema {
+                #ci::models::Schema::Model(#ci::models::SchemaModel {
                     name: String::from(#model_name),
                     size: core::mem::size_of::<#ident>() as u64,
                     fields: vec![#{

@@ -1,14 +1,12 @@
-use crate::{state::ShahState, Binary, OrderHead, Reply, ReplyHead, Scope};
-use std::{
-    fmt::Debug,
-    io,
-    os::unix::net::{SocketAddr, UnixDatagram},
-    time::{Duration, Instant},
-};
+use std::io;
+use std::os::unix::net::{SocketAddr, UnixDatagram};
+use std::time::{Duration, Instant};
+
+use crate::models::{OrderHead, Binary, Reply, ReplyHead, Scope, ShahState};
 
 const ORDER_SIZE: usize = 1024 * 64;
 
-pub fn run<'a, 't, T: ShahState<'a, 't> + Debug>(
+pub fn run<T: ShahState>(
     path: &str, state: &mut T, routes: &[Scope<T>],
 ) -> io::Result<()> {
     let _ = std::fs::remove_file(path);

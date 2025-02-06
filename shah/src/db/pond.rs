@@ -1,9 +1,8 @@
 use super::entity::{Entity, EntityCount, EntityDb};
-use crate::error::{IsNotFound, NotFound, ShahError};
-use crate::{
-    utils, Binary, DeadList, Gene, GeneId, BLOCK_SIZE, ITER_EXHAUSTION,
-    PAGE_SIZE,
-};
+use crate::models::{Binary, DeadList, Gene, GeneId};
+use crate::{utils, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE};
+use crate::{IsNotFound, NotFound, ShahError};
+
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
@@ -198,7 +197,7 @@ impl<T: PondItem> PondDb<T> {
         } else {
             old_pond.next = pond.next;
             self.index.set(&old_pond)?;
-        };
+        }
 
         if let Err(e) = self.index.get(&pond.next, &mut old_pond) {
             e.not_found_ok()?;

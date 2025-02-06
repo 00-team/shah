@@ -107,7 +107,7 @@ fn main() -> Result<(), ShahError> {
 
     // let routes = shah::routes!(models::State, user, phone);
 
-    let mut _state = models::State {
+    let mut state = models::State {
         users: user::db::init().expect("user init"),
         phone: phone::db::setup().expect("phone setup"),
         // detail: detail::db::setup().expect("detail setup"),
@@ -118,11 +118,13 @@ fn main() -> Result<(), ShahError> {
     let mut _user = user::db::User::default();
     // state.users.add(&mut user)?;
 
-    // loop {
-    //     log::info!("========================");
-    //     state.users.work()?;
-    //     std::thread::sleep(std::time::Duration::from_secs(2));
-    // }
+    log::info!("users: {}", state.users.live);
+
+    loop {
+        log::info!("========================");
+        state.users.work()?;
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 
     // println!("tasks: {tasks:?}");
 
@@ -144,7 +146,7 @@ fn main() -> Result<(), ShahError> {
     //     }
     // }
 
-    Ok(())
+    // Ok(())
 }
 
 struct SimpleLogger;

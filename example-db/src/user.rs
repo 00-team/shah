@@ -1,12 +1,9 @@
 pub mod db {
     #![allow(dead_code)]
 
-    use shah::db::entity::EntityDb;
-    use shah::db::entity::EntityMigrateFrom;
-    use shah::error::ShahError;
-    use shah::Entity;
-    use shah::Gene;
-    use shah::ShahSchema;
+    use shah::db::entity::{EntityDb, EntityMigrateFrom};
+    use shah::models::Gene;
+    use shah::{Entity, ShahError, ShahSchema};
 
     use crate::models::ExampleError;
 
@@ -122,7 +119,7 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{ErrorCode, Gene, GeneId, PAGE_SIZE};
+    use shah::{models::{Gene, GeneId}, ErrorCode, PAGE_SIZE};
 
     pub(crate) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),
@@ -153,6 +150,6 @@ mod api {
         (users,): (&mut [User; PAGE_SIZE],),
     ) -> Result<usize, ErrorCode> {
         let count = state.users.list(*page, users)?;
-        Ok(count * <User as shah::Binary>::S)
+        Ok(count * <User as shah::models::Binary>::S)
     }
 }

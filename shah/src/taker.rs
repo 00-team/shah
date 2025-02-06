@@ -3,7 +3,8 @@ use std::{
     time::Duration,
 };
 
-use crate::{error::SystemError, Binary, ErrorCode, OrderHead, Reply};
+use crate::models::{Binary, OrderHead, Reply};
+use crate::{ErrorCode, SystemError};
 
 /// Order Taker
 pub struct Taker {

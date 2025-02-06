@@ -3,13 +3,9 @@ mod face;
 
 pub use face::*;
 
-use crate::error::{DbError, NotFound, ShahError};
-use crate::schema::Schema;
-// use crate::state::Task;
-use crate::{
-    utils, Binary, DbHead, DeadList, Gene, GeneId, ShahMagic, ShahMagicDb,
-    BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE,
-};
+use crate::models::*;
+use crate::*;
+
 use std::path::Path;
 use std::{
     fmt::Debug,
@@ -61,6 +57,45 @@ impl Iterator for SetupTask {
 }
 
 #[derive(Debug)]
+struct TaskArray<const N: usize, T> {
+    tasks: [T; N],
+    index: usize,
+    count: usize,
+}
+
+impl<const N: usize, T: Copy> TaskArray<N, T> {
+    pub fn new(tasks: [T; N]) -> Self {
+        Self { tasks, index: 0, count: 0 }
+    }
+    pub fn start(&mut self) {
+        self.count = 0;
+    }
+}
+
+impl<const N: usize, T: Copy> Iterator for TaskArray<N, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count >= N {
+            return None;
+        }
+        self.count += 1;
+
+        if self.index >= N {
+            self.index = 0;
+        }
+
+        let task = Some(self.tasks[self.index]);
+
+        self.index += 1;
+        if self.index >= N {
+            self.index = 0;
+        }
+
+        task
+    }
+}
+
+#[derive(Debug)]
 pub struct EntityDb<
     T: EntityItem + EntityMigrateFrom<Old, State>,
     Old: EntityItem = T,
@@ -75,7 +110,10 @@ pub struct EntityDb<
     _e: PhantomData<T>,
     setup_task: SetupTask,
     name: String,
-    task_index: usize,
+    tasks: TaskArray<
+        2,
+        fn(&mut EntityDb<T, Old, State, RO>) -> Result<bool, ShahError>,
+    >,
 }
 
 #[derive(Debug)]
@@ -117,6 +155,7 @@ impl<
             .truncate(false)
             .open(path.join(format!("{name}.{iteration}.shah")))?;
 
+        let tasks = [Self::work_migration, Self::work_setup_task];
         let mut db = Self {
             live: 0,
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
@@ -126,7 +165,7 @@ impl<
             migration: None,
             setup_task: SetupTask::default(),
             name: name.to_string(),
-            task_index: 0,
+            tasks: TaskArray::new(tasks),
         };
 
         db.init()?;
@@ -303,9 +342,11 @@ impl<
     // }
 
     fn work_migration(&mut self) -> Result<Performed, ShahError> {
-        let Some(_mig) = &mut self.migration else {
+        let Some(mig) = &mut self.migration else {
             return Ok(false);
         };
+
+        log::info!("mig.from.name: {}", mig.from.name);
         // mig.from;
         // mig.state;
 
@@ -342,26 +383,10 @@ impl<
     }
 
     pub fn work(&mut self) -> Result<Performed, ShahError> {
-        let tasks = [Self::work_setup_task, Self::work_migration];
-
-        let starting_index = self.task_index;
-        log::info!("work sdx: {starting_index}");
-        loop {
-            log::info!("tdx: {}", self.task_index);
-            let performed = tasks[self.task_index](self)?;
-
-            self.task_index += 1;
-            if self.task_index >= tasks.len() {
-                self.task_index = 0;
-            }
-
-            log::info!("performed: {performed}");
-            if performed {
+        self.tasks.start();
+        while let Some(task) = self.tasks.next() {
+            if task(self)? {
                 return Ok(true);
-            }
-
-            if self.task_index == starting_index {
-                break;
             }
         }
 

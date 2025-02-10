@@ -7,6 +7,7 @@ mod perms;
 mod schema;
 mod server;
 mod state;
+mod task_list;
 
 pub use api::*;
 pub use binary::Binary;
@@ -17,3 +18,4 @@ pub use perms::*;
 pub use schema::*;
 pub use server::*;
 pub use state::*;
+pub use task_list::*;

@@ -1,6 +1,5 @@
 mod face;
 mod migration;
-// mod task;
 
 pub use face::*;
 pub use migration::*;
@@ -57,44 +56,7 @@ impl Iterator for SetupTask {
     }
 }
 
-#[derive(Debug)]
-struct TaskArray<const N: usize, T> {
-    tasks: [T; N],
-    index: usize,
-    count: usize,
-}
-
-impl<const N: usize, T: Copy> TaskArray<N, T> {
-    pub fn new(tasks: [T; N]) -> Self {
-        Self { tasks, index: 0, count: 0 }
-    }
-    pub fn start(&mut self) {
-        self.count = 0;
-    }
-}
-
-impl<const N: usize, T: Copy> Iterator for TaskArray<N, T> {
-    type Item = T;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.count >= N {
-            return None;
-        }
-        self.count += 1;
-
-        if self.index >= N {
-            self.index = 0;
-        }
-
-        let task = Some(self.tasks[self.index]);
-
-        self.index += 1;
-        if self.index >= N {
-            self.index = 0;
-        }
-
-        task
-    }
-}
+type EntityTask<T, O, S> = fn(&mut EntityDb<T, O, S>) -> Result<bool, ShahError>;
 
 #[derive(Debug)]
 pub struct EntityDb<
@@ -109,10 +71,11 @@ pub struct EntityDb<
     name: String,
     migration: Option<EntityMigration<Old, State>>,
     setup_task: SetupTask,
-    tasks: TaskArray<
-        2,
-        fn(&mut EntityDb<T, Old, State>) -> Result<bool, ShahError>,
-    >,
+    tasks: TaskList<2, EntityTask<T, Old, State>>
+    // tasks: TaskList<
+    //     2,
+    //     fn(&mut EntityDb<T, Old, State>) -> Result<bool, ShahError>,
+    // >,
 }
 
 /// if an io operation was performed check for order's
@@ -152,7 +115,7 @@ impl<
             migration: None,
             setup_task: SetupTask::default(),
             name: name.to_string(),
-            tasks: TaskArray::new(tasks),
+            tasks: TaskList::new(tasks),
         };
 
         db.init()?;
@@ -454,6 +417,7 @@ impl<
         if gene.id != 0 && self.seek_id(gene.id).is_ok() {
             let mut og = Gene::default();
             if self.file.read_exact(og.as_binary_mut()).is_ok() {
+                #[allow(clippy::collapsible_if)]
                 if og.iter < ITER_EXHAUSTION {
                     gene.iter = og.iter + 1;
                     return Ok(gene);

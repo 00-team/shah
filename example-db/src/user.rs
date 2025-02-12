@@ -1,11 +1,15 @@
 pub mod db {
     #![allow(dead_code)]
 
+    use std::cell::{RefCell, RefMut};
+    use std::ops::DerefMut;
+    use std::rc::Rc;
+
     use shah::db::entity::{EntityDb, EntityMigrateFrom, EntityMigrationDb};
     use shah::models::Gene;
     use shah::{Entity, ShahError, ShahSchema};
 
-    use crate::models::ExampleError;
+    use crate::models::{ExampleError, State};
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -85,11 +89,14 @@ pub mod db {
         }
     }
 
+    type S = &'static mut State;
     pub type OldUserDb = EntityMigrationDb<User_0>;
-    pub type UserDb = EntityDb<User, User_0>;
+    pub type UserDb = EntityDb<User, User_0, S>;
 
-    impl EntityMigrateFrom<User_0> for User {
-        fn entity_migrate_from(old: User_0, _: ()) -> Result<Self, ShahError> {
+    impl EntityMigrateFrom<User_0, S> for User {
+        fn entity_migrate_from(old: User_0, mut state: RefMut<S>) -> Result<Self, ShahError> {
+            let fs = state.users.file_size();
+            log::info!("users file_size in mig: {fs:?}");
             Ok(Self {
                 gene: old.gene,
                 agent: old.agent,

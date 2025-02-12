@@ -4,8 +4,9 @@ custom database engine
 
 ## Todo
 
--   [x] custom bin command. enum for matching and executing
--   [ ] do a benchmark test https://www.youtube.com/watch?v=R7jBtnrUmYI
+- [x] custom bin command. enum for matching and executing
+- [ ] do a benchmark test https://www.youtube.com/watch?v=R7jBtnrUmYI
+- [ ] chained data like have memort pages works. double-linked entity with 4096 bytes string
 
 ## Concept
 
@@ -20,13 +21,13 @@ with respect to relations.
 
 ## Words
 
--   climate | adaptation | environment | population | race | organic
--   DNA | RNA | primer | species
--   reproduce | offspring | parent | healthy |
--   virus | ecology | eco-system | eco | enzymes | geographic | space |
--   isolation | area | soil | birth | blood | class | egg | evolution |
--   mutation | host | hormone | hybrid | infection | life | organism |
--   phase | neuron | parasite | predator | pray | seed | stem |
+- climate | adaptation | environment | population | race | organic
+- DNA | RNA | primer | species
+- reproduce | offspring | parent | healthy |
+- virus | ecology | eco-system | eco | enzymes | geographic | space |
+- isolation | area | soil | birth | blood | class | egg | evolution |
+- mutation | host | hormone | hybrid | infection | life | organism |
+- phase | neuron | parasite | predator | pray | seed | stem |
 
 ### In Order
 

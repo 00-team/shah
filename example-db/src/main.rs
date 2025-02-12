@@ -6,7 +6,9 @@ mod user;
 
 // use std::io::Write;
 
-use shah::{error::ShahError, Command};
+use std::{cell::RefCell, ops::DerefMut, rc::Rc};
+
+use shah::{db::entity::EntityMigration, error::ShahError, Command};
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
 
@@ -100,6 +102,18 @@ enum Commands {
 //     Ok(rethead)
 // }
 
+// unsafe fn extend_lifetime<'a, T>(r: &'a mut T) -> &'static mut T {
+//
+//     // one liner
+//     // &mut *(r as *mut T)
+//
+//     // Convert the mutable reference to a raw pointer
+//     let raw_ptr: *mut T = r;
+//
+//     // Convert the raw pointer back to a mutable reference with 'static lifetime
+//     &mut *raw_ptr
+// }
+
 fn main() -> Result<(), ShahError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
@@ -111,8 +125,17 @@ fn main() -> Result<(), ShahError> {
         phone: phone::db::setup().expect("phone setup"),
         // detail: detail::db::setup().expect("detail setup"),
         // notes: note::db::setup().expect("note setup"),
-    }
-    .init()?;
+    }.init()?;
+
+    // let mig = EntityMigration::<
+    //     user::db::User,
+    //     user::db::User_0,
+    //     &'static mut models::State,
+    // >::new(user::db::old_init()?, unsafe {
+    //     extend_lifetime(&mut state)
+    // });
+    // state.users.set_migration(mig);
+    // let ng = state.users.new_gene();
 
     let mut _user = user::db::User::default();
     // state.users.add(&mut user)?;

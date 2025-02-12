@@ -1,8 +1,8 @@
 mod face;
-mod migration;
+mod koch;
 
 pub use face::*;
-pub use migration::*;
+pub use koch::*;
 
 use crate::models::*;
 use crate::*;
@@ -15,14 +15,21 @@ use std::{
     os::unix::fs::FileExt,
 };
 
-const META_OFFSET: u64 = DbHead::N + EntityMeta::N;
+const META_OFFSET: u64 = EntityHead::N + EntityKochProgress::N;
 const ENTITY_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::Entity as u16);
 
 #[crate::model]
-struct EntityMeta {
+struct EntityHead {
+    db_head: DbHead,
     item_size: u64,
     schema: [u8; 4096],
+}
+
+#[crate::model]
+struct EntityKochProgress {
+    total: u64,
+    progress: u64,
 }
 
 #[derive(Debug)]
@@ -56,11 +63,11 @@ impl Iterator for SetupTask {
     }
 }
 
-type EntityTask<T, O, S> = fn(&mut EntityDb<T, O, S>) -> Result<bool, ShahError>;
+type EntityTask<T> = fn(&mut T) -> Result<bool, ShahError>;
 
 #[derive(Debug)]
 pub struct EntityDb<
-    T: EntityItem + EntityMigrateFrom<Old, State>,
+    T: EntityItem + EntityKochFrom<Old, State>,
     Old: EntityItem = T,
     State: Debug = (),
 > {
@@ -69,13 +76,10 @@ pub struct EntityDb<
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     iteration: u16,
     name: String,
-    migration: Option<EntityMigration<Old, State>>,
+    koch: Option<EntityKoch<T, Old, State>>,
     setup_task: SetupTask,
-    tasks: TaskList<2, EntityTask<T, Old, State>>
-    // tasks: TaskList<
-    //     2,
-    //     fn(&mut EntityDb<T, Old, State>) -> Result<bool, ShahError>,
-    // >,
+    tasks: TaskList<2, EntityTask<Self>>,
+    ls: String,
 }
 
 /// if an io operation was performed check for order's
@@ -84,7 +88,7 @@ type Performed = bool;
 
 impl<
         State: Debug,
-        T: EntityItem + EntityMigrateFrom<Old, State>,
+        T: EntityItem + EntityKochFrom<Old, State>,
         Old: EntityItem,
     > EntityDb<T, Old, State>
 {
@@ -106,16 +110,17 @@ impl<
             .truncate(false)
             .open(path.join(format!("{name}.{iteration}.shah")))?;
 
-        let tasks = [Self::work_migration, Self::work_setup_task];
+        let tasks = [Self::work_koch, Self::work_setup_task];
         let mut db = Self {
             live: 0,
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
             iteration,
-            migration: None,
-            setup_task: SetupTask::default(),
             name: name.to_string(),
+            koch: None,
+            setup_task: SetupTask::default(),
             tasks: TaskList::new(tasks),
+            ls: format!("<EntityDb {name}.{iteration} />"),
         };
 
         db.init()?;
@@ -124,8 +129,7 @@ impl<
     }
 
     fn init(&mut self) -> Result<(), ShahError> {
-        self.init_db_head()?;
-        self.init_schema()?;
+        self.init_head()?;
 
         self.live = 0;
         self.dead_list.clear();
@@ -149,78 +153,78 @@ impl<
 
         self.setup_task.progress = 1;
         self.setup_task.total = self.live + 1;
-        log::info!("init::setup_task {:?}", self.setup_task);
+        log::info!("{} init::setup_task {:?}", self.ls, self.setup_task);
 
         Ok(())
     }
 
-    fn init_db_head(&mut self) -> Result<(), ShahError> {
-        let db_size = self.file_size()?;
-        self.file.seek(SeekFrom::Start(0))?;
-
-        let mut head = DbHead::default();
-
-        if db_size < DbHead::N {
-            head.magic = ENTITY_MAGIC;
-            head.iteration = self.iteration;
-            self.file.write_all(head.as_binary())?;
-        } else {
-            self.file.read_exact_at(head.as_binary_mut(), 0)?;
-            if head.magic != ENTITY_MAGIC {
-                log::error!(
-                    "invalid db magic: {:?} != {ENTITY_MAGIC:?}",
-                    head.magic
-                );
-                return Err(DbError::InvalidDbHead)?;
+    fn init_head(&mut self) -> Result<(), ShahError> {
+        let mut head = EntityHead::default();
+        if let Err(e) = self.file.read_exact_at(head.as_binary_mut(), 0) {
+            if e.kind() != ErrorKind::UnexpectedEof {
+                return Err(e)?;
             }
-            if head.iteration != self.iteration {
-                log::error!("invalid {} != {}", head.iteration, self.iteration);
-                return Err(DbError::InvalidDbHead)?;
-            }
-        }
 
-        Ok(())
-    }
+            head.item_size = T::N;
 
-    fn init_schema(&mut self) -> Result<(), ShahError> {
-        let db_size = self.file_size()?;
-        let mut schema = EntityMeta::default();
-
-        if db_size < DbHead::N + EntityMeta::N {
-            schema.item_size = T::N;
             let svec = T::shah_schema().encode();
-            schema.schema[0..svec.len()].clone_from_slice(&svec);
-            self.file.write_all_at(schema.as_binary(), DbHead::N)?;
-        } else {
-            self.file.read_exact_at(schema.as_binary_mut(), DbHead::N)?;
-            if schema.item_size != T::N {
-                log::error!(
-                    "<EntityDb {}.{}> schema.item_size != current item size. {} != {}",
-                    self.name,
-                    self.iteration,
-                    schema.item_size,
-                    T::N
-                );
-                return Err(DbError::InvalidDbSchema)?;
-            }
+            head.schema[0..svec.len()].clone_from_slice(&svec);
 
-            let schema = Schema::decode(&schema.schema)?;
-            if schema != T::shah_schema() {
-                log::error!(
-                    "<EntityDb {}.{}> mismatch schema.
-                    did you forgot to update the iternation?",
-                    self.name,
-                    self.iteration
-                );
-                return Err(DbError::InvalidDbSchema)?;
-            }
+            head.db_head.magic = ENTITY_MAGIC;
+            head.db_head.iteration = self.iteration;
+            head.db_head.set_name(&self.name);
+
+            self.file.write_all_at(head.as_binary(), 0)?;
+
+            return Ok(());
+        }
+
+        if head.db_head.magic != ENTITY_MAGIC {
+            log::error!(
+                "{} head invalid db magic: {:?} != {ENTITY_MAGIC:?}",
+                self.ls,
+                head.db_head.magic
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        if head.db_head.iteration != self.iteration {
+            log::error!(
+                "{} head invalid iteration {} != {}",
+                self.ls,
+                head.db_head.iteration,
+                self.iteration
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        if head.item_size != T::N {
+            log::error!(
+                "{} schema.item_size != current item size. {} != {}",
+                self.ls,
+                head.item_size,
+                T::N
+            );
+            return Err(DbError::InvalidDbSchema)?;
+        }
+
+        let schema = Schema::decode(&head.schema)?;
+        if schema != T::shah_schema() {
+            log::error!(
+                "{} mismatch schema. did you forgot to update the iternation?",
+                self.ls,
+            );
+            return Err(DbError::InvalidDbSchema)?;
         }
 
         Ok(())
     }
 
-    pub fn set_migration(&mut self, migration: EntityMigration<Old, State>) {
-        self.migration = Some(migration);
+    // fn Koch
+
+    pub fn set_koch(&mut self, koch: EntityKoch<T, Old, State>) {
+        koch.total;
+        self.koch = Some(koch);
     }
 
     // pub fn tasks<'t, 'edb: 't>(&'edb mut self) -> Result<Vec<Box<dyn Task + 't>>, ShahError> {
@@ -235,7 +239,7 @@ impl<
     //             progress: 0,
     //             db: self,
     //         }),
-    //         Box::new(task::EntityMigrateTask {}),
+    //         Box::new(task::EntityKochTask {}),
     //     ])
     // }
 
@@ -291,12 +295,12 @@ impl<
     //     Ok(self)
     // }
 
-    fn work_migration(&mut self) -> Result<Performed, ShahError> {
-        let Some(mig) = &mut self.migration else {
+    fn work_koch(&mut self) -> Result<Performed, ShahError> {
+        let Some(koch) = &mut self.koch else {
             return Ok(false);
         };
 
-        log::info!("mig.from: {:?}", mig.from);
+        log::info!("koch.from: {:?}", koch.from);
 
         Ok(true)
     }
@@ -337,7 +341,6 @@ impl<
                 return Ok(true);
             }
         }
-
         Ok(false)
     }
 
@@ -380,11 +383,17 @@ impl<
         self.seek_id(gene.id)?;
         self.read(entity)?;
 
+        let gene = entity.gene();
+        if gene.id == 0 {
+            // if let Some(koch) = self.koch {
+            //     // koch.from.get(gene, entity)
+            // }
+        }
+        gene.check(gene)?;
+
         if !entity.is_alive() {
             return Err(NotFound::EntityNotAlive)?;
         }
-
-        gene.check(entity.gene())?;
 
         Ok(())
     }
@@ -399,8 +408,8 @@ impl<
         let (id, offset) = (db_pos / T::N, db_pos % T::N);
         if offset != 0 {
             log::warn!(
-                "<Entity {}:{id}> new-gene-id bad offset: {offset}",
-                self.name
+                "{} id: {id} | new-gene-id bad offset: {offset}",
+                self.ls
             );
             return Ok(id);
         }

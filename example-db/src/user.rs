@@ -7,7 +7,7 @@ pub mod db {
     use shah::models::Gene;
     use shah::{Entity, ShahError, ShahSchema};
 
-    use crate::models::{ExampleError, State};
+    use crate::models::ExampleError;
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -87,17 +87,15 @@ pub mod db {
         }
     }
 
-    type S = &'static mut State;
+    type S = ();
     pub type OldUserDb = EntityKochDb<User_0>;
     pub type UserDb = EntityDb<User, User_0, S>;
     pub type UserDb0 = EntityDb<User_0>;
 
     impl EntityKochFrom<User_0, S> for User {
         fn entity_koch_from(
-            old: User_0, mut state: RefMut<S>,
+            old: User_0, _: RefMut<S>,
         ) -> Result<Self, ShahError> {
-            let fs = state.users.file_size();
-            log::info!("users file_size in mig: {fs:?}");
             Ok(Self {
                 gene: old.gene,
                 agent: old.agent,

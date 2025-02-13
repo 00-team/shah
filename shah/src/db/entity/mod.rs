@@ -29,24 +29,7 @@ struct SetupTask {
     prog: u64,
 }
 
-impl SetupTask {
-    fn end(&mut self) {
-        self.prog = self.total;
-    }
-}
-
-impl Iterator for SetupTask {
-    type Item = u64;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.prog >= self.total {
-            return None;
-        }
-
-        let id = self.prog;
-        self.prog += 1;
-        Some(id)
-    }
-}
+id_iter!(SetupTask);
 
 type EntityTask<T> = fn(&mut T) -> Result<bool, ShahError>;
 
@@ -150,14 +133,17 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
                 return Err(e)?;
             }
 
+            head.db_head.init(
+                ENTITY_MAGIC,
+                self.iteration,
+                &self.name,
+                ENTITY_VERSION,
+            );
+
             head.item_size = T::N;
 
             let svec = T::shah_schema().encode();
             head.schema[0..svec.len()].clone_from_slice(&svec);
-
-            head.db_head.magic = ENTITY_MAGIC;
-            head.db_head.iteration = self.iteration;
-            head.db_head.set_name(&self.name);
 
             self.file.write_all_at(head.as_binary(), 0)?;
 
@@ -195,6 +181,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         log::debug!("{} set_koch setup_task: {:?}", self.ls, self.setup_task);
 
         self.koch_prog.total = koch.total;
+        self.live = koch.total;
 
         log::debug!("{} set_koch koch_prog: {:?}", self.ls, self.koch_prog);
 
@@ -210,6 +197,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     fn inspection(&mut self, entity: &T) {
+        log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
         if !entity.is_alive() {
             let gene = entity.gene();
             log::debug!("{} inspector dead entity: {}", self.ls, gene.id);
@@ -222,7 +210,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     fn work_koch(&mut self) -> Result<Performed, ShahError> {
-        if self.koch.is_none() {
+        if self.koch.is_none() || self.koch_prog.ended() {
             return Ok(false);
         }
 
@@ -255,8 +243,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     fn work_setup_task(&mut self) -> Result<Performed, ShahError> {
-        log::debug!("work_setup_task");
-        if self.dead_list.is_full() {
+        if self.dead_list.is_full() || self.setup_task.ended() {
             return Ok(false);
         }
 
@@ -337,21 +324,36 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         Ok(())
     }
 
+    fn set_unchecked(&mut self, entity: &T) -> Result<(), ShahError> {
+        let pos = Self::id_pos(entity.gene().id);
+        self.file.write_all_at(entity.as_binary(), pos)?;
+        Ok(())
+    }
+
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
         gene.validate()?;
 
-        self.seek_id(gene.id)?;
-        self.read(entity)?;
+        self.read_at(entity, Self::id_pos(gene.id))?;
 
-        let gene = entity.gene();
-        if gene.id == 0 {
-            // if let Some(koch) = self.koch {
-            //     // koch.from.get(gene, entity)
-            // }
+        let egene = entity.gene();
+        if egene.id == 0 {
+            if let Some(koch) = self.koch.as_mut() {
+                let oldie = koch.get(gene)?;
+                self.set_unchecked(&oldie)?;
+                if !oldie.is_alive() {
+                    self.add_dead(oldie.gene());
+                    return Err(NotFound::EntityNotAlive)?;
+                }
+                entity.clone_from(&oldie);
+                oldie.gene().check(gene)?;
+                return Ok(());
+            }
+
+            return Err(SystemError::GeneIdMismatch)?;
         }
-        gene.check(gene)?;
+        egene.check(gene)?;
 
         if !entity.is_alive() {
             return Err(NotFound::EntityNotAlive)?;
@@ -426,6 +428,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     pub fn add_dead(&mut self, gene: &Gene) {
+        if gene.id == 0 {
+            return;
+        }
+
         if self.live > 0 {
             self.live -= 1;
         }

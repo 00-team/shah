@@ -119,11 +119,13 @@ fn main() -> Result<(), ShahError> {
     // let routes = shah::routes!(models::State, user, phone);
 
     let mut users_0 = user::db::init_0()?;
-    let mut user_0 = user::db::User_0::default();
-    for i in 0..200 {
-        user_0.gene.id = 0;
-        user_0.set_name(&format!("user_0:{i}"));
-        users_0.add(&mut user_0)?;
+    if users_0.live == 0 {
+        let mut user_0 = user::db::User_0::default();
+        for i in 0..86 {
+            user_0.gene.id = 0;
+            user_0.set_name(&format!("user_0:{i}"));
+            users_0.add(&mut user_0)?;
+        }
     }
 
     log::debug!("init state");
@@ -139,12 +141,19 @@ fn main() -> Result<(), ShahError> {
     // state.users.add(&mut user)?;
 
     // log::info!("users: {}", state.users.live);
-    //
+    let mut npf = 0;
     loop {
         log::info!("========================");
-        state.users.work()?;
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        if !state.users.work()? {
+            npf += 1;
+        }
+        if npf > 10 {
+            break;
+        }
+        // std::thread::sleep(std::time::Duration::from_secs(2));
     }
+
+    Ok(())
 
     // println!("tasks: {tasks:?}");
 

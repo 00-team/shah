@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 use std::path::Path;
 
-use super::{EntityHead, EntityItem, META_OFFSET};
+use super::{id_iter, EntityHead, EntityItem, META_OFFSET};
 use crate::models::{Binary, Gene, GeneId};
 use crate::{utils, DbError, NotFound, ShahError, SystemError};
 
@@ -34,24 +34,7 @@ pub struct EntityKochProg {
     pub prog: GeneId,
 }
 
-impl EntityKochProg {
-    pub fn end(&mut self) {
-        self.prog = self.total;
-    }
-}
-
-impl Iterator for EntityKochProg {
-    type Item = GeneId;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.prog >= self.total {
-            return None;
-        }
-
-        let id = self.prog;
-        self.prog += 1;
-        Some(id)
-    }
-}
+id_iter!(EntityKochProg);
 
 // =========== end of EntityKochProg struct ===========
 

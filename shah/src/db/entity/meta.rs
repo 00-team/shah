@@ -3,6 +3,7 @@ use crate::models::{Binary, DbHead, Schema, ShahMagic, ShahMagicDb};
 use crate::{DbError, ShahError};
 
 pub const META_OFFSET: u64 = EntityHead::N + EntityKochProg::N;
+pub const ENTITY_VERSION: u16 = 1;
 pub const ENTITY_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::Entity as u16);
 
@@ -21,6 +22,14 @@ impl EntityHead {
             log::error!(
                 "{ls} head invalid db magic: {:?} != {ENTITY_MAGIC:?}",
                 self.db_head.magic
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        if self.db_head.db_version != ENTITY_VERSION {
+            log::error!(
+                "{ls} mismatch db_version {} != {ENTITY_VERSION}",
+                self.db_head.db_version,
             );
             return Err(DbError::InvalidDbHead)?;
         }

@@ -2,7 +2,7 @@ use core::panic;
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
 use syn::parse::Parser;
 
@@ -195,24 +195,27 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     }
 
     let mut default_impl = TokenStream2::new();
-    quote_into! {default_impl +=
-        #ident {#{
-            item.fields.iter().for_each(|f| {
-                let fi = &f.ident;
-                match &f.ty {
-                    syn::Type::Path(_) => {
-                        quote_into!(default_impl += #fi: ::core::default::Default::default(),)
-                    },
-                    syn::Type::Array(a) => {
-                        let len = &a.len;
-                        let el = &a.elem;
-                        // let at = &path(&a.elem).path.segments[0].ident;
-                        quote_into!(default_impl += #fi: [<#el>::default(); #len],)
-                    }
-                    t => {panic!("unknow type: {t:#?}")}
-                }
-            })
-        }}
+    for f in item.fields.iter() {
+        let fi = &f.ident;
+        match &f.ty {
+            syn::Type::Path(_) => {
+                quote_into!(default_impl += #fi: ::core::default::Default::default(),)
+            }
+            syn::Type::Array(a) => {
+                let len = &a.len;
+                let el = &a.elem;
+                // let at = &path(&a.elem).path.segments[0].ident;
+                quote_into!(default_impl += #fi: [<#el>::default(); #len],)
+            }
+            syn::Type::Tuple(t) => {
+                quote_into! {default_impl += #fi: (#{
+                    t.elems.iter().for_each(|e| quote_into!{default_impl += <#e>::default(),})
+                }),}
+            }
+            t => {
+                panic!("unknown type for default impl: {}", t.to_token_stream())
+            }
+        }
     }
 
     let mut ssi = TokenStream2::new();
@@ -293,7 +296,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         impl #generics ::core::default::Default for #ident #gnb {
             #[inline]
             fn default() -> #ident #gnb {
-                #default_impl
+                #ident {#default_impl}
             }
         }
 

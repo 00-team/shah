@@ -1,6 +1,6 @@
 [package]
 name = "example-db"
-version = "0.1.0"
+version = "9235.69.0"
 edition.workspace = true
 publish = false
 

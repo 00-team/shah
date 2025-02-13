@@ -39,3 +39,21 @@ pub(crate) fn validate_db_name(name: &str) -> Result<(), ShahError> {
     }
     Ok(())
 }
+
+pub(crate) const fn env_num(var: &'static str) -> u16 {
+    let var = var.as_bytes();
+    let len = var.len();
+    let mut num = 0u16;
+
+    assert!(len < 5, "bruv your version is 5 digit long. wtf");
+
+    macro_rules! nth {
+        ($($nth:literal),*) => {
+            $(if len > $nth { num *= 10; num += (var[$nth] - b'0') as u16; })*
+        };
+    }
+
+    nth!(0, 1, 2, 3);
+
+    num
+}

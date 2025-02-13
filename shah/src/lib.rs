@@ -16,6 +16,8 @@ pub use shah_macros::*;
 pub const PAGE_SIZE: usize = 32;
 pub const BLOCK_SIZE: usize = 4096;
 pub const ITER_EXHAUSTION: u8 = 250;
+pub const VERSION_MAJOR: u16 = utils::env_num(env!("CARGO_PKG_VERSION_MAJOR"));
+pub const VERSION_MINER: u16 = utils::env_num(env!("CARGO_PKG_VERSION_MINOR"));
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

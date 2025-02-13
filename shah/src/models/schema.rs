@@ -4,6 +4,7 @@ use crate::error::{DbError, ShahError};
 pub enum Schema {
     Model(SchemaModel),
     Array { length: u64, kind: Box<Schema> },
+    Tuple(Vec<Schema>),
     U8,
     U16,
     U32,
@@ -11,11 +12,11 @@ pub enum Schema {
     I8,
     I16,
     I32,
-    I64,
-    F32, // 10
+    I64, // 10
+    F32,
     F64,
     Bool,
-    Gene, // 13
+    Gene, // 14
 }
 
 impl PartialEq for Schema {
@@ -27,6 +28,10 @@ impl PartialEq for Schema {
             },
             Self::Array { length: sl, kind: sk } => match other {
                 Self::Array { length: ol, kind: ok } => sl == ol && sk == ok,
+                _ => false,
+            },
+            Self::Tuple(st) => match other {
+                Self::Tuple(ot) => st == ot,
                 _ => false,
             },
             Self::U8 => matches!(other, Self::U8),
@@ -51,7 +56,7 @@ impl Schema {
 
         fn check_schema(out: &mut Vec<u8>, schema: &Schema) {
             match schema {
-                Schema::Model(_) | Schema::Array { .. } => {
+                Schema::Model(_) | Schema::Array { .. } | Schema::Tuple(_) => {
                     out.extend_from_slice(&Schema::encode(schema));
                 }
                 _ => {
@@ -76,6 +81,12 @@ impl Schema {
                 out.extend_from_slice(&(*length).to_le_bytes());
                 check_schema(&mut out, kind);
             }
+            Self::Tuple(items) => {
+                out.extend_from_slice(&(items.len() as u16).to_le_bytes());
+                for ty in items.iter() {
+                    check_schema(&mut out, ty);
+                }
+            }
             _ => {}
         }
         out
@@ -83,18 +94,18 @@ impl Schema {
 
     fn from_code(code: u8) -> Option<Self> {
         Some(match code {
-            2 => Self::U8,
-            3 => Self::U16,
-            4 => Self::U32,
-            5 => Self::U64,
-            6 => Self::I8,
-            7 => Self::I16,
-            8 => Self::I32,
-            9 => Self::I64,
-            10 => Self::F32,
-            11 => Self::F64,
-            12 => Self::Bool,
-            13 => Self::Gene,
+            3 => Self::U8,
+            4 => Self::U16,
+            5 => Self::U32,
+            6 => Self::U64,
+            7 => Self::I8,
+            8 => Self::I16,
+            9 => Self::I32,
+            10 => Self::I64,
+            11 => Self::F32,
+            12 => Self::F64,
+            13 => Self::Bool,
+            14 => Self::Gene,
             _ => return None,
         })
     }
@@ -147,6 +158,22 @@ impl Schema {
                 });
 
                 Some(Schema::Array { length, kind })
+            }
+            2 => {
+                let ilen = from_iter!(u16) as usize;
+                let mut items = Vec::<Schema>::with_capacity(ilen);
+                for _ in 0..ilen {
+                    let kind = match *it.clone().next()? {
+                        0..=2 => Self::from_iter(it)?,
+                        c => {
+                            it.next();
+                            Self::from_code(c)?
+                        }
+                    };
+                    items.push(kind);
+                }
+
+                Some(Schema::Tuple(items))
             }
             _ => None,
         }

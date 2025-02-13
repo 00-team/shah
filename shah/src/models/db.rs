@@ -1,3 +1,5 @@
+use crate::{VERSION_MAJOR, VERSION_MINER};
+
 #[crate::model]
 #[derive(Debug, PartialEq, Eq)]
 pub struct ShahMagic {
@@ -43,14 +45,24 @@ impl ShahMagic {
 #[derive(Debug)]
 pub struct DbHead {
     pub magic: ShahMagic,
+    pub shah_version: (u16, u16),
+    pub db_version: u16,
     pub iteration: u16,
     #[str]
-    pub name: [u8; 46],
+    pub name: [u8; 48],
 }
 
 impl DbHead {
-    pub fn new(magic: ShahMagic, iteration: u16, name: &str) -> Self {
-        let mut head = Self { magic, iteration, name: [0; 46] };
+    pub fn new(
+        magic: ShahMagic, iteration: u16, name: &str, version: u16,
+    ) -> Self {
+        let mut head = Self {
+            magic,
+            shah_version: (VERSION_MAJOR, VERSION_MINER),
+            db_version: version,
+            iteration,
+            name: [0; 48],
+        };
         head.set_name(name);
         head
     }

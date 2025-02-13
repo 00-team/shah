@@ -22,10 +22,15 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
                     kind: Box::new(#{quote_schema(elem, s, ci)}),
                 }}
             }
+            syn::Type::Tuple(t) => {
+                quote_into! {s += #ci::models::Schema::Tuple(vec![#{
+                    t.elems.iter().for_each(|e| quote_schema(e, s, ci))
+                }])}
+            }
             syn::Type::Path(t) => {
                 quote_into! {s += <#t as #ci::models::ShahSchema>::shah_schema()}
             }
-            _ => panic!("unknwon type: {ty:?} for ShahSchema"),
+            _ => panic!("unknwon schema type: {ty:?} for ShahSchema"),
         }
     }
 

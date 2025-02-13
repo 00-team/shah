@@ -2,12 +2,12 @@ mod api;
 mod command;
 mod duck;
 mod entity;
-mod schema;
 mod enum_code;
 mod enum_int;
 mod model;
 mod perms;
 mod routes;
+mod schema;
 
 use proc_macro::TokenStream;
 

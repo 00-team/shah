@@ -2,7 +2,7 @@ use std::io;
 use std::os::unix::net::{SocketAddr, UnixDatagram};
 use std::time::{Duration, Instant};
 
-use crate::models::{OrderHead, Binary, Reply, ReplyHead, Scope, ShahState};
+use crate::models::{Binary, OrderHead, Reply, ReplyHead, Scope, ShahState};
 
 const ORDER_SIZE: usize = 1024 * 64;
 

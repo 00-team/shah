@@ -6,9 +6,7 @@ mod user;
 
 // use std::io::Write;
 
-use std::{cell::RefCell, ops::DerefMut, rc::Rc};
-
-use shah::{db::entity::EntityMigration, error::ShahError, Command};
+use shah::{error::ShahError, Command};
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
 
@@ -120,43 +118,38 @@ fn main() -> Result<(), ShahError> {
 
     // let routes = shah::routes!(models::State, user, phone);
 
+    let mut users_0 = user::db::init_0()?;
+    let mut user_0 = user::db::User_0::default();
+    for i in 0..200 {
+        user_0.gene.id = 0;
+        user_0.set_name(&format!("user_0:{i}"));
+        users_0.add(&mut user_0)?;
+    }
+
+    log::debug!("init state");
     let mut state = models::State {
-        users: user::db::init().expect("user init"),
-        phone: phone::db::setup().expect("phone setup"),
+        users: user::db::init()?,
+        phone: phone::db::setup()?,
         // detail: detail::db::setup().expect("detail setup"),
         // notes: note::db::setup().expect("note setup"),
-    }.init()?;
-
-    // let mig = EntityMigration::<
-    //     user::db::User,
-    //     user::db::User_0,
-    //     &'static mut models::State,
-    // >::new(user::db::old_init()?, unsafe {
-    //     extend_lifetime(&mut state)
-    // });
-    // state.users.set_migration(mig);
-    // let ng = state.users.new_gene();
+    }
+    .init()?;
 
     let mut _user = user::db::User::default();
     // state.users.add(&mut user)?;
 
     // log::info!("users: {}", state.users.live);
     //
-    // loop {
-    //     log::info!("========================");
-    //     state.users.work()?;
-    //     std::thread::sleep(std::time::Duration::from_secs(2));
-    // }
+    loop {
+        log::info!("========================");
+        state.users.work()?;
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 
     // println!("tasks: {tasks:?}");
 
-    // for i in 0..200 {
-    //     user.gene.id = 0;
-    //     user.set_name(&format!("user: {i}"));
-    //     state.users.add(&mut user)?;
-    // }
     //
-    Ok(())
+    // Ok(())
 
     // match shah::command() {
     //     Commands::Gg => {

@@ -5,9 +5,11 @@ use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 use std::path::Path;
 
-use super::{EntityHead, EntityItem, ENTITY_MAGIC, META_OFFSET};
-use crate::models::{Binary, Gene, GeneId, Schema};
-use crate::{utils, DbError, NotFound, ShahError};
+use super::{EntityHead, EntityItem, META_OFFSET};
+use crate::models::{Binary, Gene, GeneId};
+use crate::{utils, DbError, NotFound, ShahError, SystemError};
+
+// =========== EntityKochFrom trait ===========
 
 pub trait EntityKochFrom<Old: EntityItem, State = ()>: Sized {
     fn entity_koch_from(
@@ -21,6 +23,40 @@ impl<T: EntityItem, S> EntityKochFrom<T, S> for T {
     }
 }
 
+// =========== end of EntityKochFrom trait ===========
+
+// =========== EntityKochProg struct ===========
+
+#[crate::model]
+#[derive(Debug)]
+pub struct EntityKochProg {
+    pub total: GeneId,
+    pub prog: GeneId,
+}
+
+impl EntityKochProg {
+    pub fn end(&mut self) {
+        self.prog = self.total;
+    }
+}
+
+impl Iterator for EntityKochProg {
+    type Item = GeneId;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.prog >= self.total {
+            return None;
+        }
+
+        let id = self.prog;
+        self.prog += 1;
+        Some(id)
+    }
+}
+
+// =========== end of EntityKochProg struct ===========
+
+// =========== EntityKoch struct ===========
+
 #[derive(Debug)]
 pub struct EntityKoch<New, Old: EntityItem, State>
 where
@@ -29,7 +65,7 @@ where
     pub from: EntityKochDb<Old>,
     pub state: RefCell<State>,
     pub total: u64,
-    pub progress: u64,
+    // pub prog: u64,
     _new: PhantomData<New>,
 }
 
@@ -40,7 +76,7 @@ where
 {
     pub fn new(from: EntityKochDb<Old>, state: State) -> Self {
         Self {
-            progress: 0,
+            // prog: 0,
             total: from.total,
             from,
             state: RefCell::new(state),
@@ -48,20 +84,38 @@ where
         }
     }
 
+    pub fn get_id(&mut self, gene_id: GeneId) -> Result<New, ShahError> {
+        if gene_id == 0 {
+            return Ok(New::default());
+        }
+
+        let mut old = Old::default();
+        self.from.get_id(gene_id, &mut old)?;
+        New::entity_koch_from(old, self.state.borrow_mut())
+    }
+
     pub fn get(&mut self, gene: &Gene) -> Result<New, ShahError> {
+        if gene.id == 0 {
+            return Ok(New::default());
+        }
+
         let mut old = Old::default();
         self.from.get(gene, &mut old)?;
         New::entity_koch_from(old, self.state.borrow_mut())
     }
 }
 
+// =========== end of EntityKoch struct ===========
+
+// =========== EntityKochDb struct ===========
+
 #[derive(Debug)]
 pub struct EntityKochDb<T: EntityItem> {
     file: File,
     iteration: u16,
     total: u64,
-    _e: PhantomData<T>,
     ls: String,
+    _e: PhantomData<T>,
 }
 
 impl<T: EntityItem> EntityKochDb<T> {
@@ -85,8 +139,8 @@ impl<T: EntityItem> EntityKochDb<T> {
             file,
             iteration,
             total: 0,
-            _e: PhantomData::<T>,
             ls: format!("<EntityKochDb {name}.{iteration}>"),
+            _e: PhantomData::<T>,
         };
 
         db.init()?;
@@ -116,42 +170,7 @@ impl<T: EntityItem> EntityKochDb<T> {
         let mut head = EntityHead::default();
         self.file.read_exact_at(head.as_binary_mut(), 0)?;
 
-        if head.db_head.magic != ENTITY_MAGIC {
-            log::error!(
-                "{} invalid db magic: {:?} != {ENTITY_MAGIC:?}",
-                self.ls,
-                head.db_head.magic
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
-        if head.db_head.iteration != self.iteration {
-            log::error!(
-                "{} invalid {} != {}",
-                self.ls,
-                head.db_head.iteration,
-                self.iteration
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
-
-        if head.item_size != T::N {
-            log::error!(
-                "{} head.item_size != current item size. {} != {}",
-                self.ls,
-                head.item_size,
-                T::N
-            );
-            return Err(DbError::InvalidDbSchema)?;
-        }
-
-        let schema = Schema::decode(&head.schema)?;
-        if schema != T::shah_schema() {
-            log::error!(
-                "{} mismatch schema. did you forgot to update the iternation?",
-                self.ls,
-            );
-            return Err(DbError::InvalidDbSchema)?;
-        }
+        head.check::<T>(self.iteration, &self.ls)?;
 
         Ok(())
     }
@@ -174,6 +193,19 @@ impl<T: EntityItem> EntityKochDb<T> {
         Ok(())
     }
 
+    pub fn get_id(
+        &mut self, gene_id: GeneId, entity: &mut T,
+    ) -> Result<(), ShahError> {
+        self.seek_id(gene_id)?;
+        self.read(entity)?;
+
+        if gene_id != entity.gene().id {
+            return Err(SystemError::GeneIdMismatch)?;
+        }
+
+        Ok(())
+    }
+
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
@@ -187,3 +219,5 @@ impl<T: EntityItem> EntityKochDb<T> {
         Ok(())
     }
 }
+
+// =========== end of EntityKochDb struct ===========

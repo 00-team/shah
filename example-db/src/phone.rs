@@ -19,7 +19,7 @@ pub mod db {
     pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
     pub fn setup() -> Result<PhoneDb, ShahError> {
-        PhoneDb::new("phone", PhoneAbc).setup()
+        PhoneDb::new("phone", PhoneAbc)?.setup()
     }
 
     #[cfg(test)]
@@ -33,7 +33,7 @@ pub mod db {
 
         #[test]
         fn phone_db() {
-            let db = PhoneDb::new("tests.phone", PhoneAbc);
+            let db = PhoneDb::new("tests.phone", PhoneAbc).unwrap();
             db.file.set_len(0).expect("file truncate");
             let mut db = db.setup().expect("phone setup");
 

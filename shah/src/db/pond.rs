@@ -152,7 +152,7 @@ impl<T: PondItem> PondDb<T> {
                 },
             }
 
-            if !entity.is_alive() {
+            if !entity.is_alive() && self.live > 0 {
                 self.live -= 1;
             }
         }
@@ -167,7 +167,9 @@ impl<T: PondItem> PondDb<T> {
     fn add_empty_pond(
         &mut self, origin: &mut Origin, mut pond: Pond,
     ) -> Result<(), ShahError> {
-        origin.ponds -= 1;
+        if origin.ponds > 0 {
+            origin.ponds -= 1;
+        }
         let mut old_pond = Pond::default();
         let mut buf = [T::default(); PAGE_SIZE];
         self.seek_id(pond.stack)?;
@@ -297,7 +299,9 @@ impl<T: PondItem> PondDb<T> {
                     ig.iter = if sg.id != 0 { sg.iter + 1 } else { 0 };
                     *slot = *item;
                     found_empty_slot = true;
-                    pond.empty -= 1;
+                    if pond.empty > 0 {
+                        pond.empty -= 1;
+                    }
                     break;
                 }
             }
@@ -403,7 +407,9 @@ impl<T: PondItem> PondDb<T> {
 
         entity.set_alive(false);
 
-        self.live -= 1;
+        if self.live > 0 {
+            self.live -= 1;
+        }
 
         self.file.seek_relative(-(T::N as i64))?;
         self.file.write_all(entity.as_binary())?;
@@ -412,10 +418,14 @@ impl<T: PondItem> PondDb<T> {
         let mut origin = Origin::default();
 
         self.index.get(entity.pond(), &mut pond)?;
-        pond.alive -= 1;
+        if pond.alive > 0 {
+            pond.alive -= 1;
+        }
 
         self.origins.get(&pond.origin, &mut origin)?;
-        origin.items -= 1;
+        if origin.items > 0 {
+            origin.items -= 1;
+        }
 
         if pond.alive == 0 {
             self.add_empty_pond(&mut origin, pond)?;
@@ -465,7 +475,9 @@ impl<T: PondItem> PondDb<T> {
         for item in buf.iter_mut() {
             if item.is_alive() {
                 item.set_alive(false);
-                self.live -= 1;
+                if self.live > 0 {
+                    self.live -= 1;
+                }
             }
             if item.gene().iter < ITER_EXHAUSTION {
                 pond.empty += 1;

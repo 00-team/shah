@@ -179,7 +179,9 @@ impl SnakeDb {
                     gene: free.gene,
                 };
 
-                self.free -= 1;
+                if self.free > 0 {
+                    self.free -= 1;
+                }
                 *opt_free = None;
                 return Ok(Some(val));
             }
@@ -189,7 +191,9 @@ impl SnakeDb {
             }
 
             if free.capacity - capacity < TCD {
-                self.free -= 1;
+                if self.free > 0 {
+                    self.free -= 1;
+                }
                 let val = *opt_free;
                 *opt_free = None;
                 return Ok(val);
@@ -411,7 +415,9 @@ impl SnakeDb {
 
                 self.index.del(&disk.gene, &mut SnakeHead::default())?;
                 *slot = None;
-                self.free -= 1;
+                if self.free > 0 {
+                    self.free -= 1;
+                }
 
                 // round_two = true;
                 fdx = 0;
@@ -457,7 +463,9 @@ impl SnakeDb {
 
                 self.index.del(&disk.gene, &mut SnakeHead::default())?;
                 *slot = None;
-                self.free -= 1;
+                if self.free > 0 {
+                    self.free -= 1;
+                }
 
                 // free.position = head.position;
                 // free.capacity = head.capacity;

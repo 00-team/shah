@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 #[crate::model]
 #[derive(Debug, Clone, Copy)]
 pub struct ErrorCode {
@@ -73,6 +75,12 @@ impl From<NotFound> for ShahError {
 impl From<DbError> for ShahError {
     fn from(value: DbError) -> Self {
         Self::Db(value)
+    }
+}
+
+impl From<Infallible> for ShahError {
+    fn from(_: Infallible) -> Self {
+        unreachable!()
     }
 }
 

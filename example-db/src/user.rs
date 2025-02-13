@@ -1,11 +1,9 @@
 pub mod db {
     #![allow(dead_code)]
 
-    use std::cell::{RefCell, RefMut};
-    use std::ops::DerefMut;
-    use std::rc::Rc;
+    use std::cell::RefMut;
 
-    use shah::db::entity::{EntityDb, EntityMigrateFrom, EntityMigrationDb};
+    use shah::db::entity::{EntityDb, EntityKochDb, EntityKochFrom};
     use shah::models::Gene;
     use shah::{Entity, ShahError, ShahSchema};
 
@@ -90,11 +88,14 @@ pub mod db {
     }
 
     type S = &'static mut State;
-    pub type OldUserDb = EntityMigrationDb<User_0>;
+    pub type OldUserDb = EntityKochDb<User_0>;
     pub type UserDb = EntityDb<User, User_0, S>;
+    pub type UserDb0 = EntityDb<User_0>;
 
-    impl EntityMigrateFrom<User_0, S> for User {
-        fn entity_migrate_from(old: User_0, mut state: RefMut<S>) -> Result<Self, ShahError> {
+    impl EntityKochFrom<User_0, S> for User {
+        fn entity_koch_from(
+            old: User_0, mut state: RefMut<S>,
+        ) -> Result<Self, ShahError> {
             let fs = state.users.file_size();
             log::info!("users file_size in mig: {fs:?}");
             Ok(Self {
@@ -113,6 +114,10 @@ pub mod db {
         }
     }
 
+    pub(crate) fn init_0() -> Result<UserDb0, ShahError> {
+        UserDb0::new("user", 0)
+    }
+
     pub(crate) fn init() -> Result<UserDb, ShahError> {
         UserDb::new("user", 1)
     }
@@ -126,7 +131,10 @@ pub mod db {
 mod api {
     use super::db::User;
     use crate::models::State;
-    use shah::{models::{Gene, GeneId}, ErrorCode, PAGE_SIZE};
+    use shah::{
+        models::{Gene, GeneId},
+        ErrorCode, PAGE_SIZE,
+    };
 
     pub(crate) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),

@@ -1,10 +1,8 @@
 use std::{
     fmt::Debug,
-    fs::{create_dir_all, File},
     io::{Read, Seek, SeekFrom, Write},
     marker::PhantomData,
     path::PathBuf,
-    str::FromStr,
 };
 
 use crate::{models::Binary, NotFound, ShahError, SystemError};
@@ -23,10 +21,10 @@ pub struct TrieConst<
     Val: Binary + Default + Copy,
 > {
     pub abc: Abc,
-    pub file: File,
+    pub file: std::fs::File,
     pub path: PathBuf,
-    _val: PhantomData<Val>,
     cache_len: u64,
+    _val: PhantomData<Val>,
 }
 
 #[derive(Debug)]
@@ -39,12 +37,9 @@ impl<
         const ABC_LEN: usize,
         const INDEX: usize,
         const CACHE: usize,
-        Abc,
-        Val,
+        Abc: TrieAbc,
+        Val: Binary + Default + Copy + Debug,
     > TrieConst<ABC_LEN, INDEX, CACHE, Abc, Val>
-where
-    Val: Binary + Default + Copy + Debug,
-    Abc: TrieAbc,
 {
     /// size of file position which is 8 byes
     const PS: u64 = core::mem::size_of::<u64>() as u64;
@@ -57,33 +52,27 @@ where
         Self::NODE_SIZE
     };
 
-    pub fn new(name: &str, abc: Abc) -> Self {
+    pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
         assert!(CACHE > 0, "TrieConst CACHE must be at least 1");
         assert!(INDEX > 0, "TrieConst INDEX must be at least 1");
 
-        create_dir_all("data/").expect("could not create the data directory");
-        let path = PathBuf::from_str(&format!("data/{name}.trie-const.bin"))
-            .unwrap_or_else(|_| {
-                panic!("could not create a path with name: {name}")
-            });
+        std::fs::create_dir_all("data/")?;
+        let path = PathBuf::from(format!("data/{name}.trie-const.bin"));
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(&path)
-            .unwrap_or_else(|_| {
-                panic!("could not open the database file: {path:?}")
-            });
+            .open(&path)?;
 
-        Self {
+        Ok(Self {
             file,
             abc,
-            _val: PhantomData::<Val>,
             path,
             cache_len: ABC_LEN.pow(CACHE as u32) as u64,
-        }
+            _val: PhantomData::<Val>,
+        })
     }
 
     pub fn setup(mut self) -> Result<Self, ShahError> {

@@ -1,10 +1,5 @@
-use std::{
-    cell::RefCell,
-    ops::{Deref, DerefMut},
-};
-
 use shah::{
-    db::entity::EntityMigration,
+    db::entity::EntityKoch,
     error::{IsNotFound, ShahError},
     ErrorCode,
 };
@@ -19,7 +14,7 @@ pub struct State {
     // pub notes: NoteDb,
 }
 
-unsafe fn extend_lifetime<'a, T>(r: &'a mut T) -> &'static mut T {
+unsafe fn extend_lifetime<T>(r: &mut T) -> &'static mut T {
     // one liner
     // &mut *(r as *mut T)
 
@@ -32,10 +27,10 @@ unsafe fn extend_lifetime<'a, T>(r: &'a mut T) -> &'static mut T {
 
 impl State {
     pub fn init(mut self) -> Result<Self, ShahError> {
-        let mig = EntityMigration::new(user::db::old_init()?, unsafe {
+        let mig = EntityKoch::new(user::db::old_init()?, unsafe {
             extend_lifetime(&mut self)
         });
-        self.users.set_migration(mig);
+        self.users.set_koch(mig);
         // let x = RefCell::new(self);
         // let mut s = x.borrow_mut();
         // let ng = s.users.new_gene();

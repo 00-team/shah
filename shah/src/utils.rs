@@ -39,5 +39,3 @@ pub(crate) fn validate_db_name(name: &str) -> Result<(), ShahError> {
     }
     Ok(())
 }
-
-

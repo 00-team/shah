@@ -1,8 +1,57 @@
 use crate::error::{DbError, ShahError};
+use std::{fs::File, io, os::fd::AsRawFd};
 
 pub(crate) fn getrandom(buf: &mut [u8]) {
     let ptr = buf.as_mut_ptr();
     unsafe { libc::getrandom(ptr as *mut libc::c_void, buf.len(), 0) };
+}
+
+pub(crate) fn falloc(file: &File, off: u64, len: u64) -> Result<(), ShahError> {
+    let fd = file.as_raw_fd();
+    let res = unsafe { libc::posix_fallocate64(fd, off as i64, len as i64) };
+    if res == 0 {
+        return Ok(());
+    }
+
+    macro_rules! err {
+        ($kind:ident, $($msg:literal),*) => {
+            Err(io::Error::new(io::ErrorKind::$kind, concat!($($msg),*)))?
+        };
+    }
+
+    match res {
+        libc::ENOSPC => Err(DbError::NoDiskSpace)?,
+
+        libc::EBADF => err!(
+            InvalidInput,
+            "fd is not a valid file descriptor, or is not opened for writing."
+        ),
+        libc::ENODEV => {
+            err!(InvalidInput, "fd does not refer to a regular file.")
+        }
+        libc::ESPIPE => err!(InvalidInput, "fd refers to a pipe."),
+        libc::EINVAL => err!(
+            InvalidInput,
+            "offset was less than 0, or len was less than or equal to 0,",
+            "or the underlying filesystem does not support the operation."
+        ),
+
+        libc::EINTR => {
+            err!(Interrupted, "A signal was caught during execution.")
+        }
+
+        libc::EFBIG => {
+            err!(Unsupported, "offset+len exceeds the maximum file size.")
+        }
+        libc::EOPNOTSUPP => err!(
+            Unsupported,
+            "The filesystem containing the file referred to by fd does not ",
+            "support this operation. This error code can be returned by ",
+            "C libraries that don't perform the emulation shown in CAVEATS, ",
+            "such as musl libc."
+        ),
+        _ => Err(DbError::Unknown)?,
+    }
 }
 
 // #[cfg(target_arch = "x86_64")]

@@ -14,21 +14,22 @@ pub struct State {
     // pub notes: NoteDb,
 }
 
-// unsafe fn extend_lifetime<T>(r: &mut T) -> &'static mut T {
-//     // one liner
-//     // &mut *(r as *mut T)
-//
-//     // Convert the mutable reference to a raw pointer
-//     let raw_ptr: *mut T = r;
-//
-//     // Convert the raw pointer back to a mutable reference with 'static lifetime
-//     &mut *raw_ptr
-// }
+#[allow(dead_code)]
+unsafe fn extend_lifetime<T>(r: &mut T) -> &'static mut T {
+    // one liner
+    // &mut *(r as *mut T)
+
+    // Convert the mutable reference to a raw pointer
+    let raw_ptr: *mut T = r;
+
+    // Convert the raw pointer back to a mutable reference with 'static lifetime
+    &mut *raw_ptr
+}
 
 impl State {
     pub fn init(mut self) -> Result<Self, ShahError> {
         let mig = EntityKoch::new(user::db::old_init()?, ());
-        self.users.set_koch(mig);
+        self.users.set_koch(mig)?;
         // let x = RefCell::new(self);
         // let mut s = x.borrow_mut();
         // let ng = s.users.new_gene();

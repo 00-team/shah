@@ -24,12 +24,12 @@ pub struct EntityCount {
 }
 
 #[derive(Debug, Default)]
-struct SetupTask {
+struct SetupProg {
     total: u64,
     prog: u64,
 }
 
-id_iter!(SetupTask);
+id_iter!(SetupProg);
 
 type EntityTask<T> = fn(&mut T) -> Result<bool, ShahError>;
 
@@ -46,7 +46,7 @@ pub struct EntityDb<
     name: String,
     koch: Option<EntityKoch<T, O, S>>,
     koch_prog: EntityKochProg,
-    setup_task: SetupTask,
+    setup_prog: SetupProg,
     tasks: TaskList<2, EntityTask<Self>>,
     ls: String,
     inspector: Option<fn(&mut Self, &T)>,
@@ -84,7 +84,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             name: name.to_string(),
             koch: None,
             koch_prog: EntityKochProg::default(),
-            setup_task: SetupTask::default(),
+            setup_prog: SetupProg::default(),
             tasks: TaskList::new(tasks),
             ls: format!("<EntityDb {name}.{iteration} />"),
             inspector: None,
@@ -108,8 +108,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         }
 
         if file_size < META_OFFSET + T::N {
-            self.file.seek(SeekFrom::Start(META_OFFSET + T::N - 1))?;
-            self.file.write_all(&[0u8])?;
+            self.file.write_all_at(T::default().as_binary(), META_OFFSET)?;
             return Ok(());
         }
 
@@ -119,9 +118,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         self.live = ((file_size - META_OFFSET) / T::N) - 1;
 
-        self.setup_task.prog = 1;
-        self.setup_task.total = self.live + 1;
-        log::info!("{} init::setup_task {:?}", self.ls, self.setup_task);
+        self.setup_prog.prog = 1;
+        self.setup_prog.total = self.live + 1;
+        log::info!("{} init::setup_task {:?}", self.ls, self.setup_prog);
 
         Ok(())
     }
@@ -174,18 +173,24 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         Ok(())
     }
 
-    pub fn set_koch(&mut self, koch: EntityKoch<T, O, S>) {
-        self.setup_task.total = self.koch_prog.prog;
-        self.setup_task.prog = 0;
-
-        log::debug!("{} set_koch setup_task: {:?}", self.ls, self.setup_task);
-
+    pub fn set_koch(
+        &mut self, koch: EntityKoch<T, O, S>,
+    ) -> Result<(), ShahError> {
         self.koch_prog.total = koch.total;
-        self.live = koch.total;
 
-        log::debug!("{} set_koch koch_prog: {:?}", self.ls, self.koch_prog);
+        if !self.koch_prog.ended() {
+            self.setup_prog.total = self.koch_prog.prog;
+            self.setup_prog.prog = 1;
+        }
+
+        if self.live < koch.total {
+            self.live = koch.total;
+            utils::falloc(&self.file, META_OFFSET, koch.total * T::N)?;
+        }
 
         self.koch = Some(koch);
+
+        Ok(())
     }
 
     pub fn set_inspector(&mut self, inspector: fn(&mut Self, &T)) {
@@ -194,6 +199,23 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     pub fn file_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
+    }
+
+    pub fn total(&mut self) -> Result<u64, ShahError> {
+        let file_size = self.file_size()?;
+        if file_size < META_OFFSET {
+            log::warn!("{} total file_size is less than META_OFFSET", self.ls);
+            return Ok(0);
+        }
+        if file_size < META_OFFSET + T::N {
+            log::warn!(
+                "{} total file_size is less than META_OFFSET + T::N",
+                self.ls
+            );
+            return Ok(0);
+        }
+
+        Ok((file_size - META_OFFSET) / T::N - 1)
     }
 
     fn inspection(&mut self, entity: &T) {
@@ -243,18 +265,18 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     fn work_setup_task(&mut self) -> Result<Performed, ShahError> {
-        if self.dead_list.is_full() || self.setup_task.ended() {
+        if self.dead_list.is_full() || self.setup_prog.ended() {
             return Ok(false);
         }
 
         let mut entity = T::default();
         let mut performed = false;
         for _ in 0..10 {
-            let Some(id) = self.setup_task.next() else { break };
+            let Some(id) = self.setup_prog.next() else { break };
             performed = true;
             if let Err(e) = self.read_at(&mut entity, Self::id_pos(id)) {
                 e.not_found_ok()?;
-                self.setup_task.end();
+                self.setup_prog.end();
                 log::warn!(
                     "{} work_setup_task read_at not found {id}",
                     self.ls
@@ -383,14 +405,14 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     pub fn new_gene(&mut self) -> Result<Gene, ShahError> {
         let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
-        crate::utils::getrandom(&mut gene.pepper);
+        utils::getrandom(&mut gene.pepper);
         gene.server = 0;
         gene.iter = 0;
 
-        if gene.id != 0 && self.seek_id(gene.id).is_ok() {
-            let mut og = Gene::default();
-            if self.file.read_exact(og.as_binary_mut()).is_ok() {
-                #[allow(clippy::collapsible_if)]
+        if gene.id != 0 {
+            let mut old = T::default();
+            if self.read_at(&mut old, Self::id_pos(gene.id)).is_ok() {
+                let og = old.gene();
                 if og.iter < ITER_EXHAUSTION {
                     gene.iter = og.iter + 1;
                     return Ok(gene);
@@ -405,22 +427,20 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     pub fn add(&mut self, entity: &mut T) -> Result<(), ShahError> {
         entity.set_alive(true);
-        if entity.gene().id == 0 {
-            entity.gene_mut().clone_from(&self.new_gene()?);
+        let gene = entity.gene_mut();
+        if gene.id == 0 {
+            gene.clone_from(&self.new_gene()?);
         }
 
-        let id = entity.gene().id;
-        self.seek_id(id)?;
-        self.file.write_all(entity.as_binary_mut())?;
+        let pos = Self::id_pos(gene.id);
+        self.file.write_all_at(entity.as_binary_mut(), pos)?;
         self.live += 1;
 
         Ok(())
     }
 
     pub fn count(&mut self) -> Result<EntityCount, ShahError> {
-        let db_size = self.file_size()?;
-        let total = db_size / T::N - 1;
-        Ok(EntityCount { total, alive: self.live })
+        Ok(EntityCount { total: self.total()?, alive: self.live })
     }
 
     pub fn take_dead_id(&mut self) -> GeneId {

@@ -137,7 +137,7 @@ fn main() -> Result<(), ShahError> {
     }
     .init()?;
 
-    let mut _user = user::db::User::default();
+    let mut user = user::db::User::default();
     // state.users.add(&mut user)?;
 
     // log::info!("users: {}", state.users.live);
@@ -147,6 +147,9 @@ fn main() -> Result<(), ShahError> {
         if !state.users.work()? {
             npf += 1;
         }
+        user.gene.id = 0;
+        user.set_name("a new user");
+        state.users.add(&mut user)?;
         if npf > 10 {
             break;
         }

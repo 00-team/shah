@@ -125,6 +125,7 @@ pub enum DbError {
     InvalidDbSchema,
     BadInit,
     InvalidDbContent,
+    NoDiskSpace,
 }
 
 #[shah::enum_int(ty = u16)]

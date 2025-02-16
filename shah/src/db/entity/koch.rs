@@ -95,14 +95,14 @@ where
 #[derive(Debug)]
 pub struct EntityKochDb<T: EntityItem> {
     file: File,
-    iteration: u16,
+    revision: u16,
     total: u64,
     ls: String,
     _e: PhantomData<T>,
 }
 
 impl<T: EntityItem> EntityKochDb<T> {
-    pub fn new(path: &str, iteration: u16) -> Result<Self, ShahError> {
+    pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         let path = Path::new("data/").join(path);
         let name = path
             .file_name()
@@ -116,13 +116,13 @@ impl<T: EntityItem> EntityKochDb<T> {
             .write(false)
             .create(false)
             .truncate(false)
-            .open(path.join(format!("{name}.{iteration}.shah")))?;
+            .open(path.join(format!("{name}.{revision}.shah")))?;
 
         let mut db = Self {
             file,
-            iteration,
+            revision,
             total: 0,
-            ls: format!("<EntityKochDb {name}.{iteration}>"),
+            ls: format!("<EntityKochDb {name}.{revision}>"),
             _e: PhantomData::<T>,
         };
 
@@ -153,7 +153,7 @@ impl<T: EntityItem> EntityKochDb<T> {
         let mut head = EntityHead::default();
         self.file.read_exact_at(head.as_binary_mut(), 0)?;
 
-        head.check::<T>(self.iteration, &self.ls)?;
+        head.check::<T>(self.revision, &self.ls)?;
 
         Ok(())
     }

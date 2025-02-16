@@ -67,25 +67,25 @@ pub struct DbHead {
     pub magic: ShahMagic,
     pub shah_version: (u16, u16),
     pub db_version: u16,
-    pub iteration: u16,
+    pub revision: u16,
     #[str]
-    pub name: [u8; 48],
+    name: [u8; 48],
 }
 
 impl DbHead {
     pub fn new(
-        magic: ShahMagic, iteration: u16, name: &str, version: u16,
+        magic: ShahMagic, revision: u16, name: &str, version: u16,
     ) -> Self {
         let mut head = Self::default();
-        head.init(magic, iteration, name, version);
+        head.init(magic, revision, name, version);
         head
     }
 
     pub fn init(
-        &mut self, magic: ShahMagic, iteration: u16, name: &str, version: u16,
+        &mut self, magic: ShahMagic, revision: u16, name: &str, version: u16,
     ) {
         self.magic = magic;
-        self.iteration = iteration;
+        self.revision = revision;
         self.shah_version = SHAH_VERSION;
         self.db_version = version;
         self.set_name(name);

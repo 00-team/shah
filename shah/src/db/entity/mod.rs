@@ -42,7 +42,7 @@ pub struct EntityDb<
     pub file: File,
     pub live: u64,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
-    iteration: u16,
+    revision: u16,
     name: String,
     koch: Option<EntityKoch<T, O, S>>,
     koch_prog: EntityKochProg,
@@ -57,7 +57,7 @@ pub struct EntityDb<
 type Performed = bool;
 
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
-    pub fn new(path: &str, iteration: u16) -> Result<Self, ShahError> {
+    pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         let path = Path::new("data/").join(path);
         let name = path
             .file_name()
@@ -73,20 +73,20 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             .write(true)
             .create(true)
             .truncate(false)
-            .open(path.join(format!("{name}.{iteration}.shah")))?;
+            .open(path.join(format!("{name}.{revision}.shah")))?;
 
         let tasks = [Self::work_koch, Self::work_setup_task];
         let mut db = Self {
             live: 0,
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
-            iteration,
+            revision,
             name: name.to_string(),
             koch: None,
             koch_prog: EntityKochProg::default(),
             setup_prog: SetupProg::default(),
             tasks: TaskList::new(tasks),
-            ls: format!("<EntityDb {name}.{iteration} />"),
+            ls: format!("<EntityDb {name}.{revision} />"),
             inspector: None,
         };
 
@@ -134,7 +134,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
             head.db_head.init(
                 ENTITY_MAGIC,
-                self.iteration,
+                self.revision,
                 &self.name,
                 ENTITY_VERSION,
             );
@@ -149,7 +149,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             return Ok(());
         }
 
-        head.check::<T>(self.iteration, &self.ls)?;
+        head.check::<T>(self.revision, &self.ls)?;
 
         Ok(())
     }

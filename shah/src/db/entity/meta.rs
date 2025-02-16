@@ -16,7 +16,7 @@ pub struct EntityHead {
 
 impl EntityHead {
     pub fn check<T: EntityItem>(
-        &self, iteration: u16, ls: &str,
+        &self, revision: u16, ls: &str,
     ) -> Result<(), ShahError> {
         if self.db_head.magic != ENTITY_MAGIC {
             log::error!(
@@ -34,10 +34,10 @@ impl EntityHead {
             return Err(DbError::InvalidDbHead)?;
         }
 
-        if self.db_head.iteration != iteration {
+        if self.db_head.revision != revision {
             log::error!(
-                "{ls} head invalid iteration {} != {iteration}",
-                self.db_head.iteration,
+                "{ls} head invalid revision {} != {revision}",
+                self.db_head.revision,
             );
             return Err(DbError::InvalidDbHead)?;
         }
@@ -54,7 +54,7 @@ impl EntityHead {
         let schema = Schema::decode(&self.schema)?;
         if schema != T::shah_schema() {
             log::error!(
-                "{ls} mismatch schema. did you forgot to update the iteration?"
+                "{ls} mismatch schema. did you forgot to update the revision?"
             );
             return Err(DbError::InvalidDbSchema)?;
         }

@@ -39,6 +39,26 @@ impl ShahMagic {
         );
         Self { sign: Self::SIGN, prefix, db: db.into() }
     }
+
+    pub fn is_valid(&self) -> bool {
+        self.sign == Self::SIGN
+    }
+
+    pub fn is_custom(&self) -> bool {
+        self.prefix != Self::PREFIX
+    }
+
+    pub fn prefix(&self) -> u8 {
+        self.prefix
+    }
+
+    pub fn raw_db(&self) -> u16 {
+        self.db
+    }
+
+    pub fn db(&self) -> ShahMagicDb {
+        ShahMagicDb::from(self.db)
+    }
 }
 
 #[crate::model]

@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 use std::path::Path;
 
-use super::{id_iter, EntityHead, EntityItem, META_OFFSET};
+use super::{id_iter, EntityHead, EntityItem, ENTITY_META};
 use crate::models::{Binary, Gene, GeneId};
 use crate::{utils, DbError, NotFound, ShahError, SystemError};
 
@@ -137,14 +137,14 @@ impl<T: EntityItem> EntityKochDb<T> {
 
     fn init(&mut self) -> Result<(), ShahError> {
         let file_size = self.file_size()?;
-        if file_size < META_OFFSET + T::N {
+        if file_size < ENTITY_META + T::N {
             log::error!("{} content is not valid", self.ls);
             return Err(DbError::InvalidDbContent)?;
         }
 
         self.check_head()?;
 
-        self.total = (file_size - META_OFFSET) / T::N;
+        self.total = (file_size - ENTITY_META) / T::N;
 
         Ok(())
     }
@@ -159,7 +159,7 @@ impl<T: EntityItem> EntityKochDb<T> {
     }
 
     pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
-        let pos = META_OFFSET + id * T::N;
+        let pos = ENTITY_META + id * T::N;
         self.file.seek(SeekFrom::Start(pos))?;
         Ok(())
     }

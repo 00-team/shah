@@ -2,7 +2,7 @@ use super::{EntityItem, EntityKochProg};
 use crate::models::{Binary, DbHead, Schema, ShahMagic, ShahMagicDb};
 use crate::{DbError, ShahError};
 
-pub const META_OFFSET: u64 = EntityHead::N + EntityKochProg::N;
+pub const ENTITY_META: u64 = EntityHead::N + EntityKochProg::N;
 pub const ENTITY_VERSION: u16 = 1;
 pub const ENTITY_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::Entity as u16);

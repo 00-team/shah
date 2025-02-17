@@ -103,20 +103,20 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         self.dead_list.clear();
 
         let file_size = self.file_size()?;
-        if file_size < META_OFFSET {
+        if file_size < ENTITY_META {
             return Err(DbError::BadInit)?;
         }
 
-        if file_size < META_OFFSET + T::N {
-            self.file.write_all_at(T::default().as_binary(), META_OFFSET)?;
+        if file_size < ENTITY_META + T::N {
+            self.file.write_all_at(T::default().as_binary(), ENTITY_META)?;
             return Ok(());
         }
 
-        if file_size == META_OFFSET + T::N {
+        if file_size == ENTITY_META + T::N {
             return Ok(());
         }
 
-        self.live = ((file_size - META_OFFSET) / T::N) - 1;
+        self.live = ((file_size - ENTITY_META) / T::N) - 1;
 
         self.setup_prog.prog = 1;
         self.setup_prog.total = self.live + 1;
@@ -185,7 +185,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         if self.live < koch.total {
             self.live = koch.total;
-            utils::falloc(&self.file, META_OFFSET, koch.total * T::N)?;
+            utils::falloc(&self.file, ENTITY_META, koch.total * T::N)?;
         }
 
         self.koch = Some(koch);
@@ -203,19 +203,19 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     pub fn total(&mut self) -> Result<u64, ShahError> {
         let file_size = self.file_size()?;
-        if file_size < META_OFFSET {
-            log::warn!("{} total file_size is less than META_OFFSET", self.ls);
+        if file_size < ENTITY_META {
+            log::warn!("{} total file_size is less than ENTITY_META", self.ls);
             return Ok(0);
         }
-        if file_size < META_OFFSET + T::N {
+        if file_size < ENTITY_META + T::N {
             log::warn!(
-                "{} total file_size is less than META_OFFSET + T::N",
+                "{} total file_size is less than ENTITY_META + T::N",
                 self.ls
             );
             return Ok(0);
         }
 
-        Ok((file_size - META_OFFSET) / T::N - 1)
+        Ok((file_size - ENTITY_META) / T::N - 1)
     }
 
     fn inspection(&mut self, entity: &T) {
@@ -301,7 +301,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     pub fn id_pos(id: GeneId) -> u64 {
-        META_OFFSET + id * T::N
+        ENTITY_META + id * T::N
     }
 
     pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
@@ -386,11 +386,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     pub fn new_gene_id(&mut self) -> Result<GeneId, ShahError> {
         let pos = self.file.seek(SeekFrom::End(0))?;
-        if pos < META_OFFSET + T::N {
+        if pos < ENTITY_META + T::N {
             return Ok(1);
         }
 
-        let db_pos = pos - META_OFFSET;
+        let db_pos = pos - ENTITY_META;
         let (id, offset) = (db_pos / T::N, db_pos % T::N);
         if offset != 0 {
             log::warn!(

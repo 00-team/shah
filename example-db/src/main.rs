@@ -6,10 +6,9 @@ mod user;
 
 // use std::io::Write;
 
-use shah::{error::ShahError, models::ShahSchema, Command, ShahSchema};
+use shah::{error::ShahError, Command, ShahSchema};
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
-
 
 #[shah::model]
 #[derive(ShahSchema)]
@@ -127,11 +126,6 @@ fn main() -> Result<(), ShahError> {
     log::set_max_level(log::LevelFilter::Trace);
 
     // let routes = shah::routes!(models::State, user, phone);
-
-    // let whip = Whip::default();
-    println!("schema: {:#?}", Whip::shah_schema());
-
-    return Ok(());
 
     let mut users_0 = user::db::init_0()?;
     if users_0.live == 0 {

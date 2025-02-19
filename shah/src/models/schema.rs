@@ -1,10 +1,14 @@
 use crate::error::{DbError, ShahError};
 
+use super::{Binary, Gene};
+
 #[derive(Debug, crate::EnumCode)]
+#[enum_code(u8)]
 pub enum Schema {
     Model(SchemaModel),
     Array { length: u64, kind: Box<Schema> },
     Tuple(Vec<Schema>),
+    String(u64),
     U8,
     U16,
     U32,
@@ -22,18 +26,25 @@ pub enum Schema {
 impl PartialEq for Schema {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            Self::Model(sm) => match other {
-                Self::Model(om) => sm == om,
-                _ => false,
-            },
+            Self::Model(sm) => matches!(other, Self::Model(om) if sm == om),
+            // Self::Model(sm) => match other {
+            //     Self::Model(om) => sm == om,
+            //     _ => false,
+            // },
             Self::Array { length: sl, kind: sk } => match other {
                 Self::Array { length: ol, kind: ok } => sl == ol && sk == ok,
                 _ => false,
             },
-            Self::Tuple(st) => match other {
-                Self::Tuple(ot) => st == ot,
-                _ => false,
-            },
+            // Self::Tuple(st) => match other {
+            //     Self::Tuple(ot) => st == ot,
+            //     _ => false,
+            // },
+            // Self::String(sl) => match other {
+            //     Self::String(ol) => sl == ol,
+            //     _ => false,
+            // },
+            Self::Tuple(st) => matches!(other, Self::Tuple(ot) if st == ot),
+            Self::String(sl) => matches!(other, Self::String(ol) if sl == ol),
             Self::U8 => matches!(other, Self::U8),
             Self::U16 => matches!(other, Self::U16),
             Self::U32 => matches!(other, Self::U32),
@@ -92,20 +103,44 @@ impl Schema {
         out
     }
 
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Array { length, kind } => *length as usize * kind.size(),
+            Self::String(len) => *len as usize,
+            Self::U8 => 1,
+            Self::I8 => 1,
+            Self::Bool => 1,
+            Self::U16 => 2,
+            Self::I16 => 2,
+            Self::U32 => 4,
+            Self::I32 => 4,
+            Self::F32 => 4,
+            Self::U64 => 8,
+            Self::I64 => 8,
+            Self::F64 => 8,
+            Self::Gene => Gene::S,
+            Self::Tuple(v) => {
+                v.iter().fold(0usize, |total, s| total + s.size())
+            }
+            Self::Model(m) => m.size as usize,
+        }
+    }
+
     fn from_code(code: u8) -> Option<Self> {
         Some(match code {
-            3 => Self::U8,
-            4 => Self::U16,
-            5 => Self::U32,
-            6 => Self::U64,
-            7 => Self::I8,
-            8 => Self::I16,
-            9 => Self::I32,
-            10 => Self::I64,
-            11 => Self::F32,
-            12 => Self::F64,
-            13 => Self::Bool,
-            14 => Self::Gene,
+            code if code == Self::U8
+            4 => Self::U8,
+            5 => Self::U16,
+            6 => Self::U32,
+            7 => Self::U64,
+            8 => Self::I8,
+            9 => Self::I16,
+            10 => Self::I32,
+            11 => Self::I64,
+            12 => Self::F32,
+            13 => Self::F64,
+            14 => Self::Bool,
+            15 => Self::Gene,
             _ => return None,
         })
     }

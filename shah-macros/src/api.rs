@@ -305,29 +305,27 @@ fn parse_args(args: Args) -> ApiArgs {
 }
 
 fn returns_output_size(rt: &syn::ReturnType) -> bool {
-    'b: {
-        let syn::ReturnType::Type(_, t) = rt else { break 'b };
+    macro_rules! err { () => { panic!("return type of an api must be Result<(), ErrorCode> or Result<usize, ErrorCode>") }; }
 
-        let syn::Type::Path(p) = &(**t) else { break 'b };
-        let args = &p.path.segments[0].arguments;
+    let syn::ReturnType::Type(_, t) = rt else { err!() };
 
-        let syn::PathArguments::AngleBracketed(a) = args else { break 'b };
-        let syn::GenericArgument::Type(t) = &a.args[0] else { break 'b };
+    let syn::Type::Path(p) = &(**t) else { err!() };
+    let args = &p.path.segments[0].arguments;
 
-        if let syn::Type::Tuple(tp) = t {
-            if tp.elems.is_empty() {
-                return false;
-            }
+    let syn::PathArguments::AngleBracketed(a) = args else { err!() };
+    let syn::GenericArgument::Type(t) = &a.args[0] else { err!() };
+
+    if let syn::Type::Tuple(tp) = t {
+        if tp.elems.is_empty() {
+            return false;
         }
-
-        if let syn::Type::Path(p) = t {
-            if p.to_token_stream().to_string() == "usize" {
-                return true;
-            }
-        }
-
-        break 'b;
     }
 
-    panic!("return type of an api must be Result<(), ErrorCode> or Result<usize, ErrorCode>")
+    if let syn::Type::Path(p) = t {
+        if p.to_token_stream().to_string() == "usize" {
+            return true;
+        }
+    }
+
+    err!()
 }

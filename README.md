@@ -21,6 +21,14 @@ with respect to relations.
 
 ## Words
 
+### words for dynamic databases
+
+- whip: weapon
+- leash
+- belt
+
+### general words
+
 - climate | adaptation | environment | population | race | organic
 - DNA | RNA | primer | species
 - reproduce | offspring | parent | healthy |

@@ -13,20 +13,37 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
 
     let generics = &item.generics;
-    let is_generic = item.generics.lt_token.is_some();
-    let mut gnb = item.generics.clone();
-    for p in gnb.params.iter_mut() {
-        match p {
-            syn::GenericParam::Type(t) => t.bounds.clear(),
-            _ => {
-                panic!("invalid generic param")
+
+    let mut gnb = TokenStream2::new();
+
+    fn gnbqi(
+        s: &mut TokenStream2,
+        params: syn::punctuated::Iter<'_, syn::GenericParam>,
+    ) {
+        for (i, p) in params.enumerate() {
+            if i != 0 {
+                quote_into!(s += ,);
             }
+            match p {
+                syn::GenericParam::Type(syn::TypeParam { ident, .. }) => {
+                    quote_into!(s += #ident)
+                }
+                syn::GenericParam::Const(syn::ConstParam { ident, .. }) => {
+                    quote_into!(s += #ident)
+                }
+                syn::GenericParam::Lifetime(_) => {
+                    panic!("model with lifetime is invalid");
+                }
+            };
         }
     }
+    let is_generic = !item.generics.params.is_empty();
+    if is_generic {
+        quote_into! {gnb += <#{gnbqi(gnb, item.generics.params.iter())}>};
+    }
 
-    match &item.fields {
-        syn::Fields::Named(_) => {}
-        _ => panic!("invalid struct type must be named"),
+    if !matches!(item.fields, syn::Fields::Named(_)) {
+        panic!("invalid struct type must be named")
     }
 
     for attr in item.attrs.iter() {
@@ -309,12 +326,6 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 
         impl #generics #ci::models::Binary for #ident #gnb {}
 
-        // impl #ci::FromBytes for #ident {
-        //     fn from_bytes(data: &[u8]) -> Self {
-        //         let data: [u8; <Self as #ci::Binary>::S] = data.try_into().unwrap();
-        //         unsafe { core::mem::transmute(data) }
-        //     }
-        // }
     };
 
     // println!("{s}");

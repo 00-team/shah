@@ -8,6 +8,7 @@ mod model;
 mod perms;
 mod routes;
 mod schema;
+mod utils;
 
 use proc_macro::TokenStream;
 
@@ -16,7 +17,7 @@ pub fn command(code: TokenStream) -> TokenStream {
     command::command(code)
 }
 
-#[proc_macro_derive(EnumCode)]
+#[proc_macro_derive(EnumCode, attributes(enum_code))]
 pub fn enum_code(code: TokenStream) -> TokenStream {
     enum_code::enum_code(code)
 }
@@ -46,7 +47,7 @@ pub fn duck(code: TokenStream) -> TokenStream {
     duck::duck(code)
 }
 
-#[proc_macro_derive(ShahSchema)]
+#[proc_macro_derive(ShahSchema, attributes(shah_schema))]
 pub fn schema(code: TokenStream) -> TokenStream {
     schema::schema(code)
 }

@@ -6,9 +6,8 @@ use super::{Binary, Gene};
 #[enum_code(u8)]
 pub enum Schema {
     Model(SchemaModel),
-    Array { length: u64, kind: Box<Schema> },
+    Array { is_str: bool, length: u64, kind: Box<Schema> },
     Tuple(Vec<Schema>),
-    String(u64),
     U8,
     U16,
     U32,
@@ -31,8 +30,10 @@ impl PartialEq for Schema {
             //     Self::Model(om) => sm == om,
             //     _ => false,
             // },
-            Self::Array { length: sl, kind: sk } => match other {
-                Self::Array { length: ol, kind: ok } => sl == ol && sk == ok,
+            Self::Array { length: sl, kind: sk, .. } => match other {
+                Self::Array { length: ol, kind: ok, .. } => {
+                    sl == ol && sk == ok
+                }
                 _ => false,
             },
             // Self::Tuple(st) => match other {
@@ -44,7 +45,6 @@ impl PartialEq for Schema {
             //     _ => false,
             // },
             Self::Tuple(st) => matches!(other, Self::Tuple(ot) if st == ot),
-            Self::String(sl) => matches!(other, Self::String(ol) if sl == ol),
             Self::U8 => matches!(other, Self::U8),
             Self::U16 => matches!(other, Self::U16),
             Self::U32 => matches!(other, Self::U32),
@@ -63,7 +63,7 @@ impl PartialEq for Schema {
 
 impl Schema {
     pub fn encode(&self) -> Vec<u8> {
-        let mut out = vec![u16::from(self) as u8];
+        let mut out = vec![self.enum_code()];
 
         fn check_schema(out: &mut Vec<u8>, schema: &Schema) {
             match schema {
@@ -71,7 +71,7 @@ impl Schema {
                     out.extend_from_slice(&Schema::encode(schema));
                 }
                 _ => {
-                    out.push(u16::from(schema) as u8);
+                    out.push(u8::from(schema));
                 }
             }
         }
@@ -88,8 +88,9 @@ impl Schema {
                     check_schema(&mut out, ty);
                 }
             }
-            Self::Array { length, kind } => {
+            Self::Array { length, kind, is_str } => {
                 out.extend_from_slice(&(*length).to_le_bytes());
+                out.push(if *is_str { 1 } else { 0 });
                 check_schema(&mut out, kind);
             }
             Self::Tuple(items) => {
@@ -105,8 +106,7 @@ impl Schema {
 
     pub fn size(&self) -> usize {
         match self {
-            Self::Array { length, kind } => *length as usize * kind.size(),
-            Self::String(len) => *len as usize,
+            Self::Array { length, kind, .. } => *length as usize * kind.size(),
             Self::U8 => 1,
             Self::I8 => 1,
             Self::Bool => 1,
@@ -124,25 +124,6 @@ impl Schema {
             }
             Self::Model(m) => m.size as usize,
         }
-    }
-
-    fn from_code(code: u8) -> Option<Self> {
-        Some(match code {
-            code if code == Self::U8
-            4 => Self::U8,
-            5 => Self::U16,
-            6 => Self::U32,
-            7 => Self::U64,
-            8 => Self::I8,
-            9 => Self::I16,
-            10 => Self::I32,
-            11 => Self::I64,
-            12 => Self::F32,
-            13 => Self::F64,
-            14 => Self::Bool,
-            15 => Self::Gene,
-            _ => return None,
-        })
     }
 
     fn from_iter(it: &mut core::slice::Iter<u8>) -> Option<Self> {
@@ -174,7 +155,7 @@ impl Schema {
                         0 | 1 => Self::from_iter(it)?,
                         c => {
                             it.next();
-                            Self::from_code(c)?
+                            Self::from_enum_code(c)?
                         }
                     };
                     fields.push((ident, kind));
@@ -184,15 +165,16 @@ impl Schema {
             }
             1 => {
                 let length = from_iter!(u64);
+                let is_str = *it.next()? == 1;
                 let kind = Box::new(match *it.clone().next()? {
                     0 | 1 => Self::from_iter(it)?,
                     c => {
                         it.next();
-                        Self::from_code(c)?
+                        Self::from_enum_code(c)?
                     }
                 });
 
-                Some(Schema::Array { length, kind })
+                Some(Schema::Array { length, kind, is_str })
             }
             2 => {
                 let ilen = from_iter!(u16) as usize;
@@ -202,7 +184,7 @@ impl Schema {
                         0..=2 => Self::from_iter(it)?,
                         c => {
                             it.next();
-                            Self::from_code(c)?
+                            Self::from_enum_code(c)?
                         }
                     };
                     items.push(kind);
@@ -295,15 +277,35 @@ mod tests {
         assert_ne!(Schema::Gene, Schema::U8);
         assert_ne!(
             Schema::Gene,
-            Schema::Array { length: 1, kind: Box::new(Schema::U8) }
+            Schema::Array {
+                length: 1,
+                kind: Box::new(Schema::U8),
+                is_str: false
+            }
         );
         assert_ne!(
-            Schema::Array { length: 2, kind: Box::new(Schema::U16) },
-            Schema::Array { length: 1, kind: Box::new(Schema::U16) }
+            Schema::Array {
+                length: 2,
+                kind: Box::new(Schema::U16),
+                is_str: true
+            },
+            Schema::Array {
+                length: 1,
+                kind: Box::new(Schema::U16),
+                is_str: true
+            }
         );
         assert_ne!(
-            Schema::Array { length: 5, kind: Box::new(Schema::U16) },
-            Schema::Array { length: 5, kind: Box::new(Schema::I64) }
+            Schema::Array {
+                length: 5,
+                kind: Box::new(Schema::U16),
+                is_str: false,
+            },
+            Schema::Array {
+                length: 5,
+                kind: Box::new(Schema::I64),
+                is_str: false,
+            }
         );
         assert_ne!(
             Schema::Gene,
@@ -350,8 +352,16 @@ mod tests {
         assert_eq!(Schema::I16, Schema::I16);
 
         assert_eq!(
-            Schema::Array { length: 1, kind: Box::new(Schema::U16) },
-            Schema::Array { length: 1, kind: Box::new(Schema::U16) }
+            Schema::Array {
+                length: 1,
+                kind: Box::new(Schema::U16),
+                is_str: false,
+            },
+            Schema::Array {
+                length: 1,
+                kind: Box::new(Schema::U16),
+                is_str: true
+            }
         );
         assert_eq!(
             Schema::Model(SchemaModel { name: s(2), size: 44, fields: vec![] }),

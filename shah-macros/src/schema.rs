@@ -19,28 +19,20 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     };
 
     fn quote_schema(
-        f: &syn::Field, args: &FieldArgs, ty: &syn::Type, s: &mut TokenStream2,
-        ci: &syn::Ident,
+        args: &FieldArgs, ty: &syn::Type, s: &mut TokenStream2, ci: &syn::Ident,
     ) {
         match ty {
             syn::Type::Array(syn::TypeArray { len, elem, .. }) => {
-                if args.is_str() {
-                    if let syn::Type::Path(p) = &(**elem) {
-                        if p.path.is_ident("u8") {
-                            quote_into!(s += #ci::models::Schema::String(#len));
-                            return;
-                        }
-                    }
-                }
-
+                let is_str = args.is_str();
                 quote_into! {s += #ci::models::Schema::Array {
+                    is_str: #is_str,
                     length: #len,
-                    kind: Box::new(#{quote_schema(f, args, elem, s, ci)}),
+                    kind: Box::new(#{quote_schema(args, elem, s, ci)}),
                 }}
             }
             syn::Type::Tuple(t) => {
                 quote_into! {s += #ci::models::Schema::Tuple(vec![#{
-                    t.elems.iter().for_each(|e| quote_schema(f, args, e, s, ci))
+                    t.elems.iter().for_each(|e| quote_schema(args, e, s, ci))
                 }])}
             }
             syn::Type::Path(t) => {
@@ -56,7 +48,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
             let ident = f.ident.clone().unwrap().to_string();
             quote_into! {s += (
                 String::from(#ident),
-                #{quote_schema(f, &args, &f.ty, s, ci)}
+                #{quote_schema(&args, &f.ty, s, ci)}
             ),};
         }
     }
@@ -84,23 +76,20 @@ args_parse! {
 }
 
 impl FieldArgs {
-    fn from_attrs(attrs: &Vec<syn::Attribute>) -> syn::Result<Self> {
+    fn from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let mut args = Self::default();
         for a in attrs.iter() {
-            match &a.meta {
-                syn::Meta::List(ml) => {
-                    if !ml.path.is_ident("shah_schema") {
-                        continue;
-                    }
-                    let na: FieldArgs = syn::parse(ml.tokens.clone().into())?;
+            if let syn::Meta::List(ml) = &a.meta {
+                if !ml.path.is_ident("shah_schema") {
+                    continue;
+                }
+                let na: FieldArgs = syn::parse(ml.tokens.clone().into())?;
 
-                    if let Some(kind) = na.kind {
-                        if args.kind.replace(kind).is_some() {
-                            panic!("duplicate kind")
-                        }
+                if let Some(kind) = na.kind {
+                    if args.kind.replace(kind).is_some() {
+                        panic!("duplicate kind")
                     }
                 }
-                _ => {}
             }
         }
 
@@ -108,9 +97,6 @@ impl FieldArgs {
     }
 
     fn is_str(&self) -> bool {
-        match &self.kind {
-            Some(k) if k == "str" => true,
-            _ => false,
-        }
+        matches!(&self.kind, Some(k) if k == "str")
     }
 }

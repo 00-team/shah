@@ -38,6 +38,25 @@ pub(crate) fn enum_code(code: TokenStream) -> TokenStream {
         )
     });
     quote_into! {s +=
+        impl #ident {
+            const fn enum_code(&self) -> #ecty {
+                match self {
+                    #{variants.clone().for_each(|(ix, vi, vf)|
+                        quote_into!{s += #ident::#vi #vf => #ix,}
+                    )}
+                }
+            }
+
+            const fn from_enum_code(code: #ecty) -> Option<Self> {
+                Some(match code {
+                    #{variants.filter(|(_, _, vf)| vf.is_none()).for_each(|(ix, vi, _)|
+                        quote_into!(s += #ix => Self::#vi,)
+                    )}
+                    _ => return None,
+                })
+            }
+        }
+
         impl From<#ident> for #ecty {
             fn from(value: #ident) -> Self {
                 Self::from(&value)
@@ -45,11 +64,12 @@ pub(crate) fn enum_code(code: TokenStream) -> TokenStream {
         }
         impl From<&#ident> for #ecty {
             fn from(value: &#ident) -> Self {
-                match value {
-                    #{variants.for_each(|(ix, vi, vf)|
-                        quote_into!{s += #ident::#vi #vf => #ix,}
-                    )}
-                }
+                value.enum_code()
+                // match value {
+                //     #{variants.for_each(|(ix, vi, vf)|
+                //         quote_into!{s += #ident::#vi #vf => #ix,}
+                //     )}
+                // }
             }
         }
     };

@@ -41,7 +41,6 @@ pub mod db {
         pub agent: Gene,
         pub review: Gene,
         pub photo: Gene,
-        // #[shah_schema(kind = str)]
         #[str]
         phone: [u8; 12],
         pub cc: u16,
@@ -49,7 +48,6 @@ pub mod db {
         entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
-        // #[shah_schema(kind = str)]
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
@@ -68,7 +66,6 @@ pub mod db {
         pub review: Gene,
         pub photo: Gene,
         pub reviews: [u64; 3],
-        // #[shah_schema(kind = str)]
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
@@ -76,7 +73,6 @@ pub mod db {
         pub entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
-        // #[shah_schema(kind = str)]
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],

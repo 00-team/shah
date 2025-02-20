@@ -31,49 +31,57 @@ pub mod db {
         token: [u8; 64],
     }
 
+    #[derive(ShahSchema)]
     #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
+    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User_0 {
         // pub flags: u64,
+        #[entity(gene)]
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
         pub photo: Gene,
-        #[shah_schema(kind = str)]
+        // #[shah_schema(kind = str)]
         #[str]
         phone: [u8; 12],
         pub cc: u16,
-        #[entity_flags]
-        pub entity_flags: u8,
+        #[entity(flags)]
+        entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
-        #[shah_schema(kind = str)]
+        // #[shah_schema(kind = str)]
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
+        #[entity(growth)]
+        growth: u64,
     }
 
+    #[derive(ShahSchema)]
     #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy, ShahSchema)]
+    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
         // pub flags: u64,
+        #[entity(gene)]
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
         pub photo: Gene,
         pub reviews: [u64; 3],
-        #[shah_schema(kind = str)]
+        // #[shah_schema(kind = str)]
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
-        #[entity_flags]
+        #[entity(flags)]
         pub entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
-        #[shah_schema(kind = str)]
+        // #[shah_schema(kind = str)]
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
+        #[entity(growth)]
+        growth: u64,
     }
 
     impl User {
@@ -112,6 +120,7 @@ pub mod db {
                 flags: old.flags,
                 name: old.name,
                 sessions: old.sessions,
+                growth: old.growth,
             })
         }
     }

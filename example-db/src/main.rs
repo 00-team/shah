@@ -6,15 +6,18 @@ mod user;
 
 // use std::io::Write;
 
-use shah::{error::ShahError, models::Gene, Command, ShahSchema};
+use shah::{
+    error::ShahError,
+    models::{Gene, ShahSchema},
+    Command, ShahSchema,
+};
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
 
-#[shah::model]
 #[derive(ShahSchema)]
+#[shah::model]
 struct Whip<const N: usize> {
     // data: [u8; N],
-    #[shah_schema(kind = str)]
     #[str]
     name: [u8; N],
 }

@@ -1,3 +1,4 @@
+#[allow(unused_macros)]
 macro_rules! args_parse {
     (
         @derive_only
@@ -52,5 +53,6 @@ macro_rules! args_parse {
     }
 }
 
+#[allow(unused_imports)]
 pub(crate) use args_parse;
 

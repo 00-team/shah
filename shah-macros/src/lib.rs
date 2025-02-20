@@ -47,7 +47,7 @@ pub fn duck(code: TokenStream) -> TokenStream {
     duck::duck(code)
 }
 
-#[proc_macro_derive(ShahSchema, attributes(shah_schema))]
+#[proc_macro_derive(ShahSchema)]
 pub fn schema(code: TokenStream) -> TokenStream {
     schema::schema(code)
 }

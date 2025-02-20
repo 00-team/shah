@@ -18,15 +18,18 @@ use std::path::Path;
 #[crate::model]
 #[derive(Debug, Clone, Copy, crate::Entity, crate::ShahSchema)]
 pub struct Origin {
+    #[entity(gene)]
     pub gene: Gene,
     pub owner: Gene,
     pub ponds: u64,
     pub items: u64,
     pub first: Gene,
     pub last: Gene,
-    #[entity_flags]
+    #[entity(flags)]
     pub entity_flags: u8,
     pub _pad: [u8; 7],
+    #[entity(growth)]
+    growth: u64,
 }
 
 pub trait Duck {
@@ -37,12 +40,13 @@ pub trait Duck {
 #[crate::model]
 #[derive(Debug, crate::Entity, Clone, crate::ShahSchema)]
 pub struct Pond {
+    #[entity(gene)]
     pub gene: Gene,
     pub next: Gene,
     pub past: Gene,
     pub origin: Gene,
     pub stack: GeneId,
-    #[entity_flags]
+    #[entity(flags)]
     pub entity_flags: u8,
     #[flags(free)]
     pub flags: u8,
@@ -51,6 +55,8 @@ pub struct Pond {
     /// in other words slots that did not used all of their gene.iter
     pub empty: u8,
     _pad: [u8; 4],
+    #[entity(growth)]
+    growth: u64,
 }
 
 type PondIndexDb = EntityDb<Pond>;

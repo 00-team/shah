@@ -22,14 +22,17 @@ pub struct SnakeFree {
 #[shah::model]
 #[derive(Debug, Entity, Clone, Copy, shah::ShahSchema)]
 pub struct SnakeHead {
+    #[entity(gene)]
     pub gene: Gene,
     pub capacity: u64,
     pub position: u64,
     pub length: u64,
-    #[entity_flags]
-    pub entity_flags: u32,
+    #[entity(flags)]
+    entity_flags: u32,
     #[flags(free)]
     pub flags: u32,
+    #[entity(growth)]
+    growth: u64,
 }
 
 type SnakeIndexDb = EntityDb<SnakeHead>;

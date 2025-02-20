@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote_into::quote_into;
 
-use crate::utils::args::args_parse;
+// use crate::utils::args::args_parse;
 
 pub(crate) fn schema(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::DeriveInput);
@@ -23,7 +23,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     ) {
         match ty {
             syn::Type::Array(syn::TypeArray { len, elem, .. }) => {
-                let is_str = args.is_str();
+                let is_str = args.is_str;
                 quote_into! {s += #ci::models::Schema::Array {
                     is_str: #is_str,
                     length: #len as u64,
@@ -68,35 +68,43 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     s.into()
 }
 
-args_parse! {
-    #[derive(Debug, Default)]
-    struct FieldArgs {
-        kind: Option<syn::Ident>,
-    }
+// args_parse! {
+//     #[derive(Debug, Default)]
+//     struct FieldArgs {
+//         kind: Option<syn::Ident>,
+//     }
+// }
+
+#[derive(Debug, Default)]
+struct FieldArgs {
+    is_str: bool,
 }
 
 impl FieldArgs {
     fn from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let mut args = Self::default();
         for a in attrs.iter() {
-            if let syn::Meta::List(ml) = &a.meta {
-                if !ml.path.is_ident("shah_schema") {
-                    continue;
-                }
-                let na: FieldArgs = syn::parse(ml.tokens.clone().into())?;
-
-                if let Some(kind) = na.kind {
-                    if args.kind.replace(kind).is_some() {
-                        panic!("duplicate kind")
-                    }
-                }
+            if a.path().is_ident("str") {
+                args.is_str = true;
             }
+            // if let syn::Meta::List(ml) = &a.meta {
+            //     if !ml.path.is_ident("shah_schema") {
+            //         continue;
+            //     }
+            //     let na: FieldArgs = syn::parse(ml.tokens.clone().into())?;
+            //
+            //     if let Some(kind) = na.kind {
+            //         if args.kind.replace(kind).is_some() {
+            //             panic!("duplicate kind")
+            //         }
+            //     }
+            // }
         }
 
         Ok(args)
     }
 
-    fn is_str(&self) -> bool {
-        matches!(&self.kind, Some(k) if k == "str")
-    }
+    // fn is_str(&self) -> bool {
+    //     matches!(&self.kind, Some(k) if k == "str")
+    // }
 }

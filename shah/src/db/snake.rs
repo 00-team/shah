@@ -171,7 +171,7 @@ impl SnakeDb {
 
                     disk.position = free.position;
                     disk.capacity = free.capacity;
-                    self.index.set(&disk)?;
+                    self.index.set(&mut disk)?;
 
                     return Ok(Some(val));
                 }
@@ -215,7 +215,7 @@ impl SnakeDb {
             }
 
             disk.capacity -= capacity;
-            self.index.set(&disk)?;
+            self.index.set(&mut disk)?;
             free.capacity -= capacity;
             return Ok(Some(SnakeFree {
                 gene: Default::default(),
@@ -346,7 +346,7 @@ impl SnakeDb {
         }
 
         head.set_free(true);
-        self.index.set(&head)?;
+        self.index.set(&mut head)?;
         if let Err(e) = self.add_free(head) {
             log::warn!("add_free failed in free: {e:?}");
         }
@@ -488,7 +488,7 @@ impl SnakeDb {
 
         head.set_free(true);
         head.set_alive(true);
-        self.index.set(&head)?;
+        self.index.set(&mut head)?;
 
         // log::error!("setting a free at: {index} | round_two: {round_two}");
         if index < FREE_LIST_SIZE {

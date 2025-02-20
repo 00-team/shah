@@ -9,11 +9,12 @@ pub use meta::*;
 use crate::models::*;
 use crate::*;
 
+use std::ops::AddAssign;
 use std::path::Path;
 use std::{
     fmt::Debug,
     fs::File,
-    io::{ErrorKind, Read, Seek, SeekFrom, Write},
+    io::{ErrorKind, Read, Seek, SeekFrom},
     os::unix::fs::FileExt,
 };
 
@@ -236,12 +237,13 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             return Ok(false);
         }
 
+        let mut current = T::default();
         let mut performed = false;
         for _ in 0..10 {
             let Some(id) = self.koch_prog.next() else { break };
             let Some(koch) = self.koch.as_mut() else { break };
 
-            let item = match koch.get_id(id) {
+            let old = match koch.get_id(id) {
                 Ok(v) => v,
                 Err(e) => {
                     log::warn!("{} koch.get_id({id}): {e:?}", self.ls);
@@ -250,11 +252,18 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
                     break;
                 }
             };
-            self.file.write_all_at(item.as_binary(), Self::id_pos(id))?;
-
-            log::debug!("koched: {:?}", item.gene());
-            self.inspection(&item);
             performed = true;
+
+            if self.read_at(&mut current, Self::id_pos(id)).is_ok()
+                && old.growth() <= current.growth()
+            {
+                // if we already did koch and updated the item do not koch again
+                continue;
+            }
+
+            self.file.write_all_at(old.as_binary(), Self::id_pos(id))?;
+            self.inspection(&old);
+            log::debug!("koched: {:?}", old.gene());
         }
 
         if performed {
@@ -346,7 +355,8 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         Ok(())
     }
 
-    fn set_unchecked(&mut self, entity: &T) -> Result<(), ShahError> {
+    fn set_unchecked(&mut self, entity: &mut T) -> Result<(), ShahError> {
+        entity.growth_mut().add_assign(1);
         let pos = Self::id_pos(entity.gene().id);
         self.file.write_all_at(entity.as_binary(), pos)?;
         Ok(())
@@ -362,8 +372,8 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         let egene = entity.gene();
         if egene.id == 0 {
             if let Some(koch) = self.koch.as_mut() {
-                let oldie = koch.get(gene)?;
-                self.set_unchecked(&oldie)?;
+                let mut oldie = koch.get(gene)?;
+                self.set_unchecked(&mut oldie)?;
                 if !oldie.is_alive() {
                     self.add_dead(oldie.gene());
                     return Err(NotFound::EntityNotAlive)?;
@@ -432,8 +442,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             gene.clone_from(&self.new_gene()?);
         }
 
-        let pos = Self::id_pos(gene.id);
-        self.file.write_all_at(entity.as_binary_mut(), pos)?;
+        *entity.growth_mut() = 0;
+        self.set_unchecked(entity)?;
+        // let pos = Self::id_pos(gene.id);
+        // self.file.write_all_at(entity.as_binary_mut(), pos)?;
         self.live += 1;
 
         Ok(())
@@ -463,16 +475,23 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         self.dead_list.push(gene.id);
     }
 
-    pub fn set(&mut self, entity: &T) -> Result<(), ShahError> {
+    pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
             return Err(NotFound::DeadSet)?;
         }
 
         let mut old_entity = T::default();
         self.get(entity.gene(), &mut old_entity)?;
+        // let growth = old_entity.growth();
+        // let gene = old_entity.gene().clone();
+        // old_entity.clone_from(&entity);
+        // *old_entity.growth_mut() = growth;
+        // old_entity.gene_mut().clone_from(&gene);
 
-        self.seek_id(entity.gene().id)?;
-        self.file.write_all(entity.as_binary())?;
+        *entity.growth_mut() = old_entity.growth();
+        self.set_unchecked(entity)?;
+        // self.seek_id(entity.gene().id)?;
+        // self.file.write_all(entity.as_binary())?;
 
         Ok(())
     }
@@ -484,8 +503,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         entity.set_alive(false);
 
-        self.seek_id(gene.id)?;
-        self.file.write_all(entity.as_binary())?;
+        // self.seek_id(gene.id)?;
+        // self.file.write_all(entity.as_binary())?;
+        self.set_unchecked(entity)?;
 
         self.add_dead(gene);
 

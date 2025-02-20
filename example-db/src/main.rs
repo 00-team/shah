@@ -151,33 +151,33 @@ fn main() -> Result<(), ShahError> {
 
     let mut user = user::db::User::default();
 
-    let gene_57 = Gene { id: 57, iter: 0, pepper: [149, 231, 78], server: 0 };
-    state.users.get(&gene_57, &mut user)?;
-    log::info!("user: {user:#?}");
+    // let gene_57 = Gene { id: 57, iter: 0, pepper: [149, 231, 78], server: 0 };
+    // state.users.get(&gene_57, &mut user)?;
+    // log::info!("user: {user:#?}");
 
     // state.users.add(&mut user)?;
 
     // log::info!("users: {}", state.users.live);
     let mut npf = 0;
     let mut dpf = 0;
-    // loop {
-    //     log::info!("========================");
-    //     if !state.users.work()? {
-    //         npf += 1;
-    //     } else {
-    //         dpf += 1;
-    //     }
-    //     user.gene.id = 0;
-    //     user.set_name("a new user");
-    //     state.users.add(&mut user)?;
-    //     if dpf > 1 {
-    //         break;
-    //     }
-    //     if npf > 10 {
-    //         break;
-    //     }
-    //     // std::thread::sleep(std::time::Duration::from_secs(2));
-    // }
+    loop {
+        log::info!("========================");
+        if !state.users.work()? {
+            npf += 1;
+        } else {
+            dpf += 1;
+        }
+        user.gene.id = 0;
+        user.set_name("a new user");
+        state.users.add(&mut user)?;
+        if dpf > 1 {
+            break;
+        }
+        if npf > 10 {
+            break;
+        }
+        // std::thread::sleep(std::time::Duration::from_secs(2));
+    }
 
     Ok(())
 

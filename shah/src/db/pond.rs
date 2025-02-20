@@ -204,21 +204,21 @@ impl<T: PondItem> PondDb<T> {
             e.not_found_ok()?;
         } else {
             old_pond.next = pond.next;
-            self.index.set(&old_pond)?;
+            self.index.set(&mut old_pond)?;
         }
 
         if let Err(e) = self.index.get(&pond.next, &mut old_pond) {
             e.not_found_ok()?;
         } else {
             old_pond.past = pond.past;
-            self.index.set(&old_pond)?;
+            self.index.set(&mut old_pond)?;
         }
 
         pond.next.zeroed();
         pond.past.zeroed();
         pond.origin.zeroed();
         pond.set_free(true);
-        self.index.set(&pond)?;
+        self.index.set(&mut pond)?;
         self.free_list.push(pond.gene);
         Ok(())
     }
@@ -249,7 +249,7 @@ impl<T: PondItem> PondDb<T> {
                     pond.next = new.gene;
                     new.past = origin.last;
                     origin.last = new.gene;
-                    self.index.set(&pond)?;
+                    self.index.set(&mut pond)?;
                 } else {
                     new.past.zeroed();
                     origin.first = new.gene;
@@ -320,8 +320,8 @@ impl<T: PondItem> PondDb<T> {
 
         self.live += 1;
         self.file.write_all_at(buf.as_binary(), stack * T::N)?;
-        self.index.set(&pond)?;
-        self.origins.set(&origin)?;
+        self.index.set(&mut pond)?;
+        self.origins.set(&mut origin)?;
 
         Ok(())
     }
@@ -436,10 +436,10 @@ impl<T: PondItem> PondDb<T> {
         if pond.alive == 0 {
             self.add_empty_pond(&mut origin, pond)?;
         } else {
-            self.index.set(&pond)?;
+            self.index.set(&mut pond)?;
         }
 
-        self.origins.set(&origin)?;
+        self.origins.set(&mut origin)?;
 
         Ok(())
     }

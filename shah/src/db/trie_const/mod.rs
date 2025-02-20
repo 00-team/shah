@@ -213,9 +213,6 @@ impl<
         let mut end_of_file = 0u64;
         let mut i = 0usize;
 
-        println!("cahche pos: {pos}");
-        println!("file size: {}", self.file_size()?);
-
         // self.file.seek(SeekFrom::Start(pos))?;
         // self.file.read_exact(single.as_binary_mut())?;
         self.read_at(&mut single, pos)?;

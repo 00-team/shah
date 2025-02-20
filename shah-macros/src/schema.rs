@@ -26,7 +26,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
                 let is_str = args.is_str();
                 quote_into! {s += #ci::models::Schema::Array {
                     is_str: #is_str,
-                    length: #len,
+                    length: #len as u64,
                     kind: Box::new(#{quote_schema(args, elem, s, ci)}),
                 }}
             }
@@ -58,7 +58,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
             fn shah_schema() -> #ci::models::Schema {
                 #ci::models::Schema::Model(#ci::models::SchemaModel {
                     name: String::from(#model_name),
-                    size: core::mem::size_of::<#ident>() as u64,
+                    size: core::mem::size_of::<Self>() as u64,
                     fields: vec![#{fields(s, &data.fields, &ci)}]
                 })
             }

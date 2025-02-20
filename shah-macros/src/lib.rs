@@ -37,7 +37,7 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
     model::model(args, code)
 }
 
-#[proc_macro_derive(Entity, attributes(entity_flags))]
+#[proc_macro_derive(Entity, attributes(entity))]
 pub fn entity(code: TokenStream) -> TokenStream {
     entity::entity(code)
 }

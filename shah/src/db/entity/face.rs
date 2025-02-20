@@ -12,6 +12,8 @@ macro_rules! flag {
 pub trait Entity {
     fn gene(&self) -> &Gene;
     fn gene_mut(&mut self) -> &mut Gene;
+    fn growth(&self) -> u64;
+    fn growth_mut(&mut self) -> &mut u64;
 
     flag! {is_alive, set_alive}
     flag! {is_edited, set_edited}

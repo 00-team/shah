@@ -40,6 +40,7 @@ pub fn command<T: Command + Default>() -> T {
 
 pub trait AsUtf8Str {
     fn as_utf8_str(&self) -> &str;
+    fn as_utf8_str_null_terminated(&self) -> &str;
 }
 
 impl AsUtf8Str for [u8] {
@@ -49,5 +50,18 @@ impl AsUtf8Str for [u8] {
             Err(e) => core::str::from_utf8(&self[..e.valid_up_to()])
                 .unwrap_or_default(),
         }
+    }
+    fn as_utf8_str_null_terminated(&self) -> &str {
+        let v = self.splitn(2, |x| *x == 0).next().unwrap_or_default();
+        v.as_utf8_str()
+    }
+}
+
+impl<const N: usize> AsUtf8Str for [u8; N] {
+    fn as_utf8_str(&self) -> &str {
+        self.as_slice().as_utf8_str()
+    }
+    fn as_utf8_str_null_terminated(&self) -> &str {
+        self.as_slice().as_utf8_str_null_terminated()
     }
 }

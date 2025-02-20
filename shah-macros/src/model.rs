@@ -240,14 +240,7 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         if *get {
             quote_into! {ssi +=
                 pub fn #field<'a>(&'a self) -> &'a str {
-                    let value = self.#field.split(|c| *c == 0).next().unwrap();
-                    match core::str::from_utf8(value) {
-                        Err(e) => match core::str::from_utf8(&value[..e.valid_up_to()]) {
-                            Ok(v) => v,
-                            Err(_) => "",
-                        },
-                        Ok(v) => v,
-                    }
+                    #ci::AsUtf8Str::as_utf8_str_null_terminated(&self.#field)
                 }
             };
         }

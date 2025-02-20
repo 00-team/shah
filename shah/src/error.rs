@@ -123,8 +123,9 @@ pub enum DbError {
     InvalidDbName,
     InvalidDbHead,
     InvalidDbSchema,
-    BadInit,
+    InvalidDbMeta,
     InvalidDbContent,
+    BadInit,
     NoDiskSpace,
 }
 

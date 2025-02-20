@@ -7,11 +7,14 @@ pub mod db {
     pub struct PhoneAbc;
 
     impl TrieAbc for PhoneAbc {
-        fn convert_char(&self, c: char) -> Result<usize, ()> {
+        fn convert_char(&self, c: char) -> Option<usize> {
             if !c.is_ascii_digit() {
-                return Err(());
+                return None;
             }
-            Ok((c as u8 - b'0') as usize)
+            Some((c as u8 - b'0') as usize)
+        }
+        fn chars() -> &'static str {
+            "0123456789"
         }
     }
 
@@ -19,7 +22,7 @@ pub mod db {
     pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
     pub fn setup() -> Result<PhoneDb, ShahError> {
-        PhoneDb::new("phone", PhoneAbc)?.setup()
+        PhoneDb::new("phone", PhoneAbc)
     }
 
     #[cfg(test)]
@@ -27,15 +30,14 @@ pub mod db {
         use super::PhoneAbc;
         use shah::db::trie_const::TrieConst;
         use shah::models::Gene;
-        use shah::{NotFound, ShahError};
+        use shah::ShahError;
 
         type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
         #[test]
         fn phone_db() {
-            let db = PhoneDb::new("tests.phone", PhoneAbc).unwrap();
-            db.file.set_len(0).expect("file truncate");
-            let mut db = db.setup().expect("phone setup");
+            let _ = std::fs::remove_file("data/tests.phone.shah");
+            let mut db = PhoneDb::new("tests.phone", PhoneAbc).unwrap();
 
             let mock_data = [
                 ("223334044", 2233340, [4, 4]),
@@ -53,14 +55,15 @@ pub mod db {
                 assert_eq!(k.cache, *cache);
                 assert_eq!(k.index, *index);
 
-                assert_eq!(
+                assert!(matches!(
                     db.get(&k).err().expect("get"),
-                    ShahError::NotFound(NotFound::NoTrieValue)
-                );
-                assert_eq!(db.set(&k, a).ok().expect("set"), None);
-                assert_eq!(db.get(&k).ok().expect("get"), a);
+                    ShahError::NotFound(_)
+                ));
+
+                assert_eq!(db.set(&k, a).expect("set"), None);
+                assert_eq!(db.get(&k).expect("get"), a);
                 assert_eq!(db.set(&k, b).expect("set"), Some(a));
-                assert_eq!(db.get(&k).ok().expect("get"), b);
+                assert_eq!(db.get(&k).expect("get"), b);
             }
         }
     }

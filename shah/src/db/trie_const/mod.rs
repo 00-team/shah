@@ -11,7 +11,7 @@ use std::{
 use crate::models::Binary;
 use crate::{utils, NotFound, ShahError, SystemError};
 
-use meta::TrieConstMeta;
+pub use meta::*;
 
 pub trait TrieAbc {
     fn convert_char(&self, c: char) -> Option<usize>;

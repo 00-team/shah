@@ -6,10 +6,9 @@ mod user;
 
 // use std::io::Write;
 
+use rand::Rng;
 use shah::{
-    error::ShahError,
-    models::{Gene, ShahSchema},
-    Command, ShahSchema,
+    db::trie_const::TrieConstKey, error::ShahError, Command, ShahSchema,
 };
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -124,21 +123,49 @@ enum Commands {
 //     &mut *raw_ptr
 // }
 
+fn random_phone(rng: &mut rand::rngs::ThreadRng) -> TrieConstKey<2> {
+    TrieConstKey::<2> {
+        cache: rng.gen_range(0..10000000),
+        index: [rng.gen_range(0..10), rng.gen_range(0..10)],
+    }
+}
+
+fn phone_to_str(key: &TrieConstKey<2>) -> String {
+    let mut phone = String::from("09");
+    phone.push_str(&key.cache.to_string());
+    phone.push_str(&key.index[0].to_string());
+    phone.push_str(&key.index[1].to_string());
+    phone
+}
+
 fn main() -> Result<(), ShahError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
     // let routes = shah::routes!(models::State, user, phone);
 
+    let mut rng = rand::thread_rng();
+    let mut phone = phone::db::setup()?;
     let mut users_0 = user::db::init_0()?;
     if users_0.live == 0 {
         let mut user_0 = user::db::User_0::default();
         for i in 0..86 {
+            let uphone = loop {
+                let key = random_phone(&mut rng);
+                if let Err(e) = phone.get(&key) {
+                    e.not_found_ok()?;
+                    break key;
+                }
+                continue;
+            };
+            user_0.set_phone(&phone_to_str(&uphone));
             user_0.gene.id = 0;
             user_0.set_name(&format!("user_0:{i}"));
             users_0.add(&mut user_0)?;
+            phone.set(&uphone, user_0.gene)?;
         }
     }
+    drop(phone);
 
     log::debug!("init state");
     let mut state = models::State {

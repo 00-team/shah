@@ -131,8 +131,7 @@ fn random_phone(rng: &mut rand::rngs::ThreadRng) -> TrieConstKey<2> {
 }
 
 fn phone_to_str(key: &TrieConstKey<2>) -> String {
-    let mut phone = String::from("09");
-    phone.push_str(&key.cache.to_string());
+    let mut phone = format!("09{:0>7}", key.cache);
     phone.push_str(&key.index[0].to_string());
     phone.push_str(&key.index[1].to_string());
     phone

@@ -4,6 +4,7 @@ mod duck;
 mod entity;
 mod enum_code;
 mod enum_int;
+mod legacy;
 mod model;
 mod perms;
 mod routes;
@@ -20,6 +21,11 @@ pub fn command(code: TokenStream) -> TokenStream {
 #[proc_macro_derive(EnumCode, attributes(enum_code))]
 pub fn enum_code(code: TokenStream) -> TokenStream {
     enum_code::enum_code(code)
+}
+
+#[proc_macro_attribute]
+pub fn legacy(args: TokenStream, code: TokenStream) -> TokenStream {
+    legacy::legacy(args, code)
 }
 
 #[proc_macro_attribute]

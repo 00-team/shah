@@ -29,7 +29,7 @@ pub mod db {
     mod tests {
         use super::PhoneAbc;
         use shah::db::trie_const::TrieConst;
-        use shah::models::Gene;
+        use shah::models::{Gene, GeneId};
         use shah::ShahError;
 
         type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
@@ -49,8 +49,8 @@ pub mod db {
 
             for (i, (phone, cache, index)) in mock_data.iter().enumerate() {
                 let i = i as u64;
-                let a = Gene { id: i + 3, ..Default::default() };
-                let b = Gene { id: (i + 3) * 2, ..Default::default() };
+                let a = Gene { id: GeneId(i + 3), ..Default::default() };
+                let b = Gene { id: GeneId((i + 3) * 2), ..Default::default() };
                 let k = db.convert_key(phone).expect("convert key");
                 assert_eq!(k.cache, *cache);
                 assert_eq!(k.index, *index);

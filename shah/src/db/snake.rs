@@ -1,5 +1,5 @@
 use super::entity::{Entity, EntityDb};
-use crate::models::{Binary, Gene};
+use crate::models::{Binary, Gene, GeneId};
 use crate::{utils, Entity, NotFound, ShahError, SystemError, BLOCK_SIZE};
 
 use std::{
@@ -83,7 +83,7 @@ impl SnakeDb {
         }
         // this is so fucking annoying because of borrow rules
         // i have to setup index manually
-        self.index.live = 0;
+        self.index.live = GeneId(0);
         self.index.dead_list.clear();
         let index_db_size = self.index.file_size()?;
         let mut head = SnakeHead::default();
@@ -98,7 +98,7 @@ impl SnakeDb {
             return Ok(self);
         }
 
-        self.index.live = (index_db_size / SnakeHead::N) - 1;
+        self.index.live = GeneId((index_db_size / SnakeHead::N) - 1);
         self.index.file.seek(SeekFrom::Start(SnakeHead::N))?;
         loop {
             match self.index.file.read_exact(head.as_binary_mut()) {

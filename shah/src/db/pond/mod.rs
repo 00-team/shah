@@ -1,13 +1,13 @@
-use super::entity::{Entity, EntityCount, EntityDb};
-use crate::models::{Binary, DeadList, Gene, GeneId};
+use super::entity::{
+    Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom, ENTITY_META,
+};
+use crate::models::task_list::{Performed, Task, TaskList};
+use crate::models::{Binary, DeadList, Gene, GeneId, ShahSchema};
 use crate::{utils, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE};
 use crate::{IsNotFound, NotFound, ShahError};
 
 use std::fmt::Debug;
-use std::fs::File;
-use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
-use std::marker::PhantomData;
-use std::os::unix::fs::FileExt;
+use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
 // NOTE's for sorted ponds.
@@ -58,112 +58,78 @@ pub struct Pond {
     #[entity(growth)]
     growth: u64,
 }
-
 type PondIndexDb = EntityDb<Pond>;
 type OriginDb = EntityDb<Origin>;
 
 pub trait PondItem:
-    Default + Entity + Debug + Clone + Copy + Binary + Duck
+    Default + Entity + Debug + Clone + Copy + Binary + Duck + ShahSchema
 {
 }
-impl<T: Default + Entity + Debug + Clone + Copy + Binary + Duck> PondItem
-    for T
+impl<
+        T: Default + Entity + Debug + Clone + Copy + Binary + Duck + ShahSchema,
+    > PondItem for T
 {
 }
 
 #[derive(Debug)]
-pub struct PondDb<T: PondItem> {
-    pub file: File,
-    pub live: u64,
+pub struct PondDb<T: PondItem + EntityKochFrom<O, S>, O: EntityItem = T, S = ()>
+{
     pub free_list: DeadList<Gene, BLOCK_SIZE>,
     pub index: PondIndexDb,
     pub origins: OriginDb,
-    _e: PhantomData<T>,
+    pub ls: String,
+    items: EntityDb<T, O, S>,
+    tasks: TaskList<3, Task<Self>>,
 }
 
-impl<T: PondItem> PondDb<T> {
-    pub fn new(path: &str) -> Result<Self, ShahError> {
+impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
+    pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         let data_path = Path::new("data/").join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())
-            .expect("could not get file_name from path: {path}");
+            .expect("could not get file_name from path");
 
         utils::validate_db_name(name)?;
 
         std::fs::create_dir_all(&data_path)?;
 
-        let file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(data_path.join("items.pond.shah"))?;
-
         let db = Self {
-            file,
-            live: 0,
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
             index: PondIndexDb::new(&format!("{path}/index"), 0)?,
-            // items: EntityDb::<Brood<T>>::new(&format!("{name}.pond.brood"))?,
             origins: OriginDb::new(&format!("{path}/origin"), 0)?,
-            _e: PhantomData,
+            items: EntityDb::<T, O, S>::new(path, revision)?,
+            tasks: TaskList::new([
+                Self::work_index,
+                Self::work_origins,
+                Self::work_items,
+            ]),
+            ls: format!("<PondDb {name}.{revision} />"),
         };
 
         Ok(db)
     }
 
-    pub fn setup(mut self) -> Result<Self, ShahError> {
-        self.live = 0;
-        self.free_list.clear();
+    fn work_items(&mut self) -> Result<Performed, ShahError> {
+        self.items.work()
+    }
 
-        // self.origins = self.origins.setup(|_, _| {})?;
-        // self.index = self.index.setup(|_, pond| {
-        //     if pond.is_alive() && pond.is_free() && pond.empty > 0 {
-        //         self.free_list.push(pond.gene);
-        //         if pond.next.id != 0 || pond.past.id != 0 {
-        //             log::warn!("invalid pond: {pond:?}. free ponds must not have siblings");
-        //         }
-        //     }
-        // })?;
+    fn work_index(&mut self) -> Result<Performed, ShahError> {
+        self.index.work()
+    }
 
-        // let db_size = self.db_size()?;
-        // if db_size < T::N {
-        //     self.file.seek(SeekFrom::Start(T::N - 1))?;
-        //     self.file.write_all(&[0u8])?;
-        // }
+    fn work_origins(&mut self) -> Result<Performed, ShahError> {
+        self.origins.work()
+    }
 
-        let db_size = self.db_size()?;
-        let mut entity = T::default();
-
-        if db_size < T::N {
-            self.file.seek(SeekFrom::Start(T::N - 1))?;
-            self.file.write_all(&[0u8])?;
-            return Ok(self);
-        }
-
-        if db_size == T::N {
-            return Ok(self);
-        }
-
-        self.live = (db_size / T::N) - 1;
-
-        self.file.seek(SeekFrom::Start(T::N))?;
-        loop {
-            match self.file.read_exact(entity.as_binary_mut()) {
-                Ok(_) => {}
-                Err(e) => match e.kind() {
-                    ErrorKind::UnexpectedEof => break,
-                    _ => Err(e)?,
-                },
-            }
-
-            if !entity.is_alive() && self.live > 0 {
-                self.live -= 1;
+    pub fn work(&mut self) -> Result<Performed, ShahError> {
+        self.tasks.start();
+        while let Some(task) = self.tasks.next() {
+            if task(self)?.0 {
+                return Ok(Performed(true));
             }
         }
-
-        Ok(self)
+        Ok(Performed(false))
     }
 
     pub fn take_free(&mut self) -> Option<Gene> {
@@ -177,9 +143,10 @@ impl<T: PondItem> PondDb<T> {
             origin.ponds -= 1;
         }
         let mut old_pond = Pond::default();
+
         let mut buf = [T::default(); PAGE_SIZE];
-        self.seek_id(pond.stack)?;
-        self.file.read_exact(buf.as_binary_mut())?;
+        self.items.read_buf_at(&mut buf, pond.stack)?;
+
         pond.empty = 0;
         pond.alive = 0;
         for item in buf {
@@ -284,8 +251,7 @@ impl<T: PondItem> PondDb<T> {
         crate::utils::getrandom(&mut ig.pepper);
 
         let stack = if pond.stack == 0 {
-            let pos = self.seek_add()?;
-            let stack = pos / T::N;
+            let stack = self.new_stack_id()?;
             ig.id = stack;
             ig.iter = 0;
             buf[0] = *item;
@@ -294,8 +260,8 @@ impl<T: PondItem> PondDb<T> {
             pond.empty = PAGE_SIZE as u8 - 1;
             stack
         } else {
-            self.seek_id(pond.stack)?;
-            self.file.read_exact(buf.as_binary_mut())?;
+            self.items.read_buf_at(&mut buf, pond.stack)?;
+
             let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
@@ -318,76 +284,38 @@ impl<T: PondItem> PondDb<T> {
             pond.stack
         };
 
-        self.live += 1;
-        self.file.write_all_at(buf.as_binary(), stack * T::N)?;
+        self.items.write_buf_at(&buf, stack)?;
         self.index.set(&mut pond)?;
         self.origins.set(&mut origin)?;
 
         Ok(())
     }
 
-    pub fn seek_add(&mut self) -> Result<u64, ShahError> {
-        let pos = self.file.seek(SeekFrom::End(0))?;
-        if pos == 0 {
-            self.file.seek(SeekFrom::Start(T::N))?;
-            return Ok(T::N);
+    pub fn new_stack_id(&mut self) -> Result<GeneId, ShahError> {
+        let pos = self.items.file.seek(SeekFrom::End(0))?;
+        if pos < ENTITY_META + T::N {
+            return Ok(GeneId(1));
         }
 
-        let offset = (pos % (T::N * PAGE_SIZE as u64)) as i64;
-        let offset = offset - T::N as i64;
+        let sn = T::N * PAGE_SIZE as u64;
+        let usabe = pos - (ENTITY_META + T::N);
+
+        let (id, offset) = (usabe / sn, usabe % sn);
         if offset != 0 {
-            log::warn!("seek_add bad offset: {}", offset);
-            return Ok(self.file.seek(SeekFrom::Current(-offset))?);
+            log::warn!("{} new-stack-id bad offset: {offset}", self.ls);
         }
 
-        Ok(pos)
-    }
-
-    pub fn db_size(&mut self) -> std::io::Result<u64> {
-        self.file.seek(SeekFrom::End(0))
-    }
-
-    pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
-        if id == 0 {
-            log::warn!("gene id is zero");
-            return Err(NotFound::GeneIdZero)?;
-        }
-
-        let db_size = self.db_size()?;
-        let pos = id * T::N;
-
-        if db_size < T::N || pos > db_size - T::N {
-            log::warn!("invalid position: {pos}/{db_size}");
-            return Err(NotFound::OutOfBounds)?;
-        }
-
-        let rs = self.file.seek(SeekFrom::Start(pos))?;
-        assert_eq!(rs, pos, "could not seek correctly");
-
-        Ok(())
+        Ok(GeneId(id * PAGE_SIZE as u64 + 1))
     }
 
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
-        gene.validate()?;
-
-        self.seek_id(gene.id)?;
-        self.file.read_exact(entity.as_binary_mut())?;
-
-        if !entity.is_alive() {
-            return Err(NotFound::EntityNotAlive)?;
-        }
-
-        gene.check(entity.gene())?;
-
-        Ok(())
+        self.items.get(gene, entity)
     }
 
     pub fn count(&mut self) -> Result<EntityCount, ShahError> {
-        let db_size = self.db_size()?;
-        let total = db_size / T::N - 1;
-        Ok(EntityCount { total, alive: self.live })
+        self.items.count()
     }
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
@@ -396,12 +324,11 @@ impl<T: PondItem> PondDb<T> {
         }
 
         let mut old_entity = T::default();
-        self.get(entity.gene(), &mut old_entity)?;
+        self.items.get(entity.gene(), &mut old_entity)?;
 
+        *entity.growth_mut() = old_entity.growth();
         *entity.pond_mut() = *old_entity.pond();
-
-        self.file.seek_relative(-(T::N as i64))?;
-        self.file.write_all(entity.as_binary())?;
+        self.items.set_unchecked(entity)?;
 
         Ok(())
     }
@@ -409,16 +336,7 @@ impl<T: PondItem> PondDb<T> {
     pub fn del(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
-        self.get(gene, entity)?;
-
-        entity.set_alive(false);
-
-        if self.live > 0 {
-            self.live -= 1;
-        }
-
-        self.file.seek_relative(-(T::N as i64))?;
-        self.file.write_all(entity.as_binary())?;
+        self.items.del(gene, entity)?;
 
         let mut pond = Pond::default();
         let mut origin = Origin::default();
@@ -445,18 +363,9 @@ impl<T: PondItem> PondDb<T> {
     }
 
     pub fn list(
-        &mut self, page: u64, result: &mut [T; PAGE_SIZE],
+        &mut self, page: GeneId, result: &mut [T; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
-        self.seek_id(page * PAGE_SIZE as u64 + 1)?;
-        let size = self.file.read(result.as_binary_mut())?;
-        let count = size / T::S;
-        if count != PAGE_SIZE {
-            for item in result.iter_mut().skip(count) {
-                item.zeroed()
-            }
-        }
-
-        Ok(count)
+        self.items.list(page, result)
     }
 
     pub fn pond_list(
@@ -464,34 +373,25 @@ impl<T: PondItem> PondDb<T> {
     ) -> Result<(), ShahError> {
         let pond_gene = pond.gene;
         self.index.get(&pond_gene, pond)?;
-
-        self.seek_id(pond.stack)?;
-        self.file.read_exact(result.as_binary_mut())?;
-
+        self.items.read_buf_at(result, pond.stack)?;
         Ok(())
     }
 
     pub fn pond_free(&mut self, pond: &mut Pond) -> Result<(), ShahError> {
         let mut buf = [T::default(); PAGE_SIZE];
-
-        self.seek_id(pond.stack)?;
-        self.file.read_exact(buf.as_binary_mut())?;
+        self.items.read_buf_at(&mut buf, pond.stack)?;
 
         pond.empty = 0;
         for item in buf.iter_mut() {
             if item.is_alive() {
                 item.set_alive(false);
-                if self.live > 0 {
-                    self.live -= 1;
-                }
             }
             if item.gene().iter < ITER_EXHAUSTION {
                 pond.empty += 1;
             }
         }
 
-        self.seek_id(pond.stack)?;
-        self.file.write_all(buf.as_binary())?;
+        self.items.write_buf_at(&buf, pond.stack)?;
 
         pond.set_free(true);
         pond.alive = 0;

@@ -20,19 +20,17 @@ use std::{
 
 #[derive(Debug)]
 pub struct EntityCount {
-    pub alive: u64,
-    pub total: u64,
+    pub alive: GeneId,
+    pub total: GeneId,
 }
 
 #[derive(Debug, Default)]
 struct SetupProg {
-    total: u64,
-    prog: u64,
+    total: GeneId,
+    prog: GeneId,
 }
 
 id_iter!(SetupProg);
-
-type EntityTask<T> = fn(&mut T) -> Result<bool, ShahError>;
 
 #[derive(Debug)]
 pub struct EntityDb<
@@ -41,21 +39,17 @@ pub struct EntityDb<
     S = (),
 > {
     pub file: File,
-    pub live: u64,
+    pub live: GeneId,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     revision: u16,
     name: String,
     koch: Option<EntityKoch<T, O, S>>,
     koch_prog: EntityKochProg,
     setup_prog: SetupProg,
-    tasks: TaskList<2, EntityTask<Self>>,
+    tasks: TaskList<2, Task<Self>>,
     ls: String,
     inspector: Option<fn(&mut Self, &T)>,
 }
-
-/// if an io operation was performed check for order's
-/// if no io operation's was performed then run another task
-type Performed = bool;
 
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
@@ -78,7 +72,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         let tasks = [Self::work_koch, Self::work_setup_task];
         let mut db = Self {
-            live: 0,
+            live: GeneId(0),
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
             file,
             revision,
@@ -100,7 +94,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         self.init_head()?;
         self.koch_prog_get()?;
 
-        self.live = 0;
+        self.live = GeneId(0);
         self.dead_list.clear();
 
         let file_size = self.file_size()?;
@@ -117,9 +111,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             return Ok(());
         }
 
-        self.live = ((file_size - ENTITY_META) / T::N) - 1;
+        self.live = GeneId(((file_size - ENTITY_META) / T::N) - 1);
 
-        self.setup_prog.prog = 1;
+        self.setup_prog.prog = GeneId(1);
         self.setup_prog.total = self.live + 1;
         log::info!("{} init::setup_task {:?}", self.ls, self.setup_prog);
 
@@ -181,12 +175,12 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         if !self.koch_prog.ended() {
             self.setup_prog.total = self.koch_prog.prog;
-            self.setup_prog.prog = 1;
+            self.setup_prog.prog = GeneId(1);
         }
 
         if self.live < koch.total {
             self.live = koch.total;
-            utils::falloc(&self.file, ENTITY_META, koch.total * T::N)?;
+            utils::falloc(&self.file, ENTITY_META, (koch.total * T::N).0)?;
         }
 
         self.koch = Some(koch);
@@ -202,28 +196,28 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn total(&mut self) -> Result<u64, ShahError> {
+    pub fn total(&mut self) -> Result<GeneId, ShahError> {
         let file_size = self.file_size()?;
         if file_size < ENTITY_META {
             log::warn!("{} total file_size is less than ENTITY_META", self.ls);
-            return Ok(0);
+            return Ok(GeneId(0));
         }
         if file_size < ENTITY_META + T::N {
             log::warn!(
                 "{} total file_size is less than ENTITY_META + T::N",
                 self.ls
             );
-            return Ok(0);
+            return Ok(GeneId(0));
         }
 
-        Ok((file_size - ENTITY_META) / T::N - 1)
+        Ok(GeneId((file_size - ENTITY_META) / T::N - 1))
     }
 
     fn inspection(&mut self, entity: &T) {
         log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
         if !entity.is_alive() {
             let gene = entity.gene();
-            log::debug!("{} inspector dead entity: {}", self.ls, gene.id);
+            log::debug!("{} inspector dead entity: {:?}", self.ls, gene.id);
             self.add_dead(gene);
         }
 
@@ -234,7 +228,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
     fn work_koch(&mut self) -> Result<Performed, ShahError> {
         if self.koch.is_none() || self.koch_prog.ended() {
-            return Ok(false);
+            return Ok(Performed(false));
         }
 
         let mut current = T::default();
@@ -246,7 +240,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             let old = match koch.get_id(id) {
                 Ok(v) => v,
                 Err(e) => {
-                    log::warn!("{} koch.get_id({id}): {e:?}", self.ls);
+                    log::warn!("{} koch.get_id({id:?}): {e:?}", self.ls);
                     e.not_found_ok()?;
                     self.koch_prog.end();
                     break;
@@ -254,14 +248,14 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             };
             performed = true;
 
-            if self.read_at(&mut current, Self::id_pos(id)).is_ok()
+            if self.read_at(&mut current, id).is_ok()
                 && old.growth() <= current.growth()
             {
                 // if we already did koch and updated the item do not koch again
                 continue;
             }
 
-            self.file.write_all_at(old.as_binary(), Self::id_pos(id))?;
+            self.write_buf_at(&old, id)?;
             self.inspection(&old);
             log::debug!("koched: {:?}", old.gene());
         }
@@ -270,12 +264,12 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             self.koch_prog_set()?;
         }
 
-        Ok(performed)
+        Ok(Performed(performed))
     }
 
     fn work_setup_task(&mut self) -> Result<Performed, ShahError> {
         if self.dead_list.is_full() || self.setup_prog.ended() {
-            return Ok(false);
+            return Ok(Performed(false));
         }
 
         let mut entity = T::default();
@@ -283,11 +277,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         for _ in 0..10 {
             let Some(id) = self.setup_prog.next() else { break };
             performed = true;
-            if let Err(e) = self.read_at(&mut entity, Self::id_pos(id)) {
+            if let Err(e) = self.read_at(&mut entity, id) {
                 e.not_found_ok()?;
                 self.setup_prog.end();
                 log::warn!(
-                    "{} work_setup_task read_at not found {id}",
+                    "{} work_setup_task read_at not found {id:?}",
                     self.ls
                 );
                 break;
@@ -296,21 +290,21 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             self.inspection(&entity);
         }
 
-        Ok(performed)
+        Ok(Performed(performed))
     }
 
     pub fn work(&mut self) -> Result<Performed, ShahError> {
         self.tasks.start();
         while let Some(task) = self.tasks.next() {
-            if task(self)? {
-                return Ok(true);
+            if task(self)?.0 {
+                return Ok(Performed(true));
             }
         }
-        Ok(false)
+        Ok(Performed(false))
     }
 
-    pub fn id_pos(id: GeneId) -> u64 {
-        ENTITY_META + id * T::N
+    fn id_to_pos(id: GeneId) -> u64 {
+        ENTITY_META + (id * T::N).0
     }
 
     pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
@@ -326,15 +320,24 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         //     return Err(NotFound::GeneIdNotInDatabase)?;
         // }
 
-        self.file.seek(SeekFrom::Start(Self::id_pos(id)))?;
+        self.file.seek(SeekFrom::Start(Self::id_to_pos(id)))?;
 
         Ok(())
     }
 
-    pub fn read_at(
-        &mut self, entity: &mut T, pos: u64,
+    pub fn write_buf_at<B: Binary>(
+        &self, buf: &B, id: GeneId,
     ) -> Result<(), ShahError> {
-        match self.file.read_exact_at(entity.as_binary_mut(), pos) {
+        let pos = Self::id_to_pos(id);
+        self.file.write_all_at(buf.as_binary(), pos)?;
+        Ok(())
+    }
+
+    pub fn read_buf_at<B: Binary>(
+        &self, buf: &mut B, id: GeneId,
+    ) -> Result<(), ShahError> {
+        let pos = Self::id_to_pos(id);
+        match self.file.read_exact_at(buf.as_binary_mut(), pos) {
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
@@ -343,22 +346,15 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         }
     }
 
-    pub fn read(&mut self, entity: &mut T) -> Result<(), ShahError> {
-        match self.file.read_exact(entity.as_binary_mut()) {
-            Ok(_) => {}
-            Err(e) => match e.kind() {
-                ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
-                _ => Err(e)?,
-            },
-        }
-
-        Ok(())
+    pub fn read_at(&self, entity: &mut T, id: GeneId) -> Result<(), ShahError> {
+        self.read_buf_at(entity, id)
     }
 
-    fn set_unchecked(&mut self, entity: &mut T) -> Result<(), ShahError> {
+    pub(crate) fn set_unchecked(
+        &mut self, entity: &mut T,
+    ) -> Result<(), ShahError> {
         entity.growth_mut().add_assign(1);
-        let pos = Self::id_pos(entity.gene().id);
-        self.file.write_all_at(entity.as_binary(), pos)?;
+        self.write_buf_at(entity, entity.gene().id)?;
         Ok(())
     }
 
@@ -367,7 +363,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     ) -> Result<(), ShahError> {
         gene.validate()?;
 
-        self.read_at(entity, Self::id_pos(gene.id))?;
+        self.read_at(entity, gene.id)?;
 
         let egene = entity.gene();
         if egene.id == 0 {
@@ -397,7 +393,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     pub fn new_gene_id(&mut self) -> Result<GeneId, ShahError> {
         let pos = self.file.seek(SeekFrom::End(0))?;
         if pos < ENTITY_META + T::N {
-            return Ok(1);
+            return Ok(GeneId(1));
         }
 
         let db_pos = pos - ENTITY_META;
@@ -407,10 +403,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
                 "{} id: {id} | new-gene-id bad offset: {offset}",
                 self.ls
             );
-            return Ok(id);
         }
 
-        Ok(id)
+        Ok(GeneId(id))
     }
 
     pub fn new_gene(&mut self) -> Result<Gene, ShahError> {
@@ -421,7 +416,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         if gene.id != 0 {
             let mut old = T::default();
-            if self.read_at(&mut old, Self::id_pos(gene.id)).is_ok() {
+            if self.read_at(&mut old, gene.id).is_ok() {
                 let og = old.gene();
                 if og.iter < ITER_EXHAUSTION {
                     gene.iter = og.iter + 1;
@@ -444,8 +439,6 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
 
         *entity.growth_mut() = 0;
         self.set_unchecked(entity)?;
-        // let pos = Self::id_pos(gene.id);
-        // self.file.write_all_at(entity.as_binary_mut(), pos)?;
         self.live += 1;
 
         Ok(())
@@ -464,7 +457,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             return;
         }
 
-        if self.live > 0 {
+        if self.live.0 > 0 {
             self.live -= 1;
         }
 
@@ -513,7 +506,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
     }
 
     pub fn list(
-        &mut self, page: u64, result: &mut [T; PAGE_SIZE],
+        &mut self, page: GeneId, result: &mut [T; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
         self.seek_id(page * PAGE_SIZE as u64 + 1)?;
         let size = self.file.read(result.as_binary_mut())?;

@@ -1,3 +1,10 @@
+use crate::ShahError;
+
+/// if an io operation was performed check for order's
+/// if no io operation's was performed then run another task
+pub struct Performed(pub bool);
+pub type Task<T> = fn(&mut T) -> Result<Performed, ShahError>;
+
 #[derive(Debug)]
 pub struct TaskList<const N: usize, T> {
     tasks: [T; N],

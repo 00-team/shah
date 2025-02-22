@@ -1,13 +1,13 @@
-mod api;
-mod binary;
-mod db;
-mod dead_list;
-mod gene;
-mod perms;
-mod schema;
-mod server;
-mod state;
-mod task_list;
+pub mod api;
+pub mod binary;
+pub mod db;
+pub mod dead_list;
+pub mod gene;
+pub mod perms;
+pub mod schema;
+pub mod server;
+pub mod state;
+pub mod task_list;
 
 pub use api::*;
 pub use binary::Binary;

@@ -1,7 +1,70 @@
+use std::ops::{Add, AddAssign, Mul, SubAssign};
+
 use super::{Binary, Schema, ShahSchema};
 use crate::error::{NotFound, ShahError, SystemError};
 
-pub type GeneId = u64;
+#[derive(Default, Debug, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
+pub struct GeneId(pub u64);
+
+impl Binary for GeneId {}
+
+impl PartialEq<u64> for GeneId {
+    fn eq(&self, other: &u64) -> bool {
+        self.0 == *other
+    }
+}
+
+impl Mul for GeneId {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
+impl Mul<u64> for GeneId {
+    type Output = Self;
+    fn mul(self, rhs: u64) -> Self::Output {
+        Self(self.0 * rhs)
+    }
+}
+
+impl AddAssign for GeneId {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0
+    }
+}
+
+impl AddAssign<u64> for GeneId {
+    fn add_assign(&mut self, rhs: u64) {
+        self.0 += rhs
+    }
+}
+
+impl Add for GeneId {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl Add<u64> for GeneId {
+    type Output = Self;
+    fn add(self, rhs: u64) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+impl SubAssign<u64> for GeneId {
+    fn sub_assign(&mut self, rhs: u64) {
+        self.0 -= rhs;
+    }
+}
+
+impl ShahSchema for GeneId {
+    fn shah_schema() -> Schema {
+        Schema::U64
+    }
+}
 
 #[crate::model]
 #[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
@@ -29,7 +92,7 @@ impl Gene {
     }
 
     pub fn is_none(&self) -> bool {
-        self.id == 0
+        self.id.0 == 0
     }
 
     pub fn is_some(&self) -> bool {
@@ -37,7 +100,7 @@ impl Gene {
     }
 
     pub fn validate(&self) -> Result<(), ShahError> {
-        if self.id == 0 {
+        if self.id.0 == 0 {
             return Err(NotFound::GeneIdZero)?;
         }
         if !cfg!(debug_assertions) && self.server == 0 {
@@ -49,7 +112,7 @@ impl Gene {
 
     pub fn check(&self, other: &Self) -> Result<(), ShahError> {
         if self.id != other.id {
-            log::error!("mismatch gene id {} != {}", self.id, other.id);
+            log::error!("mismatch {:?} != {:?}", self.id, other.id);
             return Err(SystemError::GeneIdMismatch)?;
         }
 
@@ -91,7 +154,7 @@ impl serde::Serialize for Gene {
     where
         S: serde::Serializer,
     {
-        if self.id == 0 {
+        if self.id.0 == 0 {
             serializer.serialize_none()
         } else {
             serializer.serialize_str(&self.as_hex())

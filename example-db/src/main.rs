@@ -8,7 +8,8 @@ mod user;
 
 use rand::Rng;
 use shah::{
-    db::trie_const::TrieConstKey, error::ShahError, Command, ShahSchema,
+    db::trie_const::TrieConstKey, error::ShahError, models::GeneId, Command,
+    ShahSchema,
 };
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -158,7 +159,7 @@ fn main() -> Result<(), ShahError> {
                 continue;
             };
             user_0.set_phone(&phone_to_str(&uphone));
-            user_0.gene.id = 0;
+            user_0.gene.id = GeneId(0);
             user_0.set_name(&format!("user_0:{i}"));
             users_0.add(&mut user_0)?;
             phone.set(&uphone, user_0.gene)?;
@@ -188,12 +189,12 @@ fn main() -> Result<(), ShahError> {
     let mut dpf = 0;
     loop {
         log::info!("========================");
-        if !state.users.work()? {
+        if !state.users.work()?.0 {
             npf += 1;
         } else {
             dpf += 1;
         }
-        user.gene.id = 0;
+        user.gene.id = GeneId(0);
         user.set_name("a new user");
         state.users.add(&mut user)?;
         if dpf > 1 {

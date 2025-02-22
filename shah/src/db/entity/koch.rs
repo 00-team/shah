@@ -1,6 +1,6 @@
 use std::cell::{RefCell, RefMut};
 use std::fs::File;
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
+use std::io::{ErrorKind, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 use std::path::Path;
@@ -47,7 +47,7 @@ where
 {
     pub from: EntityKochDb<Old>,
     pub state: RefCell<State>,
-    pub total: u64,
+    pub total: GeneId,
     // pub prog: u64,
     _new: PhantomData<New>,
 }
@@ -67,7 +67,7 @@ where
         }
     }
 
-    pub fn get_id(&mut self, gene_id: GeneId) -> Result<New, ShahError> {
+    pub fn get_id(&self, gene_id: GeneId) -> Result<New, ShahError> {
         if gene_id == 0 {
             return Ok(New::default());
         }
@@ -77,7 +77,7 @@ where
         New::entity_koch_from(old, self.state.borrow_mut())
     }
 
-    pub fn get(&mut self, gene: &Gene) -> Result<New, ShahError> {
+    pub fn get(&self, gene: &Gene) -> Result<New, ShahError> {
         if gene.id == 0 {
             return Ok(New::default());
         }
@@ -96,7 +96,7 @@ where
 pub struct EntityKochDb<T: EntityItem> {
     file: File,
     revision: u16,
-    total: u64,
+    total: GeneId,
     ls: String,
     _e: PhantomData<T>,
 }
@@ -121,7 +121,7 @@ impl<T: EntityItem> EntityKochDb<T> {
         let mut db = Self {
             file,
             revision,
-            total: 0,
+            total: GeneId(0),
             ls: format!("<EntityKochDb {name}.{revision}>"),
             _e: PhantomData::<T>,
         };
@@ -144,12 +144,12 @@ impl<T: EntityItem> EntityKochDb<T> {
 
         self.check_head()?;
 
-        self.total = (file_size - ENTITY_META) / T::N;
+        self.total = GeneId((file_size - ENTITY_META) / T::N);
 
         Ok(())
     }
 
-    fn check_head(&mut self) -> Result<(), ShahError> {
+    fn check_head(&self) -> Result<(), ShahError> {
         let mut head = EntityHead::default();
         self.file.read_exact_at(head.as_binary_mut(), 0)?;
 
@@ -158,29 +158,37 @@ impl<T: EntityItem> EntityKochDb<T> {
         Ok(())
     }
 
-    pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
-        let pos = ENTITY_META + id * T::N;
-        self.file.seek(SeekFrom::Start(pos))?;
-        Ok(())
+    // pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
+    //     let pos = ENTITY_META + id * T::N;
+    //     self.file.seek(SeekFrom::Start(pos))?;
+    //     Ok(())
+    // }
+
+    fn id_to_pos(id: GeneId) -> u64 {
+        ENTITY_META + (id * T::N).0
     }
 
-    pub fn read(&mut self, entity: &mut T) -> Result<(), ShahError> {
-        match self.file.read_exact(entity.as_binary_mut()) {
-            Ok(_) => {}
+    pub fn read_buf_at<B: Binary>(
+        &self, buf: &mut B, id: GeneId,
+    ) -> Result<(), ShahError> {
+        let pos = Self::id_to_pos(id);
+        match self.file.read_exact_at(buf.as_binary_mut(), pos) {
+            Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
                 _ => Err(e)?,
             },
         }
+    }
 
-        Ok(())
+    pub fn read_at(&self, entity: &mut T, id: GeneId) -> Result<(), ShahError> {
+        self.read_buf_at(entity, id)
     }
 
     pub fn get_id(
-        &mut self, gene_id: GeneId, entity: &mut T,
+        &self, gene_id: GeneId, entity: &mut T,
     ) -> Result<(), ShahError> {
-        self.seek_id(gene_id)?;
-        self.read(entity)?;
+        self.read_at(entity, gene_id)?;
 
         if gene_id != entity.gene().id {
             return Err(SystemError::GeneIdMismatch)?;
@@ -189,16 +197,10 @@ impl<T: EntityItem> EntityKochDb<T> {
         Ok(())
     }
 
-    pub fn get(
-        &mut self, gene: &Gene, entity: &mut T,
-    ) -> Result<(), ShahError> {
+    pub fn get(&self, gene: &Gene, entity: &mut T) -> Result<(), ShahError> {
         gene.validate()?;
-
-        self.seek_id(gene.id)?;
-        self.read(entity)?;
-
+        self.read_at(entity, gene.id)?;
         gene.check(entity.gene())?;
-
         Ok(())
     }
 }

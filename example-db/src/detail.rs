@@ -7,7 +7,7 @@ pub(crate) mod db {
 
     #[allow(dead_code)]
     pub fn setup() -> Result<SnakeDb, ShahError> {
-        SnakeDb::new("detail")?.setup()
+        SnakeDb::new("detail")
     }
 }
 

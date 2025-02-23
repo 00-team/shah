@@ -2,7 +2,8 @@ use super::entity::{Entity, EntityDb, EntityInspector};
 use crate::models::{
     Binary, DbHead, Gene, Performed, ShahMagic, ShahMagicDb, Task, TaskList,
 };
-use crate::{utils, Entity, NotFound, ShahError, SystemError, BLOCK_SIZE};
+use crate::{utils, AsStatic, Entity, BLOCK_SIZE};
+use crate::{NotFound, ShahError, SystemError};
 
 use std::os::unix::fs::FileExt;
 use std::{
@@ -48,7 +49,7 @@ pub struct SnakeDb {
     pub live: u64,
     pub free: u64,
     pub free_list: Box<[Option<SnakeFree>; FREE_LIST_SIZE]>,
-    index: SnakeIndexDb,
+    pub index: SnakeIndexDb,
     name: String,
     ls: String,
     tasks: TaskList<1, Task<Self>>,
@@ -84,7 +85,7 @@ impl SnakeDb {
             tasks: TaskList::new([Self::work_index]),
         };
 
-        let dbs = unsafe { utils::extend_lifetime(&mut db) };
+        let dbs = db.as_static();
         let ei = EntityInspector::new(dbs, |mut db, head: &SnakeHead| {
             if head.is_free() {
                 db.add_free(*head)?;

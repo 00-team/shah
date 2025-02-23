@@ -1,3 +1,6 @@
-use std::fmt::Debug;
+use crate::models::Performed;
+use crate::ShahError;
 
-pub trait ShahState: Debug {}
+pub trait ShahState {
+    fn work(&mut self) -> Result<Performed, ShahError>;
+}

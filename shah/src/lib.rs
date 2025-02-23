@@ -10,6 +10,7 @@ pub(crate) mod utils;
 pub use error::*;
 pub use server::run;
 pub use taker::*;
+pub use utils::AsStatic;
 
 pub use shah_macros::*;
 

@@ -156,7 +156,6 @@ mod api {
         state: &mut State, (gene,): (&Gene,), (user,): (&mut User,),
     ) -> Result<(), ErrorCode> {
         log::debug!("in user::user_get ");
-        log::debug!("state.users.file: {:?}", state.users.file);
         log::debug!("inp: {:?}", gene);
         log::debug!("out: {:?}", user);
 

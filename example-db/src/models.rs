@@ -1,32 +1,49 @@
 use shah::{
     db::{entity::EntityKoch, snake::SnakeDb},
     error::{IsNotFound, ShahError},
+    models::{Performed, ShahState, Task, TaskList},
     ErrorCode,
 };
 
-use crate::{note::db::NoteDb, phone::db::PhoneDb, user};
+use crate::{
+    note::db::NoteDb,
+    phone::db::PhoneDb,
+    user::{self, db::UserDb},
+};
 
-#[derive(Debug)]
 pub struct State {
     pub users: user::db::UserDb,
     pub phone: PhoneDb,
     pub detail: SnakeDb,
     pub notes: NoteDb,
+    tasks: TaskList<3, Task<Self>>,
 }
 
-#[allow(dead_code)]
-unsafe fn extend_lifetime<T>(r: &mut T) -> &'static mut T {
-    // one liner
-    // &mut *(r as *mut T)
-
-    // Convert the mutable reference to a raw pointer
-    let raw_ptr: *mut T = r;
-
-    // Convert the raw pointer back to a mutable reference with 'static lifetime
-    &mut *raw_ptr
+macro_rules! work_fn {
+    ($name:ident, $fn_name:ident) => {
+        fn $fn_name(&mut self) -> Result<Performed, ShahError> {
+            self.$name.work()
+        }
+    };
 }
 
 impl State {
+    pub fn new(
+        users: UserDb, phone: PhoneDb, detail: SnakeDb, notes: NoteDb,
+    ) -> Result<Self, ShahError> {
+        Ok(Self {
+            users,
+            phone,
+            detail,
+            notes,
+            tasks: TaskList::new([
+                Self::work_users,
+                Self::work_notes,
+                Self::work_detail,
+            ]),
+        }
+        .init()?)
+    }
     pub fn init(mut self) -> Result<Self, ShahError> {
         let mig = EntityKoch::new(user::db::old_init()?, ());
         self.users.set_koch(mig)?;
@@ -36,6 +53,22 @@ impl State {
 
         Ok(self)
         // Ok(())
+    }
+
+    work_fn!(users, work_users);
+    work_fn!(notes, work_notes);
+    work_fn!(detail, work_detail);
+}
+
+impl ShahState for State {
+    fn work(&mut self) -> Result<Performed, ShahError> {
+        self.tasks.start();
+        while let Some(task) = self.tasks.next() {
+            if task(self)?.0 {
+                return Ok(Performed(true));
+            }
+        }
+        Ok(Performed(false))
     }
 }
 

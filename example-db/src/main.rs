@@ -6,13 +6,15 @@ mod user;
 
 // use std::io::Write;
 
+use std::io::Write;
+
 use rand::Rng;
 use shah::{
     db::trie_const::TrieConstKey, error::ShahError, models::GeneId, Command,
     ShahSchema,
 };
 
-// const SOCK_PATH: &str = "/tmp/shah.sock";
+const SOCK_PATH: &str = "/tmp/shah.sock";
 
 #[derive(ShahSchema)]
 #[shah::model]
@@ -27,7 +29,6 @@ enum Commands {
     #[default]
     Help,
     Run,
-    Gg,
 }
 
 // pub fn detail_get(
@@ -142,8 +143,6 @@ fn main() -> Result<(), ShahError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    // let routes = shah::routes!(models::State, user, phone);
-
     let mut rng = rand::thread_rng();
     let mut phone = phone::db::setup()?;
     let mut users_0 = user::db::init_0()?;
@@ -167,14 +166,15 @@ fn main() -> Result<(), ShahError> {
     }
     drop(phone);
 
+    let routes = shah::routes!(models::State, user, phone, detail);
+
     log::debug!("init state");
-    let mut state = models::State {
-        users: user::db::init()?,
-        phone: phone::db::setup()?,
-        detail: detail::db::setup()?,
-        notes: note::db::init()?,
-    }
-    .init()?;
+    let mut state = models::State::new(
+        user::db::init()?,
+        phone::db::setup()?,
+        detail::db::setup()?,
+        note::db::init()?,
+    )?;
 
     let mut user = user::db::User::default();
 
@@ -185,49 +185,42 @@ fn main() -> Result<(), ShahError> {
     // state.users.add(&mut user)?;
 
     // log::info!("users: {}", state.users.live);
-    let mut npf = 0;
-    let mut dpf = 0;
-    loop {
-        log::info!("========================");
-        if !state.users.work()?.0 {
-            npf += 1;
-        } else {
-            dpf += 1;
-        }
-        user.gene.id = GeneId(0);
-        user.set_name("a new user");
-        state.users.add(&mut user)?;
-        if dpf > 1 {
-            break;
-        }
-        if npf > 10 {
-            break;
-        }
-        // std::thread::sleep(std::time::Duration::from_secs(2));
-    }
+    // let mut npf = 0;
+    // let mut dpf = 0;
+    // loop {
+    //     log::info!("========================");
+    //     if !state.users.work()?.0 {
+    //         npf += 1;
+    //     } else {
+    //         dpf += 1;
+    //     }
+    //     user.gene.id = GeneId(0);
+    //     user.set_name("a new user");
+    //     state.users.add(&mut user)?;
+    //     if dpf > 1 {
+    //         break;
+    //     }
+    //     if npf > 10 {
+    //         break;
+    //     }
+    //     // std::thread::sleep(std::time::Duration::from_secs(2));
+    // }
 
-    Ok(())
+    // Ok(())
 
     // println!("tasks: {tasks:?}");
 
     //
     // Ok(())
 
-    // match shah::command() {
-    //     Commands::Gg => {
+    match shah::command() {
+        Commands::Help => {
+            std::io::stdout().write_all(Commands::help().as_bytes())?
+        }
+        Commands::Run => shah::run(SOCK_PATH, &mut state, &routes)?,
+    }
 
-    //     }
-    //     Commands::Help => {
-    //         std::io::stdout().write_all(Commands::help().as_bytes()).unwrap();
-    //     }
-    //     _ => {}
-    // }
-    //     Commands::Run => {
-    //         shah::server::run(SOCK_PATH, &mut state, &routes).unwrap()
-    //     }
-    // }
-
-    // Ok(())
+    Ok(())
 }
 
 struct SimpleLogger;

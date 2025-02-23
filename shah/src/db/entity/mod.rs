@@ -38,7 +38,7 @@ pub struct EntityDb<
     O: EntityItem = T,
     S = (),
 > {
-    pub file: File,
+    file: File,
     pub live: GeneId,
     pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
     revision: u16,

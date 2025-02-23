@@ -7,7 +7,6 @@ use crate::{utils, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE};
 use crate::{IsNotFound, NotFound, ShahError};
 
 use std::fmt::Debug;
-use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
 // NOTE's for sorted ponds.
@@ -292,7 +291,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     }
 
     pub fn new_stack_id(&mut self) -> Result<GeneId, ShahError> {
-        let pos = self.items.file.seek(SeekFrom::End(0))?;
+        let pos = self.items.file_size()?;
         if pos < ENTITY_META + T::N {
             return Ok(GeneId(1));
         }

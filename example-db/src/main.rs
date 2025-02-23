@@ -1,5 +1,6 @@
 // mod detail;
 mod models;
+mod legacy;
 // mod note;
 mod phone;
 mod user;

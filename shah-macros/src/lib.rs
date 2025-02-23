@@ -24,8 +24,9 @@ pub fn enum_code(code: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn legacy(args: TokenStream, code: TokenStream) -> TokenStream {
-    legacy::legacy(args, code)
+pub fn legacy(_args: TokenStream, code: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(code as syn::ItemMod);
+    legacy::legacy(item).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_attribute]

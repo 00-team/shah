@@ -1,4 +1,4 @@
-use crate::SHAH_VERSION;
+use crate::{DbError, ShahError, SHAH_VERSION};
 
 #[crate::model]
 #[derive(Debug, PartialEq, Eq)]
@@ -89,5 +89,35 @@ impl DbHead {
         self.shah_version = SHAH_VERSION;
         self.db_version = version;
         self.set_name(name);
+    }
+
+    pub fn check(
+        &self, ls: &str, magic: ShahMagic, revision: u16, version: u16,
+    ) -> Result<(), ShahError> {
+        if self.magic != magic {
+            log::error!(
+                "{ls} head invalid db magic: {:?} != {magic:?}",
+                self.magic
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        if self.db_version != version {
+            log::error!(
+                "{ls} mismatch db_version {} != {version}",
+                self.db_version,
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        if self.revision != revision {
+            log::error!(
+                "{ls} head invalid revision {} != {revision}",
+                self.revision,
+            );
+            return Err(DbError::InvalidDbHead)?;
+        }
+
+        Ok(())
     }
 }

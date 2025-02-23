@@ -1,16 +1,21 @@
-use super::entity::{Entity, EntityDb};
-use crate::models::{Binary, Gene, GeneId};
+use super::entity::{Entity, EntityDb, EntityInspector};
+use crate::models::{
+    Binary, DbHead, Gene, Performed, ShahMagic, ShahMagicDb, Task, TaskList,
+};
 use crate::{utils, Entity, NotFound, ShahError, SystemError, BLOCK_SIZE};
 
+use std::os::unix::fs::FileExt;
 use std::{
     fs::File,
-    io::{ErrorKind, Read, Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom, Write},
     path::Path,
 };
 
 /// TOLERABLE CAPACITY DIFFERENCE
 const TCD: u64 = 255;
 const FREE_LIST_SIZE: usize = BLOCK_SIZE;
+const SNAKE_MAGIC: ShahMagic = ShahMagic::new_const(ShahMagicDb::Snake as u16);
+const SNAKE_VERSION: u16 = 1;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SnakeFree {
@@ -35,15 +40,18 @@ pub struct SnakeHead {
     growth: u64,
 }
 
-type SnakeIndexDb = EntityDb<SnakeHead>;
+type SnakeIndexDb = EntityDb<SnakeHead, SnakeHead, (), &'static mut SnakeDb>;
 
 #[derive(Debug)]
 pub struct SnakeDb {
-    pub file: File,
+    file: File,
     pub live: u64,
     pub free: u64,
     pub free_list: Box<[Option<SnakeFree>; FREE_LIST_SIZE]>,
-    pub index: SnakeIndexDb,
+    index: SnakeIndexDb,
+    name: String,
+    ls: String,
+    tasks: TaskList<1, Task<Self>>,
 }
 
 impl SnakeDb {
@@ -65,71 +73,71 @@ impl SnakeDb {
             .truncate(false)
             .open(data_path.join("data.snake.shah"))?;
 
-        let db = Self {
+        let mut db = Self {
             live: 0,
             free: 0,
             free_list: Box::new([None; BLOCK_SIZE]),
             file,
             index: SnakeIndexDb::new(&format!("{path}/index"), 0)?,
+            ls: format!("<Snake {name} />"),
+            name: name.to_string(),
+            tasks: TaskList::new([Self::work_index]),
         };
+
+        let dbs = unsafe { utils::extend_lifetime(&mut db) };
+        let ei = EntityInspector::new(dbs, |mut db, head: &SnakeHead| {
+            if head.is_free() {
+                db.add_free(*head)?;
+            }
+            Ok(())
+        });
+        db.index.set_inspector(ei);
+
+        db.init()?;
 
         Ok(db)
     }
 
-    pub fn setup(mut self) -> Result<Self, ShahError> {
-        if self.db_size()? < SnakeHead::N {
-            self.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
-            self.file.write_all(&[0u8])?;
-        }
-        // this is so fucking annoying because of borrow rules
-        // i have to setup index manually
-        self.index.live = GeneId(0);
-        self.index.dead_list.clear();
-        let index_db_size = self.index.file_size()?;
-        let mut head = SnakeHead::default();
-
-        if index_db_size < SnakeHead::N {
-            self.index.file.seek(SeekFrom::Start(SnakeHead::N - 1))?;
-            self.index.file.write_all(&[0u8])?;
-            return Ok(self);
-        }
-
-        if index_db_size == SnakeHead::N {
-            return Ok(self);
-        }
-
-        self.index.live = GeneId((index_db_size / SnakeHead::N) - 1);
-        self.index.file.seek(SeekFrom::Start(SnakeHead::N))?;
-        loop {
-            match self.index.file.read_exact(head.as_binary_mut()) {
-                Ok(_) => {}
-                Err(e) => match e.kind() {
-                    ErrorKind::UnexpectedEof => break,
-                    _ => Err(e)?,
-                },
-            }
-
-            if !head.is_alive() {
-                log::debug!("dead head: {head:?}");
-                self.index.add_dead(&head.gene);
-            } else if head.is_free() {
-                if let Err(e) = self.add_free(head) {
-                    log::warn!("add_free failed in setup: {e:?}");
-                }
-            }
-        }
-
-        Ok(self)
+    fn init(&mut self) -> Result<(), ShahError> {
+        self.init_head()?;
+        Ok(())
     }
 
-    fn db_size(&mut self) -> std::io::Result<u64> {
+    fn init_head(&mut self) -> Result<(), ShahError> {
+        let fs = self.file_size()?;
+        let mut head = DbHead::default();
+        if fs < DbHead::N {
+            head.init(SNAKE_MAGIC, 0, &self.name, SNAKE_VERSION);
+            self.file.write_all_at(head.as_binary(), 0)?;
+        } else {
+            self.file.read_exact_at(head.as_binary_mut(), 0)?;
+            head.check(&self.ls, SNAKE_MAGIC, 0, SNAKE_VERSION)?;
+        }
+        Ok(())
+    }
+
+    fn work_index(&mut self) -> Result<Performed, ShahError> {
+        self.index.work()
+    }
+
+    pub fn work(&mut self) -> Result<Performed, ShahError> {
+        self.tasks.start();
+        while let Some(task) = self.tasks.next() {
+            if task(self)?.0 {
+                return Ok(Performed(true));
+            }
+        }
+        Ok(Performed(false))
+    }
+
+    fn file_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
     }
 
     fn take_free(
         &mut self, capacity: u64,
     ) -> Result<Option<SnakeFree>, ShahError> {
-        let db_size = self.db_size()?;
+        let db_size = self.file_size()?;
 
         let mut travel = 0;
         for opt_free in self.free_list.iter_mut() {
@@ -243,7 +251,7 @@ impl SnakeDb {
             head.capacity = free.capacity;
             head.gene = free.gene;
         } else {
-            head.position = self.db_size()?;
+            head.position = self.file_size()?;
             if head.position < SnakeHead::N {
                 head.position =
                     self.file.seek(SeekFrom::Start(SnakeHead::N))?;

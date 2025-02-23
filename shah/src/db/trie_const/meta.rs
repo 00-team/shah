@@ -32,21 +32,7 @@ impl TrieConstMeta {
     pub fn check<Abc: TrieAbc>(
         &self, ls: &str, index: usize, cache: usize,
     ) -> Result<(), ShahError> {
-        if self.db.magic != TRIE_CONST_MAGIC {
-            log::error!(
-                "{ls} meta invalid db magic: {:?} != {TRIE_CONST_MAGIC:?}",
-                self.db.magic
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
-
-        if self.db.db_version != TRIE_CONST_VERSION {
-            log::error!(
-                "{ls} mismatch db_version {} != {TRIE_CONST_VERSION}",
-                self.db.db_version,
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
+        self.db.check(ls, TRIE_CONST_MAGIC, 0, TRIE_CONST_VERSION)?;
 
         if self.index != index as u64 {
             log::error!("{ls} index value chaged. {} != {index}", self.index);

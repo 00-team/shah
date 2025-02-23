@@ -18,29 +18,7 @@ impl EntityHead {
     pub fn check<T: EntityItem>(
         &self, revision: u16, ls: &str,
     ) -> Result<(), ShahError> {
-        if self.db_head.magic != ENTITY_MAGIC {
-            log::error!(
-                "{ls} head invalid db magic: {:?} != {ENTITY_MAGIC:?}",
-                self.db_head.magic
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
-
-        if self.db_head.db_version != ENTITY_VERSION {
-            log::error!(
-                "{ls} mismatch db_version {} != {ENTITY_VERSION}",
-                self.db_head.db_version,
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
-
-        if self.db_head.revision != revision {
-            log::error!(
-                "{ls} head invalid revision {} != {revision}",
-                self.db_head.revision,
-            );
-            return Err(DbError::InvalidDbHead)?;
-        }
+        self.db_head.check(ls, ENTITY_MAGIC, revision, ENTITY_VERSION)?;
 
         if self.item_size != T::N {
             log::error!(

@@ -1,6 +1,17 @@
 use crate::error::{DbError, ShahError};
 use std::{fs::File, io, os::fd::AsRawFd};
 
+pub(crate) unsafe fn extend_lifetime<T>(r: &mut T) -> &'static mut T {
+    // one liner
+    // &mut *(r as *mut T)
+
+    // Convert the mutable reference to a raw pointer
+    let raw_ptr: *mut T = r;
+
+    // Convert the raw pointer back to a mutable reference with 'static lifetime
+    &mut *raw_ptr
+}
+
 pub(crate) fn getrandom(buf: &mut [u8]) {
     let ptr = buf.as_mut_ptr();
     unsafe { libc::getrandom(ptr as *mut libc::c_void, buf.len(), 0) };

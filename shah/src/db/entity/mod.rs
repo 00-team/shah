@@ -9,6 +9,8 @@ pub use meta::*;
 use crate::models::*;
 use crate::*;
 
+use std::cell::{RefCell, RefMut};
+use std::marker::PhantomData;
 use std::ops::AddAssign;
 use std::path::Path;
 use std::{
@@ -32,11 +34,30 @@ struct SetupProg {
 
 id_iter!(SetupProg);
 
+type EII<T, S> = fn(RefMut<S>, &T) -> Result<(), ShahError>;
+#[derive(Debug)]
+pub struct EntityInspector<T: EntityItem, S> {
+    state: RefCell<S>,
+    inspector: EII<T, S>,
+    _t: PhantomData<T>,
+}
+
+impl<T: EntityItem, S> EntityInspector<T, S> {
+    pub fn new(state: S, inspector: EII<T, S>) -> Self {
+        Self { state: RefCell::new(state), inspector, _t: PhantomData::<T> }
+    }
+
+    fn call(&self, item: &T) -> Result<(), ShahError> {
+        (self.inspector)(self.state.borrow_mut(), item)
+    }
+}
+
 #[derive(Debug)]
 pub struct EntityDb<
     T: EntityItem + EntityKochFrom<O, S>,
     O: EntityItem = T,
     S = (),
+    Is = (),
 > {
     file: File,
     pub live: GeneId,
@@ -48,10 +69,14 @@ pub struct EntityDb<
     setup_prog: SetupProg,
     tasks: TaskList<2, Task<Self>>,
     ls: String,
-    inspector: Option<fn(&mut Self, &T)>,
+    inspector: Option<EntityInspector<T, Is>>, // inspector: Option<fn(&mut Self, &T)>,
+                                               // inspector: Option<fn(RefMut<Is>, &T)>,
+                                               // inspector_state: Option<RefCell<Is>>,
 }
 
-impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
+impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
+    EntityDb<T, O, S, Is>
+{
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         let path = Path::new("data/").join(path);
         let name = path
@@ -70,7 +95,6 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             .truncate(false)
             .open(path.join(format!("{name}.{revision}.shah")))?;
 
-        let tasks = [Self::work_koch, Self::work_setup_task];
         let mut db = Self {
             live: GeneId(0),
             dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
@@ -80,7 +104,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             koch: None,
             koch_prog: EntityKochProg::default(),
             setup_prog: SetupProg::default(),
-            tasks: TaskList::new(tasks),
+            tasks: TaskList::new([Self::work_koch, Self::work_setup_task]),
             ls: format!("<EntityDb {name}.{revision} />"),
             inspector: None,
         };
@@ -188,7 +212,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
         Ok(())
     }
 
-    pub fn set_inspector(&mut self, inspector: fn(&mut Self, &T)) {
+    pub fn set_inspector(&mut self, inspector: EntityInspector<T, Is>) {
         self.inspector = Some(inspector);
     }
 
@@ -221,8 +245,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem> EntityDb<T, O, S> {
             self.add_dead(gene);
         }
 
-        if let Some(inspector) = self.inspector {
-            inspector(self, entity)
+        if let Some(ei) = &self.inspector {
+            if let Err(e) = ei.call(entity) {
+                log::error!("inspection failed: {e:#?}");
+            }
         }
     }
 

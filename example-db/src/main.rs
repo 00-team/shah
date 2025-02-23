@@ -1,7 +1,6 @@
-// mod detail;
+mod detail;
 mod models;
-mod legacy;
-// mod note;
+mod note;
 mod phone;
 mod user;
 
@@ -172,8 +171,8 @@ fn main() -> Result<(), ShahError> {
     let mut state = models::State {
         users: user::db::init()?,
         phone: phone::db::setup()?,
-        // detail: detail::db::setup().expect("detail setup"),
-        // notes: note::db::setup().expect("note setup"),
+        detail: detail::db::setup()?,
+        notes: note::db::init()?,
     }
     .init()?;
 

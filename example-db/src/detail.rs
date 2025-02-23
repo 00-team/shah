@@ -11,14 +11,13 @@ pub(crate) mod db {
     }
 }
 
-#[shah::api(scope = 2, error = ExampleError, api = ExampleApi)]
+#[shah::api(scope = 2, error = crate::models::ExampleError)]
 pub mod api {
 
-    use crate::models::{ExampleApi, ExampleError, State};
-    use shah::{
-        db::snake::SnakeHead, AsUtf8Str, ClientError, ErrorCode, Gene, Taker,
-        BLOCK_SIZE,
-    };
+    use crate::models::{ExampleError, State};
+    use shah::db::snake::SnakeHead;
+    use shah::models::Gene;
+    use shah::{AsUtf8Str, ClientError, ErrorCode, Taker, BLOCK_SIZE};
 
     use super::{DETAIL_BUF, DETAIL_MAX};
 

@@ -1,17 +1,17 @@
 use shah::{
-    db::entity::EntityKoch,
+    db::{entity::EntityKoch, snake::SnakeDb},
     error::{IsNotFound, ShahError},
     ErrorCode,
 };
 
-use crate::{phone::db::PhoneDb, user};
+use crate::{note::db::NoteDb, phone::db::PhoneDb, user};
 
 #[derive(Debug)]
 pub struct State {
     pub users: user::db::UserDb,
     pub phone: PhoneDb,
-    // pub detail: SnakeDb,
-    // pub notes: NoteDb,
+    pub detail: SnakeDb,
+    pub notes: NoteDb,
 }
 
 #[allow(dead_code)]

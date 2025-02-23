@@ -1,13 +1,18 @@
 pub mod db {
-    use shah::{db::pond::PondDb, error::ShahError, Gene};
+    use shah::db::pond::PondDb;
+    use shah::models::Gene;
+    use shah::{Duck, Entity, ShahError, ShahSchema};
 
     #[shah::model]
-    #[derive(Debug, shah::Entity, shah::Duck, Clone, Copy, shah::ShahSchema)]
+    #[derive(Debug, Entity, Duck, Clone, Copy, ShahSchema)]
     pub struct Note {
+        #[entity(gene)]
         pub gene: Gene,
         pub user: Gene,
         pub pond: Gene,
-        #[entity_flags]
+        #[entity(growth)]
+        pub growth: u64,
+        #[entity(flags)]
         pub entity_flags: u8,
         #[str]
         pub note: [u8; 247],
@@ -16,7 +21,7 @@ pub mod db {
     pub type NoteDb = PondDb<Note>;
 
     #[allow(dead_code)]
-    pub(crate) fn setup() -> Result<NoteDb, ShahError> {
-        NoteDb::new("note")?.setup()
+    pub(crate) fn init() -> Result<NoteDb, ShahError> {
+        NoteDb::new("note", 1)
     }
 }

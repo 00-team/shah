@@ -134,7 +134,7 @@ pub mod db {
     }
 }
 
-#[shah::api(scope = 0, api = crate::models::ExampleApi, error = crate::models::ExampleError)]
+#[shah::api(scope = 0, error = crate::models::ExampleError)]
 mod api {
     use super::db::User;
     use crate::models::State;

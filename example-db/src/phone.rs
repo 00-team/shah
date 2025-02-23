@@ -69,7 +69,7 @@ pub mod db {
     }
 }
 
-#[shah::api(api = crate::models::ExampleApi, scope = 1, error = crate::models::ExampleError)]
+#[shah::api(scope = 1, error = crate::models::ExampleError)]
 pub mod api {
     use crate::models::{ExampleError, State};
     use shah::{models::Gene, ErrorCode};

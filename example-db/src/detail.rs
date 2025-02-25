@@ -2,7 +2,6 @@ pub const DETAIL_MAX: usize = 50 * 1024;
 pub const DETAIL_BUF: usize = 255;
 
 pub(crate) mod db {
-
     use shah::{db::snake::SnakeDb, error::ShahError};
 
     #[allow(dead_code)]

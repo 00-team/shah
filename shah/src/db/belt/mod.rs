@@ -7,15 +7,12 @@ use std::path::Path;
 #[crate::model]
 #[derive(Debug, Clone, crate::Entity)]
 struct Buckle {
-    #[entity(gene)]
     pub gene: Gene,
     pub belts: u64,
     pub first: Gene,
     pub last: Gene,
     pub length: u64,
-    #[entity(growth)]
     growth: u64,
-    #[entity(flags)]
     pub entity_flags: u8,
     pub _pad: [u8; 7],
 }
@@ -24,15 +21,12 @@ struct Buckle {
 #[crate::model]
 #[derive(Debug, crate::Entity, Clone)]
 pub struct Belt<const N: usize> {
-    #[entity(gene)]
     pub gene: Gene,
     pub next: Gene,
     pub past: Gene,
     pub buckle: Gene,
     pub length: u64,
-    #[entity(growth)]
-    growth: u64,
-    #[entity(flags)]
+    pub growth: u64,
     pub entity_flags: u8,
     #[flags(free)]
     pub flags: u8,

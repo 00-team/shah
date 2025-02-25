@@ -36,7 +36,6 @@ pub mod db {
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User_0 {
         // pub flags: u64,
-        #[entity(gene)]
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
@@ -44,14 +43,12 @@ pub mod db {
         #[str]
         phone: [u8; 12],
         pub cc: u16,
-        #[entity(flags)]
         entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
-        #[entity(growth)]
         growth: u64,
     }
 
@@ -60,7 +57,6 @@ pub mod db {
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
         // pub flags: u64,
-        #[entity(gene)]
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
@@ -69,14 +65,12 @@ pub mod db {
         #[str(set = false)]
         phone: [u8; 12],
         pub cc: u16,
-        #[entity(flags)]
         pub entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
-        #[entity(growth)]
         growth: u64,
     }
 

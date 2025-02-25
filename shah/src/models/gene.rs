@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, SubAssign};
+use std::{fmt::Display, ops::{Add, AddAssign, Mul, SubAssign}};
 
 use super::{Binary, Schema, ShahSchema};
 use crate::error::{NotFound, ShahError, SystemError};
@@ -7,6 +7,12 @@ use crate::error::{NotFound, ShahError, SystemError};
 pub struct GeneId(pub u64);
 
 impl Binary for GeneId {}
+
+impl Display for GeneId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
+    }
+}
 
 impl PartialEq<u64> for GeneId {
     fn eq(&self, other: &u64) -> bool {

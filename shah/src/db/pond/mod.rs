@@ -19,13 +19,13 @@ use std::path::Path;
 #[derive(Debug, Clone, crate::Entity)]
 pub struct Origin {
     pub gene: Gene,
+    pub head: Gene,
+    pub tail: Gene,
     pub owner: Gene,
     pub ponds: u64,
     pub items: u64,
-    pub first: Gene,
-    pub last: Gene,
-    pub entity_flags: u8,
-    pub _pad: [u8; 7],
+    entity_flags: u8,
+    _pad: [u8; 7],
     growth: u64,
 }
 
@@ -147,12 +147,12 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             }
         }
 
-        if origin.first == pond.gene {
-            origin.first = pond.next;
+        if origin.head == pond.gene {
+            origin.head = pond.next;
         }
 
-        if origin.last == pond.gene {
-            origin.last = pond.past;
+        if origin.tail == pond.gene {
+            origin.tail = pond.past;
         }
 
         if let Err(e) = self.index.get(&pond.past, &mut old_pond) {
@@ -181,7 +181,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     fn half_empty_pond(
         &mut self, origin: &mut Origin,
     ) -> Result<Pond, ShahError> {
-        let mut pond_gene = origin.first;
+        let mut pond_gene = origin.head;
         let mut pond = Pond::default();
         loop {
             if let Err(e) = self.index.get(&pond_gene, &mut pond) {
@@ -202,13 +202,13 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
                 if pond.is_alive() {
                     pond.next = new.gene;
-                    new.past = origin.last;
-                    origin.last = new.gene;
+                    new.past = origin.tail;
+                    origin.tail = new.gene;
                     self.index.set(&mut pond)?;
                 } else {
                     new.past.zeroed();
-                    origin.first = new.gene;
-                    origin.last = new.gene;
+                    origin.head = new.gene;
+                    origin.tail = new.gene;
                 }
                 return Ok(new);
             }
@@ -394,7 +394,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         let mut origin = Origin::default();
         self.origins.get(origene, &mut origin)?;
 
-        let mut pond_gene = origin.first;
+        let mut pond_gene = origin.head;
         let mut pond = Pond::default();
         loop {
             if let Err(e) = self.index.get(&pond_gene, &mut pond) {

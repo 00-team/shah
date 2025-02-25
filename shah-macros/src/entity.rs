@@ -1,3 +1,4 @@
+use crate::ident;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
@@ -8,9 +9,9 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
     let ident = &item.ident;
     let ci = crate::crate_ident();
 
-    let mut flags_ident: Option<&syn::Ident> = None;
-    let mut growth_ident: Option<&syn::Ident> = None;
-    let mut gene_ident: Option<&syn::Ident> = None;
+    let mut flags_ident = ident!("entity_flags");
+    let mut growth_ident = ident!("growth");
+    let mut gene_ident = ident!("gene");
 
     let (impl_gnc, ty_gnc, where_gnc) = item.generics.split_for_impl();
 
@@ -27,28 +28,18 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
                     .unwrap()
                     .to_string();
 
+                let ident = f.ident.clone().unwrap();
+
                 match kind.as_str() {
-                    "flags" => flags_ident = f.ident.as_ref(),
-                    "growth" => growth_ident = f.ident.as_ref(),
-                    "gene" => gene_ident = f.ident.as_ref(),
+                    "flags" => flags_ident = ident,
+                    "growth" => growth_ident = ident,
+                    "gene" => gene_ident = ident,
                     _ => panic!("unknown entity kind: {kind}"),
                 }
                 break;
             }
         }
     }
-
-    let Some(flags_ident) = flags_ident else {
-        panic!("#[entity(flags)] is not set for field");
-    };
-
-    let Some(gene_ident) = gene_ident else {
-        panic!("#[entity(gene)] is not set for field");
-    };
-
-    let Some(growth_ident) = growth_ident else {
-        panic!("#[entity(growth)] is not set for field");
-    };
 
     const ENTITY_FLAGS: [&str; 3] = ["alive", "edited", "private"];
     let mut f = TokenStream2::new();

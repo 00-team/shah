@@ -69,12 +69,20 @@ pub fn perms(code: TokenStream) -> TokenStream {
     perms::perms(code)
 }
 
+
+
 fn crate_ident() -> syn::Ident {
     // let found_crate = crate_name("shah").unwrap();
     // let name = match &found_crate {
     //     FoundCrate::Itself => "shah",
     //     FoundCrate::Name(name) => name,
     // };
-
-    syn::Ident::new("shah", proc_macro2::Span::call_site())
+    ident!("shah")
 }
+
+macro_rules! ident {
+    ($name:literal) => {
+        syn::Ident::new($name, proc_macro2::Span::call_site())
+    };
+}
+pub(crate) use ident;

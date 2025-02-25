@@ -1,5 +1,6 @@
 mod api;
 mod command;
+mod belt;
 mod duck;
 mod entity;
 mod enum_code;
@@ -51,6 +52,15 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
 /// to set custom fields for these methods.
 pub fn entity(code: TokenStream) -> TokenStream {
     entity::entity(code)
+}
+
+#[proc_macro_derive(Belt, attributes(belt))]
+/// Derive macro generating an impl of the trait `Belt`.
+/// 
+/// You can use `#[belt(next)]`, `#[belt(past)]` and `#[belt(buckle)]`
+/// to set custom fields for these methods.
+pub fn belt(code: TokenStream) -> TokenStream {
+    belt::belt(code)
 }
 
 #[proc_macro_derive(Duck)]

@@ -45,6 +45,10 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_derive(Entity, attributes(entity))]
+/// Derive macro generating an impl of the trait `Entity`.
+/// 
+/// You can use `#[entity(gene)]`, `#[entity(flags)]` and `#[entity(growth)]`
+/// to set custom fields for these methods.
 pub fn entity(code: TokenStream) -> TokenStream {
     entity::entity(code)
 }

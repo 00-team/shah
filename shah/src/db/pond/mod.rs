@@ -2,7 +2,7 @@ use super::entity::{
     Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom, ENTITY_META,
 };
 use crate::models::task_list::{Performed, Task, TaskList};
-use crate::models::{Binary, DeadList, Gene, GeneId, ShahSchema};
+use crate::models::{Binary, DeadList, Gene, GeneId};
 use crate::{utils, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE};
 use crate::{IsNotFound, NotFound, ShahError};
 
@@ -14,8 +14,9 @@ use std::path::Path;
 //    for frontend. just have a min/max value in each "pond" and
 //    if item > pond.max then move it to pond.past ...
 
+#[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, Clone, Copy, crate::Entity, crate::ShahSchema)]
+#[derive(Debug, Clone, crate::Entity)]
 pub struct Origin {
     #[entity(gene)]
     pub gene: Gene,
@@ -36,8 +37,9 @@ pub trait Duck {
     fn pond_mut(&mut self) -> &mut Gene;
 }
 
+#[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, crate::Entity, Clone, crate::ShahSchema)]
+#[derive(Debug, crate::Entity, Clone)]
 pub struct Pond {
     #[entity(gene)]
     pub gene: Gene,
@@ -60,15 +62,8 @@ pub struct Pond {
 type PondIndexDb = EntityDb<Pond>;
 type OriginDb = EntityDb<Origin>;
 
-pub trait PondItem:
-    Default + Entity + Debug + Clone + Copy + Binary + Duck + ShahSchema
-{
-}
-impl<
-        T: Default + Entity + Debug + Clone + Copy + Binary + Duck + ShahSchema,
-    > PondItem for T
-{
-}
+pub trait PondItem: EntityItem + Duck + Copy {}
+impl<T: EntityItem + Duck + Copy> PondItem for T {}
 
 #[derive(Debug)]
 pub struct PondDb<T: PondItem + EntityKochFrom<O, S>, O: EntityItem = T, S = ()>

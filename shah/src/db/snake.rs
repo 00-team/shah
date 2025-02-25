@@ -25,8 +25,9 @@ pub struct SnakeFree {
     capacity: u64,
 }
 
-#[shah::model]
-#[derive(Debug, Entity, Clone, Copy, shah::ShahSchema)]
+#[derive(crate::ShahSchema)]
+#[crate::model]
+#[derive(Debug, Entity, Clone, Copy)]
 pub struct SnakeHead {
     #[entity(gene)]
     pub gene: Gene,

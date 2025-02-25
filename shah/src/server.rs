@@ -31,7 +31,9 @@ pub fn run<T: ShahState>(
     let mut events = [libc::epoll_event { events: 0, u64: 0 }; 5];
 
     loop {
-        log::debug!("wait_for_server: {wait_for_server} && {did_not_performed} > 10");
+        log::debug!(
+            "wait_for_server: {wait_for_server} && {did_not_performed} > 10"
+        );
         if wait_for_server && did_not_performed > 10 {
             let num_events = unsafe {
                 libc::epoll_wait(
@@ -66,10 +68,9 @@ pub fn run<T: ShahState>(
             }
         }
 
-        // for i in 0..nu
-
         wait_for_server =
             handle_order(&server, &mut order, &mut reply, state, routes)?;
+
         match state.work() {
             Ok(p) => {
                 if p.0 {

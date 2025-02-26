@@ -1,17 +1,21 @@
 use crate::ErrorCode;
 
-type ApiCaller<T> = fn(&mut T, &[u8], &mut [u8]) -> Result<usize, ErrorCode>;
+type ApiCaller<State> = fn(
+    state: &mut State,
+    input: &[u8],
+    output: &mut [u8],
+) -> Result<usize, ErrorCode>;
 
 #[derive(Debug)]
-pub struct Api<T> {
+pub struct Api<State> {
     pub name: &'static str,
     pub input_size: usize,
-    pub caller: ApiCaller<T>,
+    pub caller: ApiCaller<State>,
 }
 
 #[derive(Debug)]
-pub struct Scope<T: 'static> {
-    pub routes: &'static [Api<T>],
+pub struct Scope<State: 'static> {
+    pub routes: &'static [Api<State>],
     pub name: &'static str,
     pub scope: usize,
 }

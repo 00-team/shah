@@ -97,6 +97,13 @@ impl Gene {
         out.to_string()
     }
 
+    pub fn clear(&mut self) {
+        self.id = GeneId(0);
+        self.iter = 0;
+        self.pepper = [0u8; 3];
+        self.server = 0;
+    }
+
     pub fn is_none(&self) -> bool {
         self.id.0 == 0
     }

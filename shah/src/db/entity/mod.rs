@@ -216,11 +216,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         self.inspector = Some(inspector);
     }
 
-    pub fn file_size(&mut self) -> std::io::Result<u64> {
+    pub(crate) fn file_size(&mut self) -> std::io::Result<u64> {
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub fn total(&mut self) -> Result<GeneId, ShahError> {
+    pub(crate) fn total(&mut self) -> Result<GeneId, ShahError> {
         let file_size = self.file_size()?;
         if file_size < ENTITY_META {
             log::warn!("{} total file_size is less than ENTITY_META", self.ls);
@@ -333,25 +333,12 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         ENTITY_META + (id * T::N).0
     }
 
-    pub fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
-        // if id == 0 {
-        //     log::warn!("gene id is zero");
-        //     return Err(NotFound::ZeroGeneId)?;
-        // }
-
-        // let db_size = self.file_size()?;
-
-        // if pos > db_size - T::N {
-        //     log::warn!("invalid position: {pos}/{db_size}");
-        //     return Err(NotFound::GeneIdNotInDatabase)?;
-        // }
-
+    pub(crate) fn seek_id(&mut self, id: GeneId) -> Result<(), ShahError> {
         self.file.seek(SeekFrom::Start(Self::id_to_pos(id)))?;
-
         Ok(())
     }
 
-    pub fn write_buf_at<B: Binary>(
+    pub(crate) fn write_buf_at<B: Binary>(
         &self, buf: &B, id: GeneId,
     ) -> Result<(), ShahError> {
         let pos = Self::id_to_pos(id);
@@ -359,7 +346,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(())
     }
 
-    pub fn read_buf_at<B: Binary>(
+    pub(crate) fn read_buf_at<B: Binary>(
         &self, buf: &mut B, id: GeneId,
     ) -> Result<(), ShahError> {
         let pos = Self::id_to_pos(id);
@@ -372,8 +359,17 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
     }
 
-    pub fn read_at(&self, entity: &mut T, id: GeneId) -> Result<(), ShahError> {
+    pub(crate) fn read_at(&self, entity: &mut T, id: GeneId) -> Result<(), ShahError> {
         self.read_buf_at(entity, id)
+    }
+
+    pub(crate) fn del_unchecked(
+        &mut self, entity: &mut T,
+    ) -> Result<(), ShahError> {
+        entity.set_alive(false);
+        self.set_unchecked(entity)?;
+        self.add_dead(entity.gene());
+        Ok(())
     }
 
     pub(crate) fn set_unchecked(
@@ -384,6 +380,70 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(())
     }
 
+    pub(crate) fn new_gene_id(&mut self) -> Result<GeneId, ShahError> {
+        let pos = self.file.seek(SeekFrom::End(0))?;
+        if pos < ENTITY_META + T::N {
+            return Ok(GeneId(1));
+        }
+
+        let db_pos = pos - ENTITY_META;
+        let (id, offset) = (db_pos / T::N, db_pos % T::N);
+        if offset != 0 {
+            log::warn!(
+                "{} id: {id} | new-gene-id bad offset: {offset}",
+                self.ls
+            );
+        }
+
+        Ok(GeneId(id))
+    }
+
+    pub(crate) fn new_gene(&mut self) -> Result<Gene, ShahError> {
+        let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
+        utils::getrandom(&mut gene.pepper);
+        gene.server = 0;
+        gene.iter = 0;
+
+        if gene.id != 0 {
+            let mut old = T::default();
+            if self.read_at(&mut old, gene.id).is_ok() {
+                let og = old.gene();
+                if og.iter < ITER_EXHAUSTION {
+                    gene.iter = og.iter + 1;
+                    return Ok(gene);
+                }
+            }
+        }
+
+        gene.id = self.new_gene_id()?;
+
+        Ok(gene)
+    }
+
+    pub(crate) fn take_dead_id(&mut self) -> GeneId {
+        self.dead_list.pop(|_| true).unwrap_or_default()
+    }
+
+    pub(crate) fn add_dead(&mut self, gene: &Gene) {
+        if gene.id == 0 {
+            return;
+        }
+
+        if self.live.0 > 0 {
+            self.live -= 1;
+        }
+
+        if gene.iter >= ITER_EXHAUSTION {
+            return;
+        }
+
+        self.dead_list.push(gene.id);
+    }
+}
+
+impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
+    EntityDb<T, O, S, Is>
+{
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
@@ -416,46 +476,6 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(())
     }
 
-    pub fn new_gene_id(&mut self) -> Result<GeneId, ShahError> {
-        let pos = self.file.seek(SeekFrom::End(0))?;
-        if pos < ENTITY_META + T::N {
-            return Ok(GeneId(1));
-        }
-
-        let db_pos = pos - ENTITY_META;
-        let (id, offset) = (db_pos / T::N, db_pos % T::N);
-        if offset != 0 {
-            log::warn!(
-                "{} id: {id} | new-gene-id bad offset: {offset}",
-                self.ls
-            );
-        }
-
-        Ok(GeneId(id))
-    }
-
-    pub fn new_gene(&mut self) -> Result<Gene, ShahError> {
-        let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
-        utils::getrandom(&mut gene.pepper);
-        gene.server = 0;
-        gene.iter = 0;
-
-        if gene.id != 0 {
-            let mut old = T::default();
-            if self.read_at(&mut old, gene.id).is_ok() {
-                let og = old.gene();
-                if og.iter < ITER_EXHAUSTION {
-                    gene.iter = og.iter + 1;
-                    return Ok(gene);
-                }
-            }
-        }
-
-        gene.id = self.new_gene_id()?;
-
-        Ok(gene)
-    }
-
     pub fn add(&mut self, entity: &mut T) -> Result<(), ShahError> {
         entity.set_alive(true);
         let gene = entity.gene_mut();
@@ -474,26 +494,6 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(EntityCount { total: self.total()?, alive: self.live })
     }
 
-    pub fn take_dead_id(&mut self) -> GeneId {
-        self.dead_list.pop(|_| true).unwrap_or_default()
-    }
-
-    pub fn add_dead(&mut self, gene: &Gene) {
-        if gene.id == 0 {
-            return;
-        }
-
-        if self.live.0 > 0 {
-            self.live -= 1;
-        }
-
-        if gene.iter >= ITER_EXHAUSTION {
-            return;
-        }
-
-        self.dead_list.push(gene.id);
-    }
-
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
             return Err(NotFound::DeadSet)?;
@@ -508,27 +508,16 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         // old_entity.gene_mut().clone_from(&gene);
 
         *entity.growth_mut() = old_entity.growth();
-        self.set_unchecked(entity)?;
-        // self.seek_id(entity.gene().id)?;
-        // self.file.write_all(entity.as_binary())?;
-
-        Ok(())
+        self.set_unchecked(entity)
     }
 
     pub fn del(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
+        // first make sure that the entity is alive and exists
         self.get(gene, entity)?;
-
-        entity.set_alive(false);
-
-        // self.seek_id(gene.id)?;
-        // self.file.write_all(entity.as_binary())?;
-        self.set_unchecked(entity)?;
-
-        self.add_dead(gene);
-
-        Ok(())
+        // then delete unchecked
+        self.del_unchecked(entity)
     }
 
     pub fn list(

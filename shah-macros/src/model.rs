@@ -70,7 +70,6 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     item.attrs.push(syn::parse_quote! { #[repr(C)] });
 
     let ident = item.ident.clone();
-    let mut asspad = TokenStream2::new();
     let ci = crate::crate_ident();
 
     struct StrField {
@@ -170,6 +169,8 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
     });
 
     let fields_len = item.fields.len();
+
+    let mut asspad = TokenStream2::new();
     if !is_generic {
         item.fields
             .iter()

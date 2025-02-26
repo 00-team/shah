@@ -130,7 +130,6 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         if origin.ponds > 0 {
             origin.ponds -= 1;
         }
-        let mut old_pond = Pond::default();
 
         let mut buf = [T::default(); PAGE_SIZE];
         self.items.read_buf_at(&mut buf, pond.stack)?;
@@ -155,18 +154,20 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             origin.tail = pond.past;
         }
 
+        let mut old_pond = Pond::default();
+
         if let Err(e) = self.index.get(&pond.past, &mut old_pond) {
             e.not_found_ok()?;
         } else {
             old_pond.next = pond.next;
-            self.index.set(&mut old_pond)?;
+            self.index.set_unchecked(&mut old_pond)?;
         }
 
         if let Err(e) = self.index.get(&pond.next, &mut old_pond) {
             e.not_found_ok()?;
         } else {
             old_pond.past = pond.past;
-            self.index.set(&mut old_pond)?;
+            self.index.set_unchecked(&mut old_pond)?;
         }
 
         pond.next.zeroed();

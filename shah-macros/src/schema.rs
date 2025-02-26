@@ -26,7 +26,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
                 let is_str = args.is_str;
                 quote_into! {s += #ci::models::Schema::Array {
                     is_str: #is_str,
-                    length: #len as u64,
+                    length: ( #len ) as u64,
                     kind: Box::new(#{quote_schema(args, elem, s, ci)}),
                 }}
             }

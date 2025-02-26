@@ -1,4 +1,5 @@
 mod detail;
+mod extra;
 mod models;
 mod note;
 mod phone;
@@ -174,6 +175,7 @@ fn main() -> Result<(), ShahError> {
         phone::db::setup()?,
         detail::db::setup()?,
         note::db::init()?,
+        extra::db::init()?,
     )?;
 
     let mut user = user::db::User::default();

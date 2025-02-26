@@ -6,9 +6,10 @@ use shah::{
 };
 
 use crate::{
+    extra::db::ExtraDb,
     note::db::NoteDb,
     phone::db::PhoneDb,
-    user::{self, db::UserDb},
+    user,
 };
 
 pub struct State {
@@ -16,6 +17,7 @@ pub struct State {
     pub phone: PhoneDb,
     pub detail: SnakeDb,
     pub notes: NoteDb,
+    pub extra: ExtraDb,
     tasks: TaskList<3, Task<Self>>,
 }
 
@@ -29,13 +31,15 @@ macro_rules! work_fn {
 
 impl State {
     pub fn new(
-        users: UserDb, phone: PhoneDb, detail: SnakeDb, notes: NoteDb,
+        users: user::db::UserDb, phone: PhoneDb, detail: SnakeDb,
+        notes: NoteDb, extra: ExtraDb,
     ) -> Result<Self, ShahError> {
         Ok(Self {
             users,
             phone,
             detail,
             notes,
+            extra,
             tasks: TaskList::new([
                 Self::work_users,
                 Self::work_notes,

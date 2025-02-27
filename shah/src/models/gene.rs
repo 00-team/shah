@@ -1,4 +1,7 @@
-use std::{fmt::Display, ops::{Add, AddAssign, Mul, SubAssign}};
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign, Mul, SubAssign},
+};
 
 use super::{Binary, Schema, ShahSchema};
 use crate::error::{NotFound, ShahError, SystemError};
@@ -110,6 +113,10 @@ impl Gene {
 
     pub fn is_some(&self) -> bool {
         !self.is_none()
+    }
+
+    pub fn exhausted(&self) -> bool {
+        self.iter >= 250
     }
 
     pub fn validate(&self) -> Result<(), ShahError> {

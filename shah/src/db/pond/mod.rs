@@ -3,7 +3,7 @@ use super::entity::{
 };
 use crate::models::task_list::{Performed, Task, TaskList};
 use crate::models::{Binary, DeadList, Gene, GeneId};
-use crate::{utils, BLOCK_SIZE, ITER_EXHAUSTION, PAGE_SIZE};
+use crate::{utils, OptNotFound, BLOCK_SIZE, PAGE_SIZE};
 use crate::{IsNotFound, NotFound, ShahError};
 
 use std::fmt::Debug;
@@ -119,8 +119,10 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         }
         Ok(Performed(false))
     }
+}
 
-    pub fn take_free(&mut self) -> Option<Gene> {
+impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
+    fn take_free(&mut self) -> Option<Gene> {
         self.free_list.pop(|_| true)
     }
 
@@ -137,7 +139,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         pond.empty = 0;
         pond.alive = 0;
         for item in buf {
-            if item.gene().iter < ITER_EXHAUSTION {
+            if !item.gene().exhausted() {
                 pond.empty += 1;
             }
             if item.is_alive() {
@@ -185,33 +187,8 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         let mut pond_gene = origin.head;
         let mut pond = Pond::default();
         loop {
-            if let Err(e) = self.index.get(&pond_gene, &mut pond) {
-                e.not_found_ok()?;
-
-                let mut new = Pond::default();
-                if let Some(free) = self.take_free() {
-                    self.index.get(&free, &mut new)?;
-                } else {
-                    self.index.add(&mut new)?;
-                }
-                new.next.zeroed();
-                new.alive = 0;
-                new.origin = origin.gene;
-                new.set_free(false);
-
-                origin.ponds += 1;
-
-                if pond.is_alive() {
-                    pond.next = new.gene;
-                    new.past = origin.tail;
-                    origin.tail = new.gene;
-                    self.index.set(&mut pond)?;
-                } else {
-                    new.past.zeroed();
-                    origin.head = new.gene;
-                    origin.tail = new.gene;
-                }
-                return Ok(new);
+            if self.index.get(&pond_gene, &mut pond).onf()?.is_none() {
+                break;
             }
 
             if pond.empty > 0 {
@@ -219,6 +196,37 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             }
             pond_gene = pond.next;
         }
+
+        let mut new = Pond::default();
+        let add_new = if let Some(free) = self.take_free() {
+            self.index.get(&free, &mut new).onf()?.is_none()
+        } else {
+            true
+        };
+
+        if add_new {
+            new.gene.clear();
+            self.index.add(&mut new)?;
+        }
+        new.next.clear();
+        new.alive = 0;
+        new.origin = origin.gene;
+        new.set_free(false);
+
+        origin.ponds += 1;
+
+        if pond.is_alive() {
+            pond.next = new.gene;
+            new.past = origin.tail;
+            origin.tail = new.gene;
+            self.index.set(&mut pond)?;
+        } else {
+            new.past.clear();
+            origin.head = new.gene;
+            origin.tail = new.gene;
+        }
+
+        Ok(new)
     }
 
     pub fn add(
@@ -254,7 +262,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
-                if !slot.is_alive() && sg.iter < ITER_EXHAUSTION {
+                if !slot.is_alive() && !sg.exhausted() {
                     let ig = item.gene_mut();
                     ig.id = pond.stack + x as u64;
                     ig.iter = if sg.id != 0 { sg.iter + 1 } else { 0 };
@@ -356,7 +364,9 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     ) -> Result<usize, ShahError> {
         self.items.list(page, result)
     }
+}
 
+impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     pub fn pond_list(
         &mut self, pond: &mut Pond, result: &mut [T; PAGE_SIZE],
     ) -> Result<(), ShahError> {
@@ -375,7 +385,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             if item.is_alive() {
                 item.set_alive(false);
             }
-            if item.gene().iter < ITER_EXHAUSTION {
+            if !item.gene().exhausted() {
                 pond.empty += 1;
             }
         }

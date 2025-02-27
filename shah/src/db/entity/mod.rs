@@ -410,7 +410,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             let mut old = T::default();
             if self.read_at(&mut old, gene.id).is_ok() {
                 let og = old.gene();
-                if og.iter < ITER_EXHAUSTION {
+                if !og.exhausted() {
                     gene.iter = og.iter + 1;
                     return Ok(gene);
                 }
@@ -435,7 +435,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             self.live -= 1;
         }
 
-        if gene.iter >= ITER_EXHAUSTION {
+        if gene.exhausted() {
             return;
         }
 

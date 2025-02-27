@@ -23,18 +23,18 @@ pub fn run<T: ShahState>(
     let mut order = [0u8; ORDER_SIZE];
     let mut reply = Reply::default();
     let mut did_not_performed = 0u64;
-    let mut wait_for_server = false;
+    let mut wait = false;
 
     let epfd = epoll_init(&server)?;
-    log::debug!("epfd: {epfd}");
+    // log::debug!("epfd: {epfd}");
 
     let mut events = [libc::epoll_event { events: 0, u64: 0 }; 5];
 
     loop {
-        log::debug!(
-            "wait_for_server: {wait_for_server} && {did_not_performed} > 10"
-        );
-        if wait_for_server && did_not_performed > 10 {
+        // log::debug!(
+        //     "wait: {wait_for_server} && {did_not_performed} > 10"
+        // );
+        if wait && did_not_performed > 10 {
             let num_events = unsafe {
                 libc::epoll_wait(
                     epfd,
@@ -47,29 +47,36 @@ pub fn run<T: ShahState>(
                 return Err(io::Error::last_os_error())?;
             }
 
-            let mut evs = String::from("[");
-            for e in events.iter() {
-                let u = e.u64;
-                let ee = e.events;
-                evs.push_str(&format!("{{ events: {ee}, u64: {u} }}, "));
-            }
-            evs.pop();
-            evs.pop();
-            evs.push(']');
-            log::debug!(
-                "fd: {} | events: {num_events} | {evs}",
-                server.as_raw_fd()
-            );
-            for i in 0..num_events as usize {
-                if events[i].events & libc::EPOLLIN as u32 != 0 {
-                    let u = events[i].u64;
-                    log::debug!("pollin {i} | {u}");
-                }
-            }
+            // NOTE: we really dont care about what events has happend
+            // after anything happend just check the recv
+
+            // let mut evs = String::from("[");
+            // for e in events.iter() {
+            //     let u = e.u64;
+            //     let ee = e.events;
+            //     evs.push_str(&format!("{{ events: {ee}, u64: {u} }}, "));
+            // }
+            // evs.pop();
+            // evs.pop();
+            // evs.push(']');
+            // log::debug!(
+            //     "fd: {} | events: {num_events} | {evs}",
+            //     server.as_raw_fd()
+            // );
+            //
+            // for e in events.iter().take(num_events as usize) {
+            //     if e.events & libc::EPOLLIN != {}
+            // }
+            //
+            // for i in 0..num_events as usize {
+            //     if events[i].events & libc::EPOLLIN as u32 != 0 {
+            //         let u = events[i].u64;
+            //         log::debug!("pollin {i} | {u}");
+            //     }
+            // }
         }
 
-        wait_for_server =
-            handle_order(&server, &mut order, &mut reply, state, routes)?;
+        wait = handle_order(&server, &mut order, &mut reply, state, routes)?;
 
         match state.work() {
             Ok(p) => {

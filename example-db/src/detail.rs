@@ -94,7 +94,7 @@ pub mod api {
         let len = data.len().min(DETAIL_MAX);
         let mut snake: Option<SnakeHead> = None;
         if let Some(old) = gene {
-            let (old_head,) = head(taker, old)?;
+            let old_head = head(taker, old)?;
             if old_head.capacity >= len as u64 {
                 snake = Some(old_head);
             } else {
@@ -103,7 +103,7 @@ pub mod api {
         }
         if snake.is_none() {
             let capacity = (len + DETAIL_BUF).min(DETAIL_MAX) as u64;
-            snake = Some(init(taker, &capacity)?.0);
+            snake = Some(init(taker, &capacity)?);
         }
         let snake = snake.unwrap();
         for i in 0..=(len / BLOCK_SIZE) {

@@ -1,10 +1,7 @@
 // pub const DETAIL_MAX: usize = 50 * 1024;
 // pub const DETAIL_BUF: usize = 255;
 
-use shah::{
-    models::{Api, Scope},
-    BLOCK_SIZE,
-};
+use shah::BLOCK_SIZE;
 
 const EXTRA_DATA: usize = BLOCK_SIZE * 2 - 3;
 
@@ -96,13 +93,13 @@ pub mod api {
     pub fn get_all(
         taker: &Taker, buckle_gene: &Gene,
     ) -> Result<String, ClientError<ExampleError>> {
-        let (buckle,) = head(taker, buckle_gene)?;
+        let buckle = head(taker, buckle_gene)?;
         let mut data = Vec::with_capacity(buckle.belts as usize * EXTRA_DATA);
 
         let mut belt_gene = buckle.head;
         loop {
             match get(taker, &belt_gene) {
-                Ok((extra,)) => {
+                Ok(extra) => {
                     let len = (extra.length as usize).min(extra.data.len());
                     data.extend_from_slice(&extra.data[..len]);
 

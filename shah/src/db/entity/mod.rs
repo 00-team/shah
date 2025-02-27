@@ -34,16 +34,16 @@ struct SetupProg {
 
 id_iter!(SetupProg);
 
-type EII<T, S> = fn(RefMut<S>, &T) -> Result<(), ShahError>;
+type EntityInspectorFn<T, S> = fn(RefMut<S>, &T) -> Result<(), ShahError>;
 #[derive(Debug)]
 pub struct EntityInspector<T: EntityItem, S> {
     state: RefCell<S>,
-    inspector: EII<T, S>,
+    inspector: EntityInspectorFn<T, S>,
     _t: PhantomData<T>,
 }
 
 impl<T: EntityItem, S> EntityInspector<T, S> {
-    pub fn new(state: S, inspector: EII<T, S>) -> Self {
+    pub fn new(state: S, inspector: EntityInspectorFn<T, S>) -> Self {
         Self { state: RefCell::new(state), inspector, _t: PhantomData::<T> }
     }
 
@@ -359,7 +359,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
     }
 
-    pub(crate) fn read_at(&self, entity: &mut T, id: GeneId) -> Result<(), ShahError> {
+    pub(crate) fn read_at(
+        &self, entity: &mut T, id: GeneId,
+    ) -> Result<(), ShahError> {
         self.read_buf_at(entity, id)
     }
 

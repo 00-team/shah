@@ -5,12 +5,7 @@ use shah::{
     ErrorCode,
 };
 
-use crate::{
-    extra::db::ExtraDb,
-    note::db::NoteDb,
-    phone::db::PhoneDb,
-    user,
-};
+use crate::{extra::db::ExtraDb, note::db::NoteDb, phone::db::PhoneDb, user};
 
 pub struct State {
     pub users: user::db::UserDb,
@@ -34,7 +29,7 @@ impl State {
         users: user::db::UserDb, phone: PhoneDb, detail: SnakeDb,
         notes: NoteDb, extra: ExtraDb,
     ) -> Result<Self, ShahError> {
-        Ok(Self {
+        Self {
             users,
             phone,
             detail,
@@ -46,7 +41,7 @@ impl State {
                 Self::work_detail,
             ]),
         }
-        .init()?)
+        .init()
     }
     pub fn init(mut self) -> Result<Self, ShahError> {
         let mig = EntityKoch::new(user::db::old_init()?, ());

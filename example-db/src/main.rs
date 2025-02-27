@@ -178,7 +178,7 @@ fn main() -> Result<(), ShahError> {
         extra::db::init()?,
     )?;
 
-    let mut user = user::db::User::default();
+    let mut _user = user::db::User::default();
 
     // let gene_57 = Gene { id: 57, iter: 0, pepper: [149, 231, 78], server: 0 };
     // state.users.get(&gene_57, &mut user)?;

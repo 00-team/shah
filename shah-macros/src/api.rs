@@ -62,145 +62,159 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
     // TODO: if output is only one item which very common. turn the
     // return (A, ) into just return A; which way nicer to work with
 
-    quote_into! {s += pub(crate) mod api {
-        #![allow(unused_imports)]
+    let mut a = TokenStream2::new();
+    user_funcs.iter().for_each(|f| quote_into!(a += #f));
 
-        #uses
-
-    #{
-        for f in user_funcs.iter() {
-            quote_into!(s += #f);
-        }
-
-        for Route { api_ident, ident, inp, out, ret, .. } in routes.iter() {
-            let mut output_var = TokenStream2::new();
-            for (i, t) in out.iter().enumerate() {
-                let vid = format_ident!("ov{}", i);
-
-                quote_into! {output_var +=
-                    let (#vid, out) = out.split_at_mut(<#t as #bin>::S);
-                    let #vid = <#t as #bin>::from_binary_mut(#vid);
-                };
-            }
-            quote_into! {output_var += let output = (#{
-                for (i, _) in out.iter().enumerate() {
-                    let vid = format_ident!("ov{}", i);
-                    quote_into!(output_var += #vid,)
-                }
-            });}
-
-            let mut bf = TokenStream2::new();
-            quote_into! {bf += 0};
-            let mut input_var = TokenStream2::new();
-            for t in inp.iter() {
-                quote_into! {input_var += <#t as #bin>::from_binary(&inp[#bf..#bf + <#t as #bin>::S]),};
-                quote_into! {bf += + <#t as #bin>::S};
-            }
-
-            let mut out_size = TokenStream2::new();
-            quote_into!(out_size += 0);
-            out.iter().for_each(|t| quote_into! {out_size += + <#t as #bin>::S });
-
-            quote_into! {s +=
-                #[allow(dead_code)]
-                pub(crate) fn #api_ident(state: &mut #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
-                    let input = (#input_var);
-                    #output_var
-                    let res = #ident(state, input, output)?;
-                    #{if *ret {
-                        quote_into!(s += Ok(res))
-                    } else {
-                        quote_into!(s += Ok(#out_size))
-                    }}
-                }
+    for Route { api_ident, ident, inp, out, ret, .. } in routes.iter() {
+        let mut output_var = TokenStream2::new();
+        for (vid, t) in out.iter() {
+            quote_into! {output_var +=
+                let (#vid, out) = out.split_at_mut(<#t as #bin>::S);
+                let #vid = <#t as #bin>::from_binary_mut(#vid);
             };
         }
 
-        let routes_len = routes.len();
-        quote_into! {s += pub(crate) const ROUTES: [#ci::models::Api<#state>; #routes_len] = [#{
-            for Route { api_ident, ident, inp, .. } in routes.iter() {
-                let mut input_size = TokenStream2::new();
-                quote_into!(input_size += 0);
+        let mut bf = TokenStream2::new();
+        quote_into! {bf += 0};
+        let mut input_var = TokenStream2::new();
+        for (_, t) in inp.iter() {
+            quote_into! {input_var +=
+                <#t as #bin>::from_binary(&inp[#bf..#bf + <#t as #bin>::S]),
+            };
+            quote_into! {bf += + <#t as #bin>::S};
+        }
 
-                for t in inp.iter() {
-                    quote_into! {input_size += + <#t as #bin>::S }
-                }
+        let return_value = if *ret {
+            quote!(Ok(res))
+        } else {
+            let mut os = TokenStream2::new();
+            quote_into!(os += 0);
+            out.iter().for_each(|(_, t)| quote_into!(os += + <#t as #bin>::S));
+            quote!(Ok(#os))
+        };
 
-                let name = ident.to_string();
-                quote_into! {s += #ci::models::Api::<#state> {
-                    name: #name,
-                    caller: #api_ident,
-                    input_size: #input_size,
-                },}
+        quote_into! {a +=
+            #[allow(dead_code)]
+            pub(crate) fn #api_ident(state: &mut #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
+                let input = (#input_var);
+                #output_var
+                let output = (#{
+                    out.iter().for_each(|(vid, _)| quote_into!(a += #vid,))
+                });
+                let res = #ident(state, input, output)?;
+                #return_value
             }
-        }];};
+        };
     }
 
-        pub(crate) const FILE: &str = file!();
-        pub(crate) const SCOPE: usize = #api_scope;
-    }};
+    let mut routes_api = TokenStream2::new();
+    for Route { api_ident, ident, inp, .. } in routes.iter() {
+        let mut is = TokenStream2::new();
+        quote_into!(is += 0);
+        inp.iter().for_each(|(_, t)| quote_into!(is += + <#t as #bin>::S));
+
+        let name = ident.to_string();
+        quote_into! {routes_api +=
+            #ci::models::Api::<#state> {
+                name: #name,
+                caller: #api_ident,
+                input_size: #is,
+            },
+        }
+    }
 
     let mut c = TokenStream2::new();
     for (rdx, Route { ident, inp, out, doc, .. }) in routes.iter().enumerate() {
-        let inputs = inp
-            .iter()
-            .enumerate()
-            .map(|(idx, ty)| (format_ident!("iv{idx}"), ty));
-        // let outputs = out.iter().enumerate().map(|(i, t)| (format_ident!("ov{i}"), t));
-
-        let mut input_size = TokenStream2::new();
-        quote_into!(input_size += 0);
-        for t in inp.iter() {
-            quote_into!(input_size += + <#t as #bin>::S);
-        }
+        let mut is = TokenStream2::new();
+        quote_into!(is += 0);
+        inp.iter().for_each(|(_, t)| quote_into!(is += + <#t as #bin>::S));
 
         let mut bf = TokenStream2::new();
         quote_into! {bf += 0};
-        let mut output_result = TokenStream2::new();
-        for t in out.iter() {
-            quote_into! {output_result += <#t as #bin>::from_binary(&reply.body[#bf..#bf + <#t as #bin>::S]).clone(),};
+        let mut inp_res = TokenStream2::new();
+        for (i, t) in inp.iter() {
+            quote_into! {inp_res +=
+                order_body[#bf..#bf + <#t as #bin>::S]
+                .clone_from_slice(<#t as #bin>::as_binary(#i));
+            };
             quote_into! {bf += + <#t as #bin>::S};
         }
 
-        let mut bf = TokenStream2::new();
-        quote_into! {bf += 0};
-        let mut input_result = TokenStream2::new();
-        for (i, t) in inputs.clone() {
-            quote_into! {input_result += order_body[#bf..#bf + <#t as #bin>::S].clone_from_slice(<#t as #bin>::as_binary(#i));};
-            quote_into! {bf += + <#t as #bin>::S};
-        }
+        let mut fn_inp = TokenStream2::new();
+        inp.iter().for_each(|(i, t)| quote_into!(fn_inp += #i: &#t, ));
+
+        let (out_ty, out_res) = if out.is_empty() {
+            (quote!(()), quote!(()))
+        } else if out.len() == 1 {
+            let t = &out[0].1;
+
+            (
+                quote!(#t),
+                quote!(<#t as #bin>::from_binary(&reply.body[..<#t as #bin>::S]).clone()),
+            )
+        } else {
+            let mut ot = TokenStream2::new();
+            quote_into! {ot += (
+                #{out.iter().for_each(|(_, t)| quote_into!(ot += #t,))}
+            )};
+
+            let mut bf = quote!(0);
+            let mut or = TokenStream2::new();
+            for (_, t) in out.iter() {
+                quote_into! {or +=
+                    <#t as #bin>::from_binary(
+                        &reply.body[#bf..#bf + <#t as #bin>::S]
+                    ).clone(),
+                };
+                quote_into! {bf += + <#t as #bin>::S};
+            }
+
+            (ot, quote! { ( #or ) })
+        };
 
         quote_into! {c +=
             #[doc = #doc]
             pub fn #ident(
-                taker: &#ci::Taker,
-                #{inputs.clone().for_each(|(i, t)| quote_into!(c += #i: &#t, ))}
-            ) -> Result<(#{out.iter().for_each(|t| quote_into!(c += #t,))}), #ci::ClientError<#user_error>> {
-            // ) -> Result<(), #ci::ClientError<#user_error>> {
-                let mut order = [0u8; #input_size + <#ci::models::OrderHead as #bin>::S];
+                taker: &#ci::Taker, #fn_inp
+            ) -> Result<#out_ty, #ci::ClientError<#user_error>> {
+                let mut order = [0u8; #is + <#ci::models::OrderHead as #bin>::S];
                 let (order_head, order_body) = order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
                 let order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(order_head);
-                order_head.scope = #api_scope as u8;
-                order_head.route = #rdx as u8;
-                order_head.size = (#input_size) as u32;
+                order_head.scope = ( #api_scope ) as u8;
+                order_head.route = ( #rdx ) as u8;
+                order_head.size = ( #is ) as u32;
 
-                #input_result
+                #inp_res
 
                 let reply = taker.take(&mut order)?;
                 // let reply_head = taker.reply_head();
                 // let reply_body = taker.reply_body(reply_head.size as usize);
-                Ok((#output_result))
+                Ok(#out_res)
             }
         }
     }
 
-    quote_into! {s += pub mod client {
-        #![allow(dead_code, unused_imports)]
+    let routes_len = routes.len();
 
-        #uses
-        #c
-        #user_client
-    }};
+    quote_into! {s +=
+        pub(crate) mod api {
+            #![allow(unused_imports)]
+
+            #uses
+            #a
+
+            pub(crate) const ROUTES: [#ci::models::Api<#state>; #routes_len] = [#routes_api];
+            pub(crate) const FILE: &str = file!();
+            pub(crate) const SCOPE: usize = #api_scope;
+        }
+
+        pub mod client {
+            #![allow(dead_code, unused_imports)]
+            #uses
+            #c
+            #user_client
+        }
+    };
 
     Ok(s)
 }
@@ -293,18 +307,123 @@ fn returns_output_size(rt: &syn::ReturnType) -> syn::Result<bool> {
     e!()
 }
 
+type RouteArgs = Vec<(syn::Ident, syn::Type)>;
+
 #[derive(Debug)]
 struct Route {
     state: syn::Type,
     ident: syn::Ident,
     api_ident: syn::Ident,
-    inp: Vec<syn::Type>,
-    out: Vec<syn::Type>,
+    inp: RouteArgs,
+    out: RouteArgs,
     ret: bool,
     doc: String,
 }
 
+fn arr_name(ty: &syn::Type, d: usize) -> String {
+    match ty {
+        syn::Type::Path(p) => {
+            let Some(s) = p.path.segments.last() else {
+                return "arr".to_string();
+            };
+
+            s.ident.to_string()
+        }
+        syn::Type::Array(a) => {
+            if d > 3 {
+                return "arr".to_string();
+            }
+            arr_name(&a.elem, d + 1)
+        }
+        _ => "arr".to_string(),
+    }
+}
+
 impl Route {
+    fn args(fnarg: &syn::PatType, mm: bool) -> syn::Result<RouteArgs> {
+        let syn::Type::Tuple(tt) = &(*fnarg.ty) else {
+            return err!(fnarg.span(), "input and output types must be tuple");
+        };
+        let mut names = Vec::<&syn::Ident>::with_capacity(tt.elems.len());
+        let mut res = RouteArgs::with_capacity(tt.elems.len());
+
+        let prefix = if mm { "o" } else { "i" };
+
+        let has_names = match &(*fnarg.pat) {
+            syn::Pat::Tuple(pt) => {
+                if pt.elems.len() != tt.elems.len() {
+                    return err!(
+                        pt.span(),
+                        "you must specify a name for all the types"
+                    );
+                }
+
+                for e in pt.elems.iter() {
+                    let syn::Pat::Ident(ei) = e else {
+                        return err!(e.span(), "all names must be idents");
+                    };
+                    names.push(&ei.ident);
+                }
+                true
+            }
+            _ => false,
+        };
+
+        for (idx, t) in tt.elems.iter().enumerate() {
+            let syn::Type::Reference(tr) = t else {
+                return err!(
+                    t.span(),
+                    "input/output tuple elements must be a reference"
+                );
+            };
+
+            if mm && tr.mutability.is_none() {
+                return err!(
+                    t.span(),
+                    "output elements must mutable references"
+                );
+            }
+
+            if !mm && tr.mutability.is_some() {
+                return err!(
+                    t.span(),
+                    "input elements must immutable references"
+                );
+            }
+
+            let tyn = match &(*tr.elem) {
+                syn::Type::Path(p) => {
+                    p.path.segments.last().unwrap().ident.to_string()
+                }
+                syn::Type::Array(a) => arr_name(&a.elem, 0),
+                syn::Type::Slice(_) => {
+                    return err!(
+                        tr.elem.span(),
+                        "slices are not supported yet!"
+                    );
+                }
+                _ => {
+                    return err!(tr.elem.span(), "unknown type was found.");
+                }
+            }
+            .to_lowercase();
+
+            if has_names {
+                res.push((
+                    format_ident!("{}_{prefix}{idx}", names[idx]),
+                    *tr.elem.clone(),
+                ));
+            } else {
+                res.push((
+                    format_ident!("{tyn}_{prefix}{idx}"),
+                    *tr.elem.clone(),
+                ));
+            }
+        }
+
+        Ok(res)
+    }
+
     fn from_signature(sig: &syn::Signature) -> syn::Result<Self> {
         let mut route = Route {
             state: syn::Type::Never(syn::TypeNever {
@@ -340,51 +459,6 @@ impl Route {
         };
         route.state = *s.elem.clone();
 
-        fn tup(a: &syn::PatType, mm: bool) -> syn::Result<Vec<syn::Type>> {
-            let syn::Type::Tuple(tt) = &(*a.ty) else {
-                return err!(a.span(), "input and output types must be tuple");
-            };
-            let mut tarr = Vec::<syn::Type>::with_capacity(tt.elems.len());
-            for t in tt.elems.iter() {
-                let syn::Type::Reference(tr) = t else {
-                    return err!(
-                        t.span(),
-                        "input/output tuple elements must be a reference"
-                    );
-                };
-
-                if mm && tr.mutability.is_none() {
-                    return err!(
-                        t.span(),
-                        "output elements must mutable references"
-                    );
-                }
-
-                if !mm && tr.mutability.is_some() {
-                    return err!(
-                        t.span(),
-                        "input elements must immutable references"
-                    );
-                }
-
-                match &(*tr.elem) {
-                    syn::Type::Path(_) | syn::Type::Array(_) => {}
-                    syn::Type::Slice(_) => {
-                        return err!(
-                            tr.elem.span(),
-                            "slices are not supported yet!"
-                        );
-                    }
-                    _ => {
-                        return err!(tr.elem.span(), "unknown type was found.");
-                    }
-                }
-
-                tarr.push(*tr.elem.clone());
-            }
-            Ok(tarr)
-        }
-
         let inp = typed(&sig.inputs[1])?;
         let out = typed(&sig.inputs[2])?;
 
@@ -392,8 +466,8 @@ impl Route {
         route.doc += "\noutput: ";
         route.doc += &out.pat.to_token_stream().to_string();
 
-        route.inp = tup(inp, false)?;
-        route.out = tup(out, true)?;
+        route.inp = Self::args(inp, false)?;
+        route.out = Self::args(out, true)?;
 
         Ok(route)
     }

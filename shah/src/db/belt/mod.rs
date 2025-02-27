@@ -27,6 +27,7 @@ pub trait Belt: EntityItem {
     fn buckle_mut(&mut self) -> &mut Gene;
 }
 
+#[derive(Debug)]
 pub struct BeltDb<B: Belt + EntityKochFrom<OB, BS>, OB: Belt = B, BS = ()> {
     buckle: EntityDb<Buckle>,
     belt: EntityDb<B, OB, BS>,

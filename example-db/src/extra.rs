@@ -39,13 +39,21 @@ pub mod api {
     use shah::db::snake::SnakeHead;
     use shah::models::{Binary, Gene};
     use shah::{
-        AsUtf8Str, ClientError, ErrorCode, IsNotFound, Taker, BLOCK_SIZE,
+        AsUtf8Str, ClientError, ErrorCode, IsNotFound, OptNotFound, Taker,
+        BLOCK_SIZE,
     };
 
     use super::db::Extra;
     use super::EXTRA_DATA;
 
-    pub(crate) fn init(
+    pub(crate) fn buckle_get(
+        state: &mut State, (buckle_gene,): (&Gene,), (buckle,): (&mut Buckle,),
+    ) -> Result<(), ErrorCode> {
+        state.extra.buckle_get(buckle_gene, buckle)?;
+        Ok(())
+    }
+
+    pub(crate) fn buckle_add(
         state: &mut State, _: (), (out,): (&mut Buckle,),
     ) -> Result<(), ErrorCode> {
         out.zeroed();
@@ -53,39 +61,41 @@ pub mod api {
         Ok(())
     }
 
-    pub(crate) fn get(
-        state: &mut State, (gene,): (&Gene,), (belt,): (&mut Extra,),
+    pub(crate) fn buckle_del(
+        state: &mut State, (buckle_gene,): (&Gene,), _: (),
     ) -> Result<(), ErrorCode> {
-        state.extra.belt_get(gene, belt)?;
+        state.extra.buckle_del(buckle_gene)?;
         Ok(())
     }
 
-    pub(crate) fn head(
-        state: &mut State, (gene,): (&Gene,), (buckle,): (&mut Buckle,),
+    pub(crate) fn add(
+        state: &mut State, (buckle_gene, extra): (&Gene, &Extra),
+        (out,): (&mut Extra,),
     ) -> Result<(), ErrorCode> {
-        state.extra.buckle_get(gene, buckle)?;
+        out.clone_from(extra);
+        state.extra.belt_add(buckle_gene, out)?;
+        Ok(())
+    }
+
+    pub(crate) fn get(
+        state: &mut State, (extra_gene,): (&Gene,), (belt,): (&mut Extra,),
+    ) -> Result<(), ErrorCode> {
+        state.extra.belt_get(extra_gene, belt)?;
         Ok(())
     }
 
     pub(crate) fn set(
-        state: &mut State, (inp,): (&Extra,), (out,): (&mut Extra,),
+        state: &mut State, (extra,): (&Extra,), (res,): (&mut Extra,),
     ) -> Result<(), ErrorCode> {
-        out.clone_from(inp);
-        state.extra.belt_set(out)?;
+        res.clone_from(extra);
+        state.extra.belt_set(res)?;
         Ok(())
     }
 
     pub(crate) fn del(
-        state: &mut State, (gene,): (&Gene,), (out,): (&mut Extra,),
+        state: &mut State, (extra_gene,): (&Gene,), (res,): (&mut Extra,),
     ) -> Result<(), ErrorCode> {
-        state.extra.belt_del(gene, out)?;
-        Ok(())
-    }
-
-    pub(crate) fn free(
-        state: &mut State, (gene,): (&Gene,), _: (),
-    ) -> Result<(), ErrorCode> {
-        state.extra.buckle_del(gene)?;
+        state.extra.belt_del(extra_gene, res)?;
         Ok(())
     }
 
@@ -93,31 +103,102 @@ pub mod api {
     pub fn get_all(
         taker: &Taker, buckle_gene: &Gene,
     ) -> Result<String, ClientError<ExampleError>> {
-        let buckle = head(taker, buckle_gene)?;
+        let buckle = buckle_get(taker, buckle_gene)?;
         let mut data = Vec::with_capacity(buckle.belts as usize * EXTRA_DATA);
 
-        let mut belt_gene = buckle.head;
+        let mut gene = buckle.head;
         loop {
-            match get(taker, &belt_gene) {
-                Ok(extra) => {
-                    let len = (extra.length as usize).min(extra.data.len());
-                    data.extend_from_slice(&extra.data[..len]);
+            if gene.is_none() {
+                break;
+            }
 
-                    if extra.next.is_none() {
-                        break;
-                    }
-                    belt_gene = extra.next;
-                }
-                Err(err) => {
-                    if err.is_not_found() {
-                        break;
-                    }
-                    return Err(err);
+            let Some(extra) = get(taker, &gene).onf()? else { break };
+            let len = (extra.length as usize).min(extra.data.len());
+            data.extend_from_slice(&extra.data[..len]);
+            gene = extra.next;
+        }
+
+        Ok(data[..].as_utf8_str_null_terminated().to_string())
+    }
+
+    #[client]
+    pub fn set_all(
+        taker: &Taker, buckle_gene: &Option<Gene>, data: &str,
+    ) -> Result<Gene, ClientError<ExampleError>> {
+        let data = data.as_bytes();
+
+        let b = if let Some(og) = buckle_gene {
+            buckle_get(taker, og).onf()?
+        } else {
+            None
+        };
+        let buckle = if let Some(b) = b { b } else { buckle_add(taker)? };
+        let mut gene = buckle.head;
+        let mut extra = Extra::default();
+
+        for x in data.chunks(EXTRA_DATA) {
+            extra.data[..x.len()].copy_from_slice(x);
+            extra.length = x.len() as u16;
+
+            if gene.is_none() {
+                extra.gene.clear();
+                add(taker, &buckle.gene, &extra)?;
+                continue;
+            }
+
+            extra.gene = gene;
+            match set(taker, &extra).onf()? {
+                Some(v) => gene = v.next,
+                None => {
+                    extra.gene.clear();
+                    add(taker, &buckle.gene, &extra)?;
+                    gene.clear();
                 }
             }
         }
 
-        Ok(data[..].as_utf8_str_null_terminated().to_string())
+        // let len = data.len().min(DETAIL_MAX);
+        // let mut snake: Option<SnakeHead> = None;
+        // if let Some(old) = gene {
+        //     let (old_head,) = head(taker, old)?;
+        //     if old_head.capacity >= len as u64 {
+        //         snake = Some(old_head);
+        //     } else {
+        //         free(taker, old)?;
+        //     }
+        // }
+        // if snake.is_none() {
+        //     let capacity = (len + DETAIL_BUF).min(DETAIL_MAX) as u64;
+        //     snake = Some(init(taker, &capacity)?.0);
+        // }
+        // let snake = snake.unwrap();
+        // for i in 0..=(len / BLOCK_SIZE) {
+        //     let off = i * BLOCK_SIZE;
+        //     if len < (off + BLOCK_SIZE) {
+        //         let mut write_buffer = [0u8; BLOCK_SIZE];
+        //         let wlen = len - off;
+        //         write_buffer[0..wlen].copy_from_slice(&data[off..len]);
+        //         write(
+        //             taker,
+        //             &snake.gene,
+        //             &(off as u64),
+        //             &write_buffer,
+        //             &(wlen as u64),
+        //         )?;
+        //     } else {
+        //         write(
+        //             taker,
+        //             &snake.gene,
+        //             &(off as u64),
+        //             &data[off..off + BLOCK_SIZE].try_into().unwrap(),
+        //             &(BLOCK_SIZE as u64),
+        //         )?;
+        //     }
+        // }
+        //
+        // set_length(taker, &snake.gene, &(len as u64))?;
+
+        Ok(buckle.gene)
     }
 
     // pub(crate) fn head(

@@ -481,9 +481,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub fn add(&mut self, entity: &mut T) -> Result<(), ShahError> {
         entity.set_alive(true);
         let gene = entity.gene_mut();
-        if gene.id == 0 {
-            gene.clone_from(&self.new_gene()?);
+        if gene.is_some() {
+            log::warn!("{} entity gene is not cleared: {gene:?}", self.ls);
         }
+        gene.clone_from(&self.new_gene()?);
 
         *entity.growth_mut() = 0;
         self.set_unchecked(entity)?;

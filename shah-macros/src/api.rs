@@ -344,7 +344,7 @@ impl Route {
             let syn::Type::Tuple(tt) = &(*a.ty) else {
                 return err!(a.span(), "input and output types must be tuple");
             };
-            let tarr = Vec::<syn::Type>::with_capacity(tt.elems.len());
+            let mut tarr = Vec::<syn::Type>::with_capacity(tt.elems.len());
             for t in tt.elems.iter() {
                 let syn::Type::Reference(tr) = t else {
                     return err!(
@@ -379,6 +379,8 @@ impl Route {
                         return err!(tr.elem.span(), "unknown type was found.");
                     }
                 }
+
+                tarr.push(*tr.elem.clone());
             }
             Ok(tarr)
         }

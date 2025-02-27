@@ -1,6 +1,6 @@
 mod api;
-mod command;
 mod belt;
+mod command;
 mod duck;
 mod entity;
 mod enum_code;
@@ -37,7 +37,11 @@ pub fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn api(args: TokenStream, code: TokenStream) -> TokenStream {
-    api::api(args, code)
+    type Args = syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>;
+    let item = syn::parse_macro_input!(code as syn::ItemMod);
+    let attrs = syn::parse_macro_input!(args with Args::parse_terminated);
+
+    api::api(attrs, item).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_attribute]
@@ -47,7 +51,7 @@ pub fn model(args: TokenStream, code: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Entity, attributes(entity))]
 /// Derive macro generating an impl of the trait `Entity`.
-/// 
+///
 /// You can use `#[entity(gene)]`, `#[entity(flags)]` and `#[entity(growth)]`
 /// to set custom fields for these methods.
 pub fn entity(code: TokenStream) -> TokenStream {
@@ -56,7 +60,6 @@ pub fn entity(code: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Belt, attributes(belt))]
 /// Derive macro generating an impl of the trait `Belt`.
-/// 
 /// You can use `#[belt(next)]`, `#[belt(past)]` and `#[belt(buckle)]`
 /// to set custom fields for these methods.
 pub fn belt(code: TokenStream) -> TokenStream {
@@ -83,8 +86,6 @@ pub fn perms(code: TokenStream) -> TokenStream {
     perms::perms(code)
 }
 
-
-
 fn crate_ident() -> syn::Ident {
     // let found_crate = crate_name("shah").unwrap();
     // let name = match &found_crate {
@@ -100,3 +101,14 @@ macro_rules! ident {
     };
 }
 pub(crate) use ident;
+
+macro_rules! err {
+    ($span:expr, $($msg:literal),*) => {
+        Err(syn::Error::new(
+            $span,
+            concat!( $($msg),* )
+        ))
+    };
+}
+
+pub(crate) use err;

@@ -1,31 +1,25 @@
-use crate::crate_ident;
-use proc_macro::TokenStream;
+use crate::err;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
-use syn::punctuated::Punctuated;
+use syn::{punctuated::Punctuated, spanned::Spanned};
 
-type Args = Punctuated<syn::MetaNameValue, syn::Token![,]>;
+type Args = Punctuated<syn::MetaNameValue, syn::token::Comma>;
 
-#[derive(Debug)]
-struct Route {
-    ident: syn::Ident,
-    api_ident: syn::Ident,
-    inp: Vec<syn::Type>,
-    out: Vec<syn::Type>,
-    ret: bool,
-    doc: String,
-}
-
-pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
-    let mut s = TokenStream2::new();
-    let item = syn::parse_macro_input!(code as syn::ItemMod);
+pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
+    let item_span = item.span();
     let Some((_, content)) = item.content else {
-        panic!("invalid api mod");
+        return err!(item_span, "mod is empty");
     };
-    let attrs = syn::parse_macro_input!(args with Args::parse_terminated);
-    let ApiArgs { api_scope, user_error } = parse_args(attrs);
-    let ci = crate_ident();
+
+    if content.is_empty() {
+        return err!(item_span, "mod is empty");
+    }
+
+    let mut s = TokenStream2::new();
+
+    let ApiArgs { api_scope, user_error } = parse_args(args)?;
+    let ci = crate::crate_ident();
     let mut uses = TokenStream2::new();
     let mut user_funcs = Vec::<syn::ItemFn>::new();
     let mut user_client = TokenStream2::new();
@@ -35,11 +29,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         match &item {
             syn::Item::Fn(f) => {
                 let mut f = f.clone();
-                let is_client = f
-                    .attrs
-                    .iter_mut()
-                    .any(|a| a.meta.to_token_stream().to_string() == "client");
-                if is_client {
+                if f.attrs.iter().any(|a| a.path().is_ident("client")) {
                     f.attrs.clear();
                     quote_into!(user_client += #f);
                 } else {
@@ -47,10 +37,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
                 }
             }
             syn::Item::Use(u) => quote_into!(uses += #u),
-            _ => panic!(
-                "unknown item: {} was found in api mod",
-                item.to_token_stream()
-            ),
+            _ => return err!(item.span(), "only fn's and use's are valid"),
         }
     }
 
@@ -58,73 +45,22 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
     let mut state: Option<syn::Type> = None;
 
     for syn::ItemFn { sig, .. } in user_funcs.iter() {
-        let mut route = Route {
-            ident: sig.ident.clone(),
-            api_ident: format_ident!("{}_api", sig.ident),
-            inp: Default::default(),
-            out: Default::default(),
-            ret: returns_output_size(&sig.output),
-            doc: "input: ".to_string(),
-        };
-        let mut inp_done = false;
-
-        for arg in sig.inputs.iter() {
-            let arg = match arg {
-                syn::FnArg::Typed(t) => t,
-                _ => panic!("invalid function signature"),
-            };
-
-            match &(*arg.ty) {
-                syn::Type::Reference(tr) => {
-                    if state.is_none() {
-                        state = Some(*tr.elem.clone());
-                    }
-                }
-                syn::Type::Tuple(tt) => {
-                    route.doc += &arg.pat.to_token_stream().to_string();
-                    tt.elems.iter().for_each(|t| {
-                        let syn::Type::Reference(ty) = t else {
-                            panic!("invalid api")
-                        };
-
-                        match &(*ty.elem) {
-                            syn::Type::Path(_) => {}
-                            syn::Type::Array(_) => {}
-                            syn::Type::Slice(_) => {
-                                panic!(
-                                    "dynamic data (aka slice) is not supported"
-                                )
-                            }
-                            el => {
-                                panic!("invalid type: {}", el.to_token_stream())
-                            }
-                        }
-                        if !inp_done {
-                            if ty.mutability.is_some() {
-                                panic!("input types must be immutable");
-                            }
-
-                            route.inp.push(*ty.elem.clone());
-                        } else {
-                            if ty.mutability.is_none() {
-                                panic!("output types must be mutable");
-                            }
-
-                            route.out.push(*ty.elem.clone());
-                        }
-                    });
-
-                    if !inp_done {
-                        route.doc += "\noutput: ";
-                    }
-                    inp_done = true;
-                }
-                ty => panic!("unknown api type: {}", ty.to_token_stream()),
+        let r = Route::from_signature(sig)?;
+        if let Some(ref s) = state {
+            if s != &r.state {
+                return err!(
+                    sig.span(),
+                    "state type does not match previous instances of this type"
+                );
             }
+        } else {
+            state = Some(r.state.clone());
         }
-
-        routes.push(route);
+        routes.push(r);
     }
+
+    // TODO: if output is only one item which very common. turn the
+    // return (A, ) into just return A; which way nicer to work with
 
     quote_into! {s += pub(crate) mod api {
         #![allow(unused_imports)]
@@ -266,7 +202,7 @@ pub(crate) fn api(args: TokenStream, code: TokenStream) -> TokenStream {
         #user_client
     }};
 
-    s.into()
+    Ok(s)
 }
 
 struct ApiArgs {
@@ -274,7 +210,7 @@ struct ApiArgs {
     api_scope: syn::LitInt,
 }
 
-fn parse_args(args: Args) -> ApiArgs {
+fn parse_args(args: Args) -> syn::Result<ApiArgs> {
     let mut user_error: Option<syn::Path> = None;
     let mut api_scope: Option<syn::LitInt> = None;
 
@@ -282,13 +218,22 @@ fn parse_args(args: Args) -> ApiArgs {
         let key = meta.path.segments[0].ident.to_string();
         match key.as_str() {
             "scope" => {
-                if let syn::Expr::Lit(lit) = &meta.value {
-                    if let syn::Lit::Int(int) = &lit.lit {
-                        api_scope = Some(int.clone());
-                    }
+                if api_scope.is_some() {
+                    return err!(
+                        meta.span(),
+                        "you cannot set `scope` multiple times"
+                    );
                 }
+                api_scope =
+                    Some(syn::parse(meta.value.to_token_stream().into())?);
             }
             "error" => {
+                if user_error.is_some() {
+                    return err!(
+                        meta.span(),
+                        "you cannot set `error` multiple times"
+                    );
+                }
                 if let syn::Expr::Path(path) = &meta.value {
                     user_error = Some(path.path.clone());
                 }
@@ -297,35 +242,157 @@ fn parse_args(args: Args) -> ApiArgs {
         }
     }
 
-    if api_scope.is_none() || user_error.is_none() {
-        panic!("invalid attrs. scope = usize, error = UserError")
-    }
+    let Some(api_scope) = api_scope else {
+        return err!(
+            args.span(),
+            "no scope = <num> was found in macro attributes"
+        );
+    };
 
-    ApiArgs { user_error: user_error.unwrap(), api_scope: api_scope.unwrap() }
+    let Some(user_error) = user_error else {
+        return err!(
+            args.span(),
+            "no error = YourError was found in macro attributes"
+        );
+    };
+
+    Ok(ApiArgs { user_error, api_scope })
 }
 
-fn returns_output_size(rt: &syn::ReturnType) -> bool {
-    macro_rules! err { () => { panic!("return type of an api must be Result<(), ErrorCode> or Result<usize, ErrorCode>") }; }
+fn returns_output_size(rt: &syn::ReturnType) -> syn::Result<bool> {
+    macro_rules! e {
+        () => {
+            err!(
+                rt.span(),
+                "return type of an api must be Result<(), ErrorCode> ",
+                "or Result<usize, ErrorCode>"
+            )
+        };
+    }
 
-    let syn::ReturnType::Type(_, t) = rt else { err!() };
+    let syn::ReturnType::Type(_, t) = rt else { return e!() };
 
-    let syn::Type::Path(p) = &(**t) else { err!() };
+    let syn::Type::Path(p) = &(**t) else { return e!() };
     let args = &p.path.segments[0].arguments;
 
-    let syn::PathArguments::AngleBracketed(a) = args else { err!() };
-    let syn::GenericArgument::Type(t) = &a.args[0] else { err!() };
+    let syn::PathArguments::AngleBracketed(a) = args else { return e!() };
+    let syn::GenericArgument::Type(t) = &a.args[0] else { return e!() };
 
     if let syn::Type::Tuple(tp) = t {
         if tp.elems.is_empty() {
-            return false;
+            return Ok(false);
         }
     }
 
     if let syn::Type::Path(p) = t {
         if p.to_token_stream().to_string() == "usize" {
-            return true;
+            return Ok(true);
         }
     }
 
-    err!()
+    e!()
+}
+
+#[derive(Debug)]
+struct Route {
+    state: syn::Type,
+    ident: syn::Ident,
+    api_ident: syn::Ident,
+    inp: Vec<syn::Type>,
+    out: Vec<syn::Type>,
+    ret: bool,
+    doc: String,
+}
+
+impl Route {
+    fn from_signature(sig: &syn::Signature) -> syn::Result<Self> {
+        let mut route = Route {
+            state: syn::Type::Never(syn::TypeNever {
+                bang_token: Default::default(),
+            }),
+            ident: sig.ident.clone(),
+            api_ident: format_ident!("{}_api", sig.ident),
+            inp: Default::default(),
+            out: Default::default(),
+            ret: returns_output_size(&sig.output)?,
+            doc: "input: ".to_string(),
+        };
+
+        if sig.inputs.len() != 3 {
+            return err!(
+                sig.inputs.span(),
+                "api functions requires 3 arguments ",
+                "fn my_api(state: &mut State, inputs: (&A, &B), ",
+                "outputs: (&mut C, &mut D))"
+            );
+        }
+
+        fn typed(a: &syn::FnArg) -> syn::Result<&syn::PatType> {
+            let syn::FnArg::Typed(pt) = a else {
+                return err!(a.span(), "invalid fn arg :/");
+            };
+            Ok(pt)
+        }
+
+        let state = typed(&sig.inputs[0])?;
+        let syn::Type::Reference(s) = &(*state.ty) else {
+            return err!(state.span(), "state type must be a &mut MyState");
+        };
+        route.state = *s.elem.clone();
+
+        fn tup(a: &syn::PatType, mm: bool) -> syn::Result<Vec<syn::Type>> {
+            let syn::Type::Tuple(tt) = &(*a.ty) else {
+                return err!(a.span(), "input and output types must be tuple");
+            };
+            let tarr = Vec::<syn::Type>::with_capacity(tt.elems.len());
+            for t in tt.elems.iter() {
+                let syn::Type::Reference(tr) = t else {
+                    return err!(
+                        t.span(),
+                        "input/output tuple elements must be a reference"
+                    );
+                };
+
+                if mm && tr.mutability.is_none() {
+                    return err!(
+                        t.span(),
+                        "output elements must mutable references"
+                    );
+                }
+
+                if !mm && tr.mutability.is_some() {
+                    return err!(
+                        t.span(),
+                        "input elements must immutable references"
+                    );
+                }
+
+                match &(*tr.elem) {
+                    syn::Type::Path(_) | syn::Type::Array(_) => {}
+                    syn::Type::Slice(_) => {
+                        return err!(
+                            tr.elem.span(),
+                            "slices are not supported yet!"
+                        );
+                    }
+                    _ => {
+                        return err!(tr.elem.span(), "unknown type was found.");
+                    }
+                }
+            }
+            Ok(tarr)
+        }
+
+        let inp = typed(&sig.inputs[1])?;
+        let out = typed(&sig.inputs[2])?;
+
+        route.doc += &inp.pat.to_token_stream().to_string();
+        route.doc += "\noutput: ";
+        route.doc += &out.pat.to_token_stream().to_string();
+
+        route.inp = tup(inp, false)?;
+        route.out = tup(out, true)?;
+
+        Ok(route)
+    }
 }

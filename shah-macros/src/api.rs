@@ -59,9 +59,6 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
         routes.push(r);
     }
 
-    // TODO: if output is only one item which very common. turn the
-    // return (A, ) into just return A; which way nicer to work with
-
     let mut a = TokenStream2::new();
     user_funcs.iter().for_each(|f| quote_into!(a += #f));
 

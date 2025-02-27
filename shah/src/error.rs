@@ -213,3 +213,22 @@ impl IsNotFound for ShahError {
         // }
     }
 }
+
+pub trait OptNotFound<T, E: IsNotFound> {
+    fn onf(self) -> Result<Option<T>, E>;
+}
+
+impl<T, E: IsNotFound> OptNotFound<T, E> for Result<T, E> {
+    fn onf(self) -> Result<Option<T>, E> {
+        match self {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => {
+                if e.is_not_found() {
+                    Ok(None)
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+}

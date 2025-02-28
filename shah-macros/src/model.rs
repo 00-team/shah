@@ -1,6 +1,3 @@
-use core::panic;
-
-use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
@@ -9,38 +6,10 @@ use syn::parse::Parser;
 type KeyList = syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>;
 type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
-pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
-    let mut item = syn::parse_macro_input!(code as syn::ItemStruct);
+pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
+    let (impl_gnc, ty_gnc, where_gnc) = item.generics.split_for_impl();
 
-    let generics = &item.generics;
-
-    let mut gnb = TokenStream2::new();
-
-    fn gnbqi(
-        s: &mut TokenStream2,
-        params: syn::punctuated::Iter<'_, syn::GenericParam>,
-    ) {
-        for (i, p) in params.enumerate() {
-            if i != 0 {
-                quote_into!(s += ,);
-            }
-            match p {
-                syn::GenericParam::Type(syn::TypeParam { ident, .. }) => {
-                    quote_into!(s += #ident)
-                }
-                syn::GenericParam::Const(syn::ConstParam { ident, .. }) => {
-                    quote_into!(s += #ident)
-                }
-                syn::GenericParam::Lifetime(_) => {
-                    panic!("model with lifetime is invalid");
-                }
-            };
-        }
-    }
     let is_generic = !item.generics.params.is_empty();
-    if is_generic {
-        quote_into! {gnb += <#{gnbqi(gnb, item.generics.params.iter())}>};
-    }
 
     if !matches!(item.fields, syn::Fields::Named(_)) {
         panic!("invalid struct type must be named")
@@ -299,30 +268,28 @@ pub(crate) fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
         }
     }
 
-    let s = quote! {
+    Ok(quote! {
         #item
 
         const _: () = { #asspad };
 
-        impl #generics ::core::default::Default for #ident #gnb {
+        #[automatically_derived]
+        impl #impl_gnc ::core::default::Default for #ident #ty_gnc #where_gnc {
             #[inline]
-            fn default() -> #ident #gnb {
+            fn default() -> Self {
                 #ident {#default_impl}
             }
         }
 
-        impl #generics #ident #gnb {
+        #[automatically_derived]
+        impl #impl_gnc #ident #ty_gnc #where_gnc {
             #ssi
 
             #ffs
         }
 
 
-        impl #generics #ci::models::Binary for #ident #gnb {}
-
-    };
-
-    // println!("{s}");
-
-    s.into()
+        #[automatically_derived]
+        impl #impl_gnc #ci::models::Binary for #ident #ty_gnc #where_gnc {}
+    })
 }

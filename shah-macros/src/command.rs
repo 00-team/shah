@@ -103,6 +103,7 @@ pub(crate) fn command(code: TokenStream) -> TokenStream {
     quote_into!(h += help.push('\n'); help);
 
     quote_into! {s +=
+        #[automatically_derived]
         impl #ci::Command for #ident {
             fn parse(mut args: std::env::Args) -> Self {
                 let Some(cmd) = args.next() else { return Self::default() };

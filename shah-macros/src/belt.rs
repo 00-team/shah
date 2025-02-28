@@ -40,6 +40,7 @@ pub(crate) fn belt(code: TokenStream) -> TokenStream {
     }
 
     quote! {
+        #[automatically_derived]
         impl #impl_gnc #ci::db::belt::Belt for #ident #ty_gnc #where_gnc {
             fn next(&self) -> &#ci::models::Gene {
                 &self.#next_ident

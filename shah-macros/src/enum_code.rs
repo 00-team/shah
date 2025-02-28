@@ -38,6 +38,7 @@ pub(crate) fn enum_code(code: TokenStream) -> TokenStream {
         )
     });
     quote_into! {s +=
+        #[automatically_derived]
         impl #ident {
             const fn enum_code(&self) -> #ecty {
                 match self {

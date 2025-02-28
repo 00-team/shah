@@ -64,6 +64,7 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
     }
 
     quote! {
+        #[automatically_derived]
         impl #impl_gnc #ci::db::entity::Entity for #ident #ty_gnc #where_gnc {
             fn gene(&self) -> &#ci::models::Gene {
                 &self.#gene_ident

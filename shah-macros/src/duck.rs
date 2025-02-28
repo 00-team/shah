@@ -18,6 +18,7 @@ pub(crate) fn duck(code: TokenStream) -> TokenStream {
     }
 
     quote! {
+        #[automatically_derived]
         impl #generics #ci::db::pond::Duck for #ident #gnb {
             fn pond(&self) -> &Gene {
                 &self.pond

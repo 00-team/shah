@@ -76,8 +76,6 @@ pub(crate) mod db {
 #[shah::api(scope = 1, error = crate::models::ExampleError)]
 mod eapi {
 
-    pub fn ggez(a) -> Result<(), ErrorCode> {}
-
     pub(crate) fn phone_add(
         state: &mut State, inp: (&[u8; 12], &Gene),
         out: (&mut [u8; 12], &mut Gene),

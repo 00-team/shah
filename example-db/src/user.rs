@@ -1,13 +1,15 @@
-pub mod db {
-    #![allow(dead_code)]
+use crate::models::ExampleError;
+use crate::models::State;
+use shah::db::entity::{EntityDb, EntityKochDb, EntityKochFrom};
+use shah::models::{Gene, GeneId};
+use shah::{Entity, ShahError, ShahSchema};
+use shah::{ErrorCode, PAGE_SIZE};
+use std::cell::RefMut;
 
-    use std::cell::RefMut;
+pub use db::User;
 
-    use shah::db::entity::{EntityDb, EntityKochDb, EntityKochFrom};
-    use shah::models::Gene;
-    use shah::{Entity, ShahError, ShahSchema};
-
-    use crate::models::ExampleError;
+pub(crate) mod db {
+    use super::*;
 
     #[shah::model]
     #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
@@ -129,15 +131,9 @@ pub mod db {
 }
 
 #[shah::api(scope = 0, error = crate::models::ExampleError)]
-mod api {
-    use super::db::User;
-    use crate::models::State;
-    use shah::{
-        models::{Gene, GeneId},
-        ErrorCode, PAGE_SIZE,
-    };
+mod uapi {
 
-    pub(crate) fn user_add(
+    pub(super) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),
     ) -> Result<(), ErrorCode> {
         out.clone_from(inp);

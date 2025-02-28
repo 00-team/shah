@@ -16,10 +16,11 @@ pub(crate) mod db {
 use crate::models::{ExampleError, State};
 use shah::db::snake::SnakeHead;
 use shah::models::Gene;
-use shah::{AsUtf8Str, ClientError, Taker, BLOCK_SIZE};
+use shah::{AsUtf8Str, ClientError, ErrorCode, Taker, BLOCK_SIZE};
 
 #[shah::api(scope = 2, error = crate::models::ExampleError)]
 mod eapi {
+
     pub fn init(
         state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),
     ) -> Result<(), ErrorCode> {

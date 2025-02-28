@@ -54,6 +54,7 @@ pub(crate) fn schema(code: TokenStream) -> TokenStream {
     }
 
     quote_into! {s +=
+        #[automatically_derived]
         impl #impl_gnc #ci::models::ShahSchema for #ident #ty_gnc #where_gnc {
             fn shah_schema() -> #ci::models::Schema {
                 #ci::models::Schema::Model(#ci::models::SchemaModel {

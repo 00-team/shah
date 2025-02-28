@@ -1,11 +1,17 @@
-use shah::BLOCK_SIZE;
+use crate::models::{ExampleError, State};
+use shah::db::belt::Buckle;
+use shah::models::{Binary, Gene};
+use shah::{db::belt::BeltDb, ShahError};
+use shah::{AsUtf8Str, ClientError, ErrorCode, OptNotFound, Taker, BLOCK_SIZE};
+
+#[allow(unused_imports)]
+pub use client::*;
+pub use db::Extra;
 
 const EXTRA_DATA: usize = BLOCK_SIZE * 2 - 3;
 
 pub(crate) mod db {
-    use shah::{db::belt::BeltDb, models::Gene, ShahError};
-
-    use super::EXTRA_DATA;
+    use super::*;
 
     #[derive(shah::ShahSchema)]
     #[shah::model]
@@ -30,19 +36,7 @@ pub(crate) mod db {
 }
 
 #[shah::api(scope = 3, error = crate::models::ExampleError)]
-pub mod api {
-    use crate::models::{ExampleError, State};
-    use shah::db::belt::Buckle;
-    use shah::db::snake::SnakeHead;
-    use shah::models::{Binary, Gene};
-    use shah::{
-        AsUtf8Str, ClientError, ErrorCode, IsNotFound, OptNotFound, Taker,
-        BLOCK_SIZE,
-    };
-
-    use super::db::Extra;
-    use super::EXTRA_DATA;
-
+mod eapi {
     pub(crate) fn buckle_get(
         state: &mut State, (buckle_gene,): (&Gene,), (buckle,): (&mut Buckle,),
     ) -> Result<(), ErrorCode> {
@@ -95,68 +89,63 @@ pub mod api {
         state.extra.belt_del(extra_gene, res)?;
         Ok(())
     }
-
-    #[client]
-    pub fn get_all(
-        taker: &Taker, buckle_gene: &Gene,
-    ) -> Result<String, ClientError<ExampleError>> {
-        let buckle = buckle_get(taker, buckle_gene)?;
-        let mut data = Vec::with_capacity(buckle.belts as usize * EXTRA_DATA);
-
-        let mut gene = buckle.head;
-        loop {
-            if gene.is_none() {
-                break;
-            }
-
-            let Some(extra) = get(taker, &gene).onf()? else { break };
-            let len = (extra.length as usize).min(extra.data.len());
-            data.extend_from_slice(&extra.data[..len]);
-            gene = extra.next;
-        }
-
-        Ok(data[..].as_utf8_str_null_terminated().to_string())
-    }
-
-    #[client]
-    pub fn set_all(
-        taker: &Taker, buckle_gene: &Option<Gene>, data: &str,
-    ) -> Result<Gene, ClientError<ExampleError>> {
-        let data = data.as_bytes();
-
-        let b = if let Some(og) = buckle_gene {
-            buckle_get(taker, og).onf()?
-        } else {
-            None
-        };
-        let buckle = if let Some(b) = b { b } else { buckle_add(taker)? };
-        let mut gene = buckle.head;
-        let mut extra = Extra::default();
-
-        for x in data.chunks(EXTRA_DATA) {
-            extra.data[..x.len()].copy_from_slice(x);
-            extra.length = x.len() as u16;
-
-            if gene.is_none() {
-                extra.gene.clear();
-                add(taker, &buckle.gene, &extra)?;
-                continue;
-            }
-
-            extra.gene = gene;
-            match set(taker, &extra).onf()? {
-                Some(v) => gene = v.next,
-                None => {
-                    extra.gene.clear();
-                    add(taker, &buckle.gene, &extra)?;
-                    gene.clear();
-                }
-            }
-        }
-
-        Ok(buckle.gene)
-    }
 }
 
-#[allow(unused_imports)]
-pub use client::*;
+pub fn get_all(
+    taker: &Taker, buckle_gene: &Gene,
+) -> Result<String, ClientError<ExampleError>> {
+    let buckle = buckle_get(taker, buckle_gene)?;
+    let mut data = Vec::with_capacity(buckle.belts as usize * EXTRA_DATA);
+
+    let mut gene = buckle.head;
+    loop {
+        if gene.is_none() {
+            break;
+        }
+
+        let Some(extra) = get(taker, &gene).onf()? else { break };
+        let len = (extra.length as usize).min(extra.data.len());
+        data.extend_from_slice(&extra.data[..len]);
+        gene = extra.next;
+    }
+
+    Ok(data[..].as_utf8_str_null_terminated().to_string())
+}
+
+pub fn set_all(
+    taker: &Taker, buckle_gene: &Option<Gene>, data: &str,
+) -> Result<Gene, ClientError<ExampleError>> {
+    let data = data.as_bytes();
+
+    let b = if let Some(og) = buckle_gene {
+        buckle_get(taker, og).onf()?
+    } else {
+        None
+    };
+    let buckle = if let Some(b) = b { b } else { buckle_add(taker)? };
+    let mut gene = buckle.head;
+    let mut extra = Extra::default();
+
+    for x in data.chunks(EXTRA_DATA) {
+        extra.data[..x.len()].copy_from_slice(x);
+        extra.length = x.len() as u16;
+
+        if gene.is_none() {
+            extra.gene.clear();
+            add(taker, &buckle.gene, &extra)?;
+            continue;
+        }
+
+        extra.gene = gene;
+        match set(taker, &extra).onf()? {
+            Some(v) => gene = v.next,
+            None => {
+                extra.gene.clear();
+                add(taker, &buckle.gene, &extra)?;
+                gene.clear();
+            }
+        }
+    }
+
+    Ok(buckle.gene)
+}

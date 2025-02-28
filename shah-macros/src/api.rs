@@ -1,16 +1,23 @@
 use crate::err;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
 use syn::{punctuated::Punctuated, spanned::Spanned};
 
 type Args = Punctuated<syn::MetaNameValue, syn::token::Comma>;
 
-pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
+pub(crate) fn api(
+    args: Args, mut item: syn::ItemMod,
+) -> syn::Result<TokenStream2> {
     let item_span = item.span();
-    let Some((_, content)) = item.content else {
+    let Some((_, content)) = &mut item.content else {
         return err!(item_span, "mod is empty");
     };
+
+    let user_mod = &item.ident;
+    if user_mod == "api" {
+        return err!(user_mod.span(), "mod api is a reserved name");
+    }
 
     if content.is_empty() {
         return err!(item_span, "mod is empty");
@@ -20,25 +27,42 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
 
     let ApiArgs { api_scope, user_error } = parse_args(args)?;
     let ci = crate::crate_ident();
-    let mut uses = TokenStream2::new();
-    let mut user_funcs = Vec::<syn::ItemFn>::new();
-    let mut user_client = TokenStream2::new();
+    // let mut uses = TokenStream2::new();
+    let mut user_funcs = Vec::<&syn::ItemFn>::new();
+    // let mut user_client = TokenStream2::new();
     let bin = quote! { #ci::models::Binary };
 
     for item in content.iter() {
         match &item {
             syn::Item::Fn(f) => {
-                let mut f = f.clone();
                 if f.attrs.iter().any(|a| a.path().is_ident("client")) {
-                    f.attrs.clear();
-                    quote_into!(user_client += #f);
-                } else {
-                    user_funcs.push(f);
+                    return err!(f.span(), "#[client] is deprecated");
+                    // f.attrs.clear();
+                    // quote_into!(user_client += #f);
+                }
+
+                match f.vis {
+                    syn::Visibility::Inherited => {}
+                    _ => user_funcs.push(f),
                 }
             }
-            syn::Item::Use(u) => quote_into!(uses += #u),
+            // syn::Item::Use(u) => quote_into!(uses += #u),
+            syn::Item::Use(u) => {
+                return err!(
+                    u.span(),
+                    "put all of your `use`'s in the parent mod"
+                )
+            }
             _ => return err!(item.span(), "only fn's and use's are valid"),
         }
+    }
+
+    if user_funcs.is_empty() {
+        return err!(
+            item_span,
+            "you have no api function. you mut at least have one ",
+            "function with visibility of pub(super) or higher"
+        );
     }
 
     let mut routes = Vec::<Route>::with_capacity(user_funcs.len());
@@ -60,7 +84,7 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
     }
 
     let mut a = TokenStream2::new();
-    user_funcs.iter().for_each(|f| quote_into!(a += #f));
+    // user_funcs.iter().for_each(|f| quote_into!(a += #f));
 
     for Route { api_ident, ident, inp, out, ret, .. } in routes.iter() {
         let mut output_var = TokenStream2::new();
@@ -98,7 +122,7 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
                 let output = (#{
                     out.iter().for_each(|(vid, _)| quote_into!(a += #vid,))
                 });
-                let res = #ident(state, input, output)?;
+                let res = #user_mod :: #ident(state, input, output)?;
                 #return_value
             }
         };
@@ -131,7 +155,7 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
         let mut inp_res = TokenStream2::new();
         for (i, t) in inp.iter() {
             quote_into! {inp_res +=
-                order_body[#bf..#bf + <#t as #bin>::S]
+                __order_body[#bf..#bf + <#t as #bin>::S]
                 .clone_from_slice(<#t as #bin>::as_binary(#i));
             };
             quote_into! {bf += + <#t as #bin>::S};
@@ -147,7 +171,7 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
 
             (
                 quote!(#t),
-                quote!(<#t as #bin>::from_binary(&reply.body[..<#t as #bin>::S]).clone()),
+                quote!(<#t as #bin>::from_binary(&__reply.body[..<#t as #bin>::S]).clone()),
             )
         } else {
             let mut ot = TokenStream2::new();
@@ -160,7 +184,7 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
             for (_, t) in out.iter() {
                 quote_into! {or +=
                     <#t as #bin>::from_binary(
-                        &reply.body[#bf..#bf + <#t as #bin>::S]
+                        &__reply.body[#bf..#bf + <#t as #bin>::S]
                     ).clone(),
                 };
                 quote_into! {bf += + <#t as #bin>::S};
@@ -174,16 +198,16 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
             pub fn #ident(
                 taker: &#ci::Taker, #fn_inp
             ) -> Result<#out_ty, #ci::ClientError<#user_error>> {
-                let mut order = [0u8; #is + <#ci::models::OrderHead as #bin>::S];
-                let (order_head, order_body) = order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
-                let order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(order_head);
-                order_head.scope = ( #api_scope ) as u8;
-                order_head.route = ( #rdx ) as u8;
-                order_head.size = ( #is ) as u32;
+                let mut __order = [0u8; #is + <#ci::models::OrderHead as #bin>::S];
+                let (__order_head, __order_body) = __order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
+                let __order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(__order_head);
+                __order_head.scope = ( #api_scope ) as u8;
+                __order_head.route = ( #rdx ) as u8;
+                __order_head.size = ( #is ) as u32;
 
                 #inp_res
 
-                let reply = taker.take(&mut order)?;
+                let __reply = taker.take(&mut __order)?;
                 // let reply_head = taker.reply_head();
                 // let reply_body = taker.reply_body(reply_head.size as usize);
                 Ok(#out_res)
@@ -193,11 +217,23 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
 
     let routes_len = routes.len();
 
-    quote_into! {s +=
-        pub(crate) mod api {
-            #![allow(unused_imports)]
+    content.insert(
+        0,
+        syn::parse_quote!(
+            use super::*;
+        ),
+    );
 
-            #uses
+    quote_into! {s +=
+        #item
+
+        pub(crate) mod api {
+
+            use super::*;
+
+            // #![allow(unused_imports)]
+
+            // #uses
             #a
 
             pub(crate) const ROUTES: [#ci::models::Api<#state>; #routes_len] = [#routes_api];
@@ -206,10 +242,12 @@ pub(crate) fn api(args: Args, item: syn::ItemMod) -> syn::Result<TokenStream2> {
         }
 
         pub mod client {
-            #![allow(dead_code, unused_imports)]
-            #uses
+            // #![allow(dead_code, unused_imports)]
+
+            use super::*;
+            // #uses
             #c
-            #user_client
+            // #user_client
         }
     };
 
@@ -270,7 +308,7 @@ fn parse_args(args: Args) -> syn::Result<ApiArgs> {
     Ok(ApiArgs { user_error, api_scope })
 }
 
-fn returns_output_size(rt: &syn::ReturnType) -> syn::Result<bool> {
+fn returns_output_size(span: Span, rt: &syn::ReturnType) -> syn::Result<bool> {
     macro_rules! e {
         () => {
             err!(
@@ -281,7 +319,9 @@ fn returns_output_size(rt: &syn::ReturnType) -> syn::Result<bool> {
         };
     }
 
-    let syn::ReturnType::Type(_, t) = rt else { return e!() };
+    let syn::ReturnType::Type(_, t) = rt else {
+        return err!(span, "no return type has been specified");
+    };
 
     let syn::Type::Path(p) = &(**t) else { return e!() };
     let args = &p.path.segments[0].arguments;
@@ -345,9 +385,10 @@ impl Route {
         let mut res = RouteArgs::with_capacity(tt.elems.len());
 
         let prefix = if mm { "o" } else { "i" };
+        let mut has_names = false;
 
-        let has_names = match &(*fnarg.pat) {
-            syn::Pat::Tuple(pt) => {
+        if !mm {
+            if let syn::Pat::Tuple(pt) = &(*fnarg.pat) {
                 if pt.elems.len() != tt.elems.len() {
                     return err!(
                         pt.span(),
@@ -359,12 +400,14 @@ impl Route {
                     let syn::Pat::Ident(ei) = e else {
                         return err!(e.span(), "all names must be idents");
                     };
+                    if ei.ident == "taker" {
+                        return err!(ei.span(), "taker is a reserved ident");
+                    }
                     names.push(&ei.ident);
                 }
-                true
+                has_names = true
             }
-            _ => false,
-        };
+        }
 
         for (idx, t) in tt.elems.iter().enumerate() {
             let syn::Type::Reference(tr) = t else {
@@ -406,10 +449,7 @@ impl Route {
             .to_lowercase();
 
             if has_names {
-                res.push((
-                    format_ident!("{}_{prefix}{idx}", names[idx]),
-                    *tr.elem.clone(),
-                ));
+                res.push((names[idx].clone(), *tr.elem.clone()));
             } else {
                 res.push((
                     format_ident!("{tyn}_{prefix}{idx}"),
@@ -430,13 +470,13 @@ impl Route {
             api_ident: format_ident!("{}_api", sig.ident),
             inp: Default::default(),
             out: Default::default(),
-            ret: returns_output_size(&sig.output)?,
+            ret: returns_output_size(sig.span(), &sig.output)?,
             doc: "input: ".to_string(),
         };
 
         if sig.inputs.len() != 3 {
             return err!(
-                sig.inputs.span(),
+                sig.span(),
                 "api functions requires 3 arguments ",
                 "fn my_api(state: &mut State, inputs: (&A, &B), ",
                 "outputs: (&mut C, &mut D))"

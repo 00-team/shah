@@ -1,7 +1,10 @@
-pub mod db {
-    use shah::db::trie_const::{TrieAbc, TrieConst};
-    use shah::models::Gene;
-    use shah::ShahError;
+use crate::models::{ExampleError, State};
+use shah::db::trie_const::{TrieAbc, TrieConst};
+use shah::models::Gene;
+use shah::{ErrorCode, ShahError};
+
+pub(crate) mod db {
+    use super::*;
 
     #[derive(Debug)]
     pub struct PhoneAbc;
@@ -21,7 +24,8 @@ pub mod db {
     // const PHONE_ABC: &str = "0123456789";
     pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
 
-    pub fn setup() -> Result<PhoneDb, ShahError> {
+    #[allow(dead_code)]
+    pub(crate) fn setup() -> Result<PhoneDb, ShahError> {
         PhoneDb::new("phone", PhoneAbc)
     }
 
@@ -70,9 +74,9 @@ pub mod db {
 }
 
 #[shah::api(scope = 1, error = crate::models::ExampleError)]
-pub mod api {
-    use crate::models::{ExampleError, State};
-    use shah::{models::Gene, ErrorCode};
+mod eapi {
+
+    pub fn ggez(a) -> Result<(), ErrorCode> {}
 
     pub(crate) fn phone_add(
         state: &mut State, inp: (&[u8; 12], &Gene),

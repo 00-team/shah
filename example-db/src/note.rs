@@ -1,7 +1,9 @@
-pub mod db {
-    use shah::db::pond::PondDb;
-    use shah::models::Gene;
-    use shah::{Duck, Entity, ShahError, ShahSchema};
+use shah::db::pond::PondDb;
+use shah::models::Gene;
+use shah::{Duck, Entity, ShahError, ShahSchema};
+
+pub(crate) mod db {
+    use super::*;
 
     #[shah::model]
     #[derive(Debug, Entity, Duck, Clone, Copy, ShahSchema)]

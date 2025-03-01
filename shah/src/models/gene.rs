@@ -123,9 +123,10 @@ impl Gene {
         if self.id.0 == 0 {
             return Err(NotFound::GeneIdZero)?;
         }
-        if !cfg!(debug_assertions) && self.server == 0 {
-            return Err(NotFound::GeneServerZero)?;
-        }
+        // TODO: get the correct server value
+        // if !cfg!(debug_assertions) && self.server == 0 {
+        //     return Err(NotFound::GeneServerZero)?;
+        // }
 
         Ok(())
     }

@@ -6,7 +6,7 @@ custom database engine
 
 - [x] custom bin command. enum for matching and executing
 - [ ] do a benchmark test https://www.youtube.com/watch?v=R7jBtnrUmYI
-- [ ] chained data like have memort pages works. double-linked entity with 4096 bytes string
+- [x] chained data like have memory pages works. double-linked entity with 4096 bytes string
 
 ## Concept
 

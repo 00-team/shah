@@ -34,11 +34,6 @@ pub(crate) fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
         impl From<#ident> for #ty {
             fn from(value: #ident) -> Self {
                 value as #ty
-                // match value {
-                //     #{variants.for_each(|(ix, vi, vf)|
-                //         quote_into!{s += #ident::#vi #vf => #ix,}
-                //     )}
-                // }
             }
         }
 

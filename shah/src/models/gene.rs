@@ -197,9 +197,7 @@ impl<'de> serde::de::Visitor<'de> for StrVisitor {
     //     Ok(None)
     // }
 
-    fn visit_string<E: serde::de::Error>(
-        self, v: String,
-    ) -> Result<Self::Value, E> {
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
         if v.len() != Gene::S * 2 {
             return Err(E::custom(format!(
                 "invalid length {}, expected {}",
@@ -208,7 +206,7 @@ impl<'de> serde::de::Visitor<'de> for StrVisitor {
             )));
         }
 
-        Ok(v)
+        Ok(v.to_string())
     }
 }
 
@@ -218,7 +216,7 @@ impl<'de> serde::Deserialize<'de> for Gene {
     where
         D: serde::Deserializer<'de>,
     {
-        match deserializer.deserialize_string(StrVisitor)?.parse::<Gene>() {
+        match deserializer.deserialize_str(StrVisitor)?.parse::<Gene>() {
             Ok(v) => Ok(v),
             Err(_) => Err(serde::de::Error::custom("expected string")),
         }

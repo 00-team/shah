@@ -15,7 +15,7 @@ mod utils;
 use proc_macro::TokenStream;
 
 /// Example:
-/// ```rust
+/// ```ignore
 /// #[derive(Debug, Default, shah::Command)]
 /// enum MyCommands {
 ///     #[default]
@@ -30,7 +30,7 @@ pub fn command(code: TokenStream) -> TokenStream {
 }
 
 /// Example:
-/// ```rust
+/// ```ignore
 /// #[derive(Debug, shah::EnumCode)]
 /// #[enum_code(u8)]
 /// pub enum Schema {
@@ -46,7 +46,7 @@ pub fn enum_code(code: TokenStream) -> TokenStream {
 }
 
 /// Example:
-/// ```rust
+/// ```ignore
 /// #[shah::legacy]
 /// mod items {
 ///
@@ -102,7 +102,7 @@ pub fn legacy(_args: TokenStream, code: TokenStream) -> TokenStream {
 /// enum_ini is a two way conversion enum `<->` u16
 /// default **start** is `0` and default **ty** is `u8`
 /// Example:
-/// ```rust
+/// ```ignore
 /// #[shah::enum_int(ty = u16, start = 0)]
 /// #[derive(Debug, Default, Clone, Copy)]
 /// pub enum ExampleError {

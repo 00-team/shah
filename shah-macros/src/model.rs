@@ -247,9 +247,9 @@ impl FlagsField {
                     #{for n in 0..ubits {
                         let i = x * ubits + n;
                         let (byte, bit) = (i / 8, i % 8);
-                        let rn = ubits - n - 1;
+                        // let rn = ubits - n - 1;
                         quote_into! {s +=
-                            (((self.#field[#byte] >> #bit) & 1) << #rn)
+                            (((self.#field[#byte] >> #bit) & 1) << #n)
                         }
                         if n != ubits - 1 {
                             quote_into!(s += |)
@@ -261,11 +261,10 @@ impl FlagsField {
                     #{for n in 0..ubits {
                         let i = x * ubits + n;
                         let (byte, bit) = (i / 8, i % 8);
-                        let rn = ubits - n - 1;
                         quote_into! {s +=
                             self.#field[#byte] = (
                                 (self.#field[#byte] & !(1 << #bit)) |
-                                (((#get >> #rn) & 1) << #bit)
+                                (((#get >> #n) & 1) << #bit)
                             );
                         }
                     }}

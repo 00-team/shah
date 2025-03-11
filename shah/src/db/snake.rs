@@ -35,7 +35,7 @@ pub struct SnakeHead {
     pub length: u64,
     growth: u64,
     entity_flags: u32,
-    #[flags(free)]
+    #[flags(is_free)]
     pub flags: u32,
 }
 
@@ -243,7 +243,7 @@ impl SnakeDb {
 
         head.zeroed();
         head.set_alive(true);
-        head.set_free(false);
+        head.set_is_free(false);
 
         if let Some(free) = self.take_free(capacity)? {
             head.position = free.position;
@@ -352,7 +352,7 @@ impl SnakeDb {
             return Ok(());
         }
 
-        head.set_free(true);
+        head.set_is_free(true);
         self.index.set(&mut head)?;
         if let Err(e) = self.add_free(head) {
             log::warn!("add_free failed in free: {e:?}");
@@ -493,7 +493,7 @@ impl SnakeDb {
             fdx += 1;
         }
 
-        head.set_free(true);
+        head.set_is_free(true);
         head.set_alive(true);
         self.index.set(&mut head)?;
 

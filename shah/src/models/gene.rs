@@ -175,7 +175,7 @@ impl serde::Serialize for Gene {
     where
         S: serde::Serializer,
     {
-        if self.id.0 == 0 {
+        if self.is_none() {
             serializer.serialize_none()
         } else {
             serializer.serialize_str(&self.as_hex())
@@ -193,10 +193,13 @@ impl<'de> serde::de::Visitor<'de> for StrVisitor {
         f.write_str("a hex string with 32 length")
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
+    // fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+    //     Ok(None)
+    // }
+
+    fn visit_string<E: serde::de::Error>(
+        self, v: String,
+    ) -> Result<Self::Value, E> {
         if v.len() != Gene::S * 2 {
             return Err(E::custom(format!(
                 "invalid length {}, expected {}",
@@ -205,7 +208,7 @@ impl<'de> serde::de::Visitor<'de> for StrVisitor {
             )));
         }
 
-        Ok(v.to_string())
+        Ok(v)
     }
 }
 
@@ -215,9 +218,9 @@ impl<'de> serde::Deserialize<'de> for Gene {
     where
         D: serde::Deserializer<'de>,
     {
-        match deserializer.deserialize_str(StrVisitor)?.parse::<Gene>() {
+        match deserializer.deserialize_string(StrVisitor)?.parse::<Gene>() {
             Ok(v) => Ok(v),
-            Err(_) => Err(serde::de::Error::custom("expected str")),
+            Err(_) => Err(serde::de::Error::custom("expected string")),
         }
     }
 }

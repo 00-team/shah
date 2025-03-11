@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const DETAIL_MAX: usize = 50 * 1024;
 pub const DETAIL_BUF: usize = 255;
 

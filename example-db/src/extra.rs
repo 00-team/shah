@@ -91,6 +91,7 @@ mod eapi {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_all(
     taker: &Taker, buckle_gene: &Gene,
 ) -> Result<String, ClientError<ExampleError>> {
@@ -112,6 +113,7 @@ pub fn get_all(
     Ok(data[..].as_utf8_str_null_terminated().to_string())
 }
 
+#[allow(dead_code)]
 pub fn set_all(
     taker: &Taker, buckle_gene: &Option<Gene>, data: &str,
 ) -> Result<Gene, ClientError<ExampleError>> {

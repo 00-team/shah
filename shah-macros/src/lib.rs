@@ -56,7 +56,7 @@ pub fn enum_code(code: TokenStream) -> TokenStream {
 ///         gene: Gene,
 ///         is_alive: bool,
 ///     }
-/// 
+///
 ///     impl From<&Review> for Base {
 ///         fn from(value: &Review) -> Self {
 ///             Self {
@@ -65,27 +65,27 @@ pub fn enum_code(code: TokenStream) -> TokenStream {
 ///             }
 ///         }
 ///     }
-/// 
+///
 ///     // child 1
 ///     pub struct ReviewInfo {
 ///         // gene: Gene,
 ///         // is_alive: bool,
 ///         user: Gene,
 ///     }
-/// 
+///
 ///     impl From<&Review> for ReviewInfo {
 ///         fn from(value: &Review) -> Self {
 ///             Self { user: value.user }
 ///         }
 ///     }
-/// 
+///
 ///     // child 2
 ///     pub struct EateryReviewInfo {
 ///         // gene: Gene,
 ///         // is_alive: bool,
 ///         user: Option<EateryReviewUserInfo>,
 ///     }
-/// 
+///
 ///     impl From<&Review> for EateryReviewInfo {
 ///         fn from(review: &Review) -> Self {
 ///             Self { user: None }
@@ -188,10 +188,10 @@ pub(crate) use ident;
 
 macro_rules! err {
     ($span:expr, $($msg:literal),*) => {
-        Err(syn::Error::new(
-            $span,
-            concat!( $($msg),* )
-        ))
+        Err(syn::Error::new($span, concat!( $($msg),* )))
+    };
+    ($span:expr, $msg:expr) => {
+        Err(syn::Error::new($span, $msg))
     };
 }
 

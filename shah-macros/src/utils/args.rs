@@ -37,10 +37,11 @@ macro_rules! args_parse {
                 }
                 Ok(Self {
                     $(
-                        $field_name: $field_name.ok_or_else(|| ::syn::Error::new(
-                            ::proc_macro2::Span::call_site(),
-                            ::core::concat!("Missing key `", ::core::stringify!($field_name), "`"),
-                        ))?,
+                        $field_name: $field_name.unwrap_or_default(),
+                        // $field_name: $field_name.ok_or_else(|| ::syn::Error::new(
+                        //     ::proc_macro2::Span::call_site(),
+                        //     ::core::concat!("Missing key `", ::core::stringify!($field_name), "`"),
+                        // ))?,
                     )*
                 })
             }

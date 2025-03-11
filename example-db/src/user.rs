@@ -37,7 +37,6 @@ pub(crate) mod db {
     #[shah::model]
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User_0 {
-        // pub flags: u64,
         pub gene: Gene,
         pub agent: Gene,
         pub review: Gene,
@@ -70,6 +69,10 @@ pub(crate) mod db {
         pub entity_flags: u8,
         #[flags(banned)]
         pub flags: u8,
+        #[flags(has_something, bits = 2)]
+        pub trieflags: u64,
+        #[flags(has_ggez, bits = 2)]
+        pub trieflags22: [u8; 8],
         #[str]
         pub name: [u8; 48],
         pub sessions: [Session; 3],
@@ -77,6 +80,7 @@ pub(crate) mod db {
     }
 
     impl User {
+        #[allow(dead_code)]
         pub fn set_phone(&mut self, phone: &str) -> Result<(), ExampleError> {
             if phone.len() != 11 || !phone.starts_with("09") {
                 return Err(ExampleError::BadPhone);
@@ -94,6 +98,7 @@ pub(crate) mod db {
     type S = ();
     pub type OldUserDb = EntityKochDb<User_0>;
     pub type UserDb = EntityDb<User, User_0, S>;
+    #[allow(dead_code)]
     pub type UserDb0 = EntityDb<User_0>;
 
     impl EntityKochFrom<User_0, S> for User {
@@ -117,10 +122,12 @@ pub(crate) mod db {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn init_0() -> Result<UserDb0, ShahError> {
         UserDb0::new("user", 0)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn init() -> Result<UserDb, ShahError> {
         UserDb::new("user", 1)
     }

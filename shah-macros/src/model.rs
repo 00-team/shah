@@ -1,10 +1,11 @@
+use crate::{err, utils::args::args_parse};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
-use syn::parse::Parser;
+use syn::{parse::Parser, spanned::Spanned};
 
 type KeyList = syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>;
-type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
+// type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
 pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     let (impl_gnc, ty_gnc, where_gnc) = item.generics.split_for_impl();
@@ -12,7 +13,7 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     let is_generic = !item.generics.params.is_empty();
 
     if !matches!(item.fields, syn::Fields::Named(_)) {
-        panic!("invalid struct type must be named")
+        return err!(item.span(), "invalid struct type must be named");
     }
 
     for attr in item.attrs.iter() {
@@ -22,16 +23,16 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
 
         let ident = meta.path.segments[0].ident.to_string();
         if ident == "repr" {
-            panic!("model must be repr(C) which is default")
+            return err!(attr.span(), "model must be repr(C) which is default");
         }
         if ident == "derive" {
             for token in meta.tokens.clone() {
-                let proc_macro2::TokenTree::Ident(t) = token else {
+                let proc_macro2::TokenTree::Ident(t) = &token else {
                     continue;
                 };
 
                 if t == "Default" {
-                    panic!("remove the Default derive")
+                    return err!(token.span(), "remove the Default derive");
                 }
             }
         }
@@ -41,101 +42,24 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     let ident = item.ident.clone();
     let ci = crate::crate_ident();
 
-    struct StrField {
-        field: syn::Ident,
-        get: bool,
-        set: bool,
-    }
+    let mut flags_fields = Vec::<FlagsField>::with_capacity(5);
+    let mut str_fields = Vec::<StrField>::with_capacity(5);
 
-    struct FlagField {
-        field: syn::Ident,
-        flags: Vec<syn::Ident>,
-    }
-
-    let mut flag_fields = Vec::<FlagField>::new();
-    let mut str_fields = Vec::<StrField>::new();
-    item.fields.iter_mut().for_each(|f| {
-        f.attrs.retain(|attr| {
-            match &attr.meta {
-                syn::Meta::Path(p) => {
-                    match p.segments[0].ident.to_string().as_str() {
-                        "str" => {
-                            str_fields.push(StrField {
-                                field: f.ident.clone().unwrap(),
-                                get: true,
-                                set: true,
-                            });
-                            return false;
-                        }
-                        "flags" => {
-                            panic!("flags attr must have at least one flag")
-                        }
-                        _ => {}
-                    }
-                }
-                syn::Meta::List(l) => {
-                    match l.path.segments[0].ident.to_string().as_str() {
-                        "str" => {
-                            let parser = KeyVal::parse_terminated;
-                            let mut sf = StrField {
-                                field: f.ident.clone().unwrap(),
-                                get: true,
-                                set: true,
-                            };
-                            let Ok(args) =
-                                parser.parse(l.tokens.clone().into())
-                            else {
-                                panic!("error parsing key value")
-                            };
-                            let args = args.into_iter().map(|a| {
-                                if let syn::Expr::Path(p) = &(*a.left) {
-                                    if let syn::Expr::Lit(lit) = &(*a.right) {
-                                        return (
-                                            p.path.segments[0].ident.clone(),
-                                            lit.lit.clone(),
-                                        );
-                                    }
-                                }
-
-                                panic!("invalid keyval args")
-                            });
-                            for (key, val) in args.into_iter() {
-                                let syn::Lit::Bool(val) = val else {
-                                    panic!("str args values must be bool")
-                                };
-
-                                match key.to_string().as_str() {
-                                    "set" => sf.set = val.value,
-                                    "get" => sf.get = val.value,
-                                    _ => panic!("unknown key"),
-                                }
-                            }
-
-                            str_fields.push(sf);
-                            return false;
-                        }
-                        "flags" => {
-                            let parser = KeyList::parse_terminated;
-                            let keys = parser.parse(l.tokens.clone().into());
-                            let Ok(keys) = keys else {
-                                panic!("invalid #[flags] attr")
-                            };
-
-                            flag_fields.push(FlagField {
-                                field: f.ident.clone().unwrap(),
-                                flags: keys.iter().cloned().collect::<_>(),
-                            });
-
-                            return false;
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
+    for f in item.fields.iter_mut() {
+        let mut retained_attrs = Vec::with_capacity(f.attrs.len());
+        for attr in &f.attrs {
+            let Some(ma) = parse_attrs(f, attr)? else {
+                retained_attrs.push(attr.clone());
+                continue;
+            };
+            match ma {
+                ModelAttr::Str(v) => str_fields.push(v),
+                ModelAttr::Flags(v) => flags_fields.push(v),
             }
-            true
-        });
-    });
+        }
+
+        f.attrs = retained_attrs;
+    }
 
     let fields_len = item.fields.len();
 
@@ -247,7 +171,7 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     }
 
     let mut ffs = TokenStream2::new();
-    for FlagField { field, flags } in flag_fields.iter() {
+    for FlagsField { field, flags, .. } in flags_fields.iter() {
         for (i, f) in flags.iter().enumerate() {
             let get = format_ident!("{f}");
             let set = format_ident!("set_{f}");
@@ -292,4 +216,100 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
         #[automatically_derived]
         impl #impl_gnc #ci::models::Binary for #ident #ty_gnc #where_gnc {}
     })
+}
+
+struct StrField {
+    field: syn::Ident,
+    get: bool,
+    set: bool,
+}
+
+struct FlagsField {
+    field: syn::Ident,
+    flags: Vec<syn::Ident>,
+    is_array: bool,
+    bits: u8,
+}
+
+enum ModelAttr {
+    Str(StrField),
+    Flags(FlagsField),
+}
+
+args_parse! {
+    #[derive(Debug)]
+    struct StrArgs {
+        get: Option<syn::LitBool>,
+        set: Option<syn::LitBool>,
+    }
+}
+
+fn parse_str_attr(
+    f: &syn::Field, attr: &syn::Attribute,
+) -> syn::Result<StrField> {
+    const TYERR: &str = "#[str] field type must be an array of [u8; ..]";
+    match &f.ty {
+        syn::Type::Array(a) => match &(*a.elem) {
+            syn::Type::Path(p) => {
+                if !p.path.is_ident("u8") {
+                    return err!(a.span(), TYERR);
+                }
+            }
+            _ => return err!(a.span(), TYERR),
+        },
+        _ => return err!(f.ty.span(), TYERR),
+    }
+
+    match &attr.meta {
+        syn::Meta::Path(_) => Ok(StrField {
+            field: f.ident.clone().unwrap(),
+            get: true,
+            set: true,
+        }),
+        syn::Meta::List(ml) => {
+            let args: StrArgs = syn::parse(ml.tokens.clone().into())?;
+            Ok(StrField {
+                field: f.ident.clone().unwrap(),
+                get: args.get.map(|v| v.value).unwrap_or(true),
+                set: args.set.map(|v| v.value).unwrap_or(true),
+            })
+        }
+        _ => err!(attr.span(), "invalid attribute for #[str]"),
+    }
+}
+
+fn parse_flags_attr(
+    f: &syn::Field, attr: &syn::Attribute,
+) -> syn::Result<FlagsField> {
+    match &attr.meta {
+        syn::Meta::List(ml) => {
+            let parser = KeyList::parse_terminated;
+            let keys = parser.parse(ml.tokens.clone().into());
+            let Ok(keys) = keys else {
+                return err!(attr.span(), "invalid #[flags] attr");
+            };
+
+            Ok(FlagsField {
+                field: f.ident.clone().unwrap(),
+                flags: keys.iter().cloned().collect::<_>(),
+                is_array: false,
+                bits: 1,
+            })
+        }
+        _ => err!(attr.span(), "#[flags] attr must have at least one flag"),
+    }
+}
+
+fn parse_attrs(
+    f: &syn::Field, attr: &syn::Attribute,
+) -> syn::Result<Option<ModelAttr>> {
+    let attr_path = attr.path();
+    if attr_path.is_ident("str") {
+        return Ok(Some(ModelAttr::Str(parse_str_attr(f, attr)?)));
+    }
+    if attr_path.is_ident("flags") {
+        return Ok(Some(ModelAttr::Flags(parse_flags_attr(f, attr)?)));
+    }
+
+    Ok(None)
 }

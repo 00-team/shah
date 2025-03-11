@@ -1,10 +1,9 @@
 use crate::models::ExampleError;
 use crate::models::State;
-use shah::db::entity::{EntityDb, EntityKochDb, EntityKochFrom};
+use shah::db::entity::EntityDb;
 use shah::models::{Gene, GeneId};
 use shah::{Entity, ShahError, ShahSchema};
 use shah::{ErrorCode, PAGE_SIZE};
-use std::cell::RefMut;
 
 pub use db::User;
 
@@ -36,26 +35,6 @@ pub(crate) mod db {
     #[derive(ShahSchema)]
     #[shah::model]
     #[derive(Entity, Debug, PartialEq, Clone, Copy)]
-    pub struct User_0 {
-        pub gene: Gene,
-        pub agent: Gene,
-        pub review: Gene,
-        pub photo: Gene,
-        #[str]
-        phone: [u8; 12],
-        pub cc: u16,
-        entity_flags: u8,
-        #[flags(banned)]
-        pub flags: u8,
-        #[str]
-        pub name: [u8; 48],
-        pub sessions: [Session; 3],
-        growth: u64,
-    }
-
-    #[derive(ShahSchema)]
-    #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
     pub struct User {
         // pub flags: u64,
         pub gene: Gene,
@@ -67,16 +46,23 @@ pub(crate) mod db {
         phone: [u8; 12],
         pub cc: u16,
         pub entity_flags: u8,
-        #[flags(banned)]
-        pub flags: u8,
-        #[flags(has_something, bits = 2)]
-        pub trieflags: u64,
-        #[flags(has_ggez, bits = 2)]
-        pub trieflags22: [u8; 8],
+
         #[str]
-        pub name: [u8; 48],
+        pub name: [u8; 49],
         pub sessions: [Session; 3],
         growth: u64,
+
+        #[flags(f_1, f_2, f_3, f_4, f_5, f_6, f_7)]
+        pub flags: u64,
+
+        #[flags(bits = 3, fb3_1, fb3_2, fb3_3, fb3_4, fb3_5, fb3_6, fb3_7)]
+        pub flags_b3: u64,
+
+        #[flags(fa1, fa2, fa3, fa4, fa5, fa6, fa7, fa8, fa9, fa10, fa11)]
+        pub flags_arr: [u8; 8],
+
+        #[flags(bits = 3, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12)]
+        pub flags_arr_b3: [u8; 8],
     }
 
     impl User {
@@ -95,45 +81,11 @@ pub(crate) mod db {
         }
     }
 
-    type S = ();
-    pub type OldUserDb = EntityKochDb<User_0>;
-    pub type UserDb = EntityDb<User, User_0, S>;
-    #[allow(dead_code)]
-    pub type UserDb0 = EntityDb<User_0>;
-
-    impl EntityKochFrom<User_0, S> for User {
-        fn entity_koch_from(
-            old: User_0, _: RefMut<S>,
-        ) -> Result<Self, ShahError> {
-            Ok(Self {
-                gene: old.gene,
-                agent: old.agent,
-                review: old.review,
-                reviews: [0, 0, 0],
-                photo: old.photo,
-                phone: old.phone,
-                cc: old.cc,
-                entity_flags: old.entity_flags,
-                flags: old.flags,
-                name: old.name,
-                sessions: old.sessions,
-                growth: old.growth,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn init_0() -> Result<UserDb0, ShahError> {
-        UserDb0::new("user", 0)
-    }
+    pub type UserDb = EntityDb<User>;
 
     #[allow(dead_code)]
     pub(crate) fn init() -> Result<UserDb, ShahError> {
         UserDb::new("user", 1)
-    }
-
-    pub(crate) fn old_init() -> Result<OldUserDb, ShahError> {
-        OldUserDb::new("user", 0)
     }
 }
 
@@ -169,5 +121,81 @@ mod uapi {
     ) -> Result<usize, ErrorCode> {
         let count = state.users.list(*page, users)?;
         Ok(count * <User as shah::models::Binary>::S)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_flags() {
+        let mut user = super::db::User::default();
+        assert_eq!(user.flags, 0);
+        assert_eq!(user.flags_b3, 0);
+        assert_eq!(user.flags_arr, [0u8; 8]);
+        assert_eq!(user.flags_arr_b3, [0u8; 8]);
+
+        user.set_f_1(true);
+        user.set_f_2(true);
+        user.set_f_3(false);
+        user.set_f_4(true);
+        user.set_f_5(true);
+        user.set_f_6(false);
+        user.set_f_7(true);
+        assert_eq!(user.flags, 0b1011011);
+        assert!(user.f_1());
+        assert!(user.f_2());
+        assert!(!user.f_3());
+        assert!(user.f_4());
+        assert!(user.f_5());
+        assert!(!user.f_6());
+        assert!(user.f_7());
+
+        user.set_fb3_1(0);
+        assert_eq!(user.fb3_1(), 0);
+
+        user.set_fb3_2(1);
+        assert_eq!(user.fb3_2(), 1);
+
+        user.set_fb3_3(2);
+        assert_eq!(user.fb3_3(), 2);
+
+        user.set_fb3_4(4);
+        assert_eq!(user.fb3_4(), 4);
+
+        user.set_fb3_6(0b110101);
+        assert_eq!(user.fb3_6(), 0b101);
+
+        //                           f6  f5  f4  f3  f2  f1
+        assert_eq!(user.flags_b3, 0b_101_000_100_010_001_000);
+
+        user.set_fa1(true);
+        user.set_fa2(true);
+        // user.set_fa3(true);
+        user.set_fa4(true);
+        user.set_fa5(true);
+        user.set_fa6(true);
+        // user.set_fa7(false);
+        user.set_fa8(true);
+        user.set_fa9(true);
+        // user.set_fa10(false);
+        user.set_fa11(true);
+        assert_eq!(user.flags_arr, [0b10111011, 0b00000101, 0, 0, 0, 0, 0, 0]);
+        user.set_fa11(false);
+        assert_eq!(user.flags_arr, [0b10111011, 0b00000001, 0, 0, 0, 0, 0, 0]);
+
+        user.set_x1(1);  // 3
+        assert_eq!(user.x1(), 1);
+        user.set_x2(0);  // 6
+        user.set_x3(1);  // 9
+        user.set_x4(2);  // 12
+        user.set_x5(4);  // 15
+        user.set_x6(5);  // 18
+        user.set_x7(6);  // 21
+        user.set_x8(0);  // 24
+        user.set_x9(1);  // 27
+        user.set_x10(7); // 30
+        user.set_x11(1); // 33
+        user.set_x12(4); // 36
+        assert_eq!(user.flags_arr_b3, [0, 0, 0, 0, 0, 0, 0, 0]);
     }
 }

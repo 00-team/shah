@@ -1,11 +1,10 @@
+use std::usize;
+
 use crate::{err, utils::args::args_parse};
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Literal, TokenStream as TokenStream2};
 use quote::{format_ident, quote, ToTokens};
 use quote_into::quote_into;
 use syn::{parse::Parser, spanned::Spanned};
-
-type KeyList = syn::punctuated::Punctuated<syn::Ident, syn::Token![,]>;
-// type KeyVal = syn::punctuated::Punctuated<syn::ExprAssign, syn::Token![,]>;
 
 pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     let (impl_gnc, ty_gnc, where_gnc) = item.generics.split_for_impl();
@@ -171,25 +170,8 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     }
 
     let mut ffs = TokenStream2::new();
-    for FlagsField { field, flags, .. } in flags_fields.iter() {
-        for (i, f) in flags.iter().enumerate() {
-            let get = format_ident!("{f}");
-            let set = format_ident!("set_{f}");
-            quote_into! {ffs +=
-                pub fn #get(&self) -> bool {
-                    (self.#field & (1 << #i)) == (1 << #i)
-                }
-
-                pub fn #set(&mut self, #f: bool) -> &mut Self {
-                    if #f {
-                        self.#field |= (1 << #i);
-                    } else {
-                        self.#field &= !(1 << #i);
-                    }
-                    self
-                }
-            };
-        }
+    for ff in &flags_fields {
+        ff.quote_into(&mut ffs);
     }
 
     Ok(quote! {
@@ -226,9 +208,126 @@ struct StrField {
 
 struct FlagsField {
     field: syn::Ident,
-    flags: Vec<syn::Ident>,
-    is_array: bool,
+    flags: Vec<(syn::Ident, syn::Ident)>,
+    flag_ty: Option<syn::Ident>,
     bits: u8,
+}
+
+impl FlagsField {
+    fn quote_array(&self, s: &mut TokenStream2) {
+        let field = &self.field;
+        for (i, (get, set)) in self.flags.iter().enumerate() {
+            let (byte, bit) = (i / 8, i % 8);
+            quote_into! {s +=
+                pub fn #get(&self) -> bool {
+                    (self.#field[#byte] & (1 << #bit)) == (1 << #bit)
+                }
+
+                pub fn #set(&mut self, #get: bool) -> &mut Self {
+                    if #get {
+                        self.#field[#byte] |= (1 << #bit);
+                    } else {
+                        self.#field[#byte] &= !(1 << #bit);
+                    }
+                    self
+                }
+            };
+        }
+    }
+
+    fn quote_array_bits(&self, s: &mut TokenStream2) {
+        let field = &self.field;
+        // let mask = Literal::u8_unsuffixed((1 << self.bits) - 1);
+        let ubits = self.bits as usize;
+
+        for (x, (get, set)) in self.flags.iter().enumerate() {
+            // let pos = Literal::usize_unsuffixed(i * self.bits as usize);
+            quote_into! {s +=
+                pub fn #get(&self) -> u8 {
+                    #{for n in 0..ubits {
+                        let i = x * ubits + n;
+                        let (byte, bit) = (i / 8, i % 8);
+                        let rn = ubits - n - 1;
+                        quote_into! {s +=
+                            (((self.#field[#byte] >> #bit) & 1) << #rn)
+                        }
+                        if n != ubits - 1 {
+                            quote_into!(s += |)
+                        }
+                    }}
+                }
+
+                pub fn #set(&mut self, #get: u8) -> &mut Self {
+                    #{for n in 0..ubits {
+                        let i = x * ubits + n;
+                        let (byte, bit) = (i / 8, i % 8);
+                        let rn = ubits - n - 1;
+                        quote_into! {s +=
+                            self.#field[#byte] = (
+                                (self.#field[#byte] & !(1 << #bit)) |
+                                (((#get >> #rn) & 1) << #bit)
+                            );
+                        }
+                    }}
+
+                    self
+                }
+            };
+        }
+    }
+
+    fn quote_bits(&self, s: &mut TokenStream2, ty: &syn::Ident) {
+        let field = &self.field;
+        let mask = Literal::u8_unsuffixed((1 << self.bits) - 1);
+
+        for (i, (get, set)) in self.flags.iter().enumerate() {
+            let pos = Literal::usize_unsuffixed(i * self.bits as usize);
+            quote_into! {s +=
+                pub fn #get(&self) -> u8 {
+                    ((self.#field >> #pos) & #mask) as u8
+                }
+
+                pub fn #set(&mut self, #get: u8) -> &mut Self {
+                    let new = #get & #mask;
+                    let old = self.#field & !(#mask << #pos);
+                    self.#field = old | ((new as #ty) << #pos);
+
+                    self
+                }
+            };
+        }
+    }
+
+    pub fn quote_into(&self, s: &mut TokenStream2) {
+        let Some(ty) = &self.flag_ty else {
+            if self.bits == 1 {
+                return self.quote_array(s);
+            }
+            return self.quote_array_bits(s);
+        };
+
+        if self.bits != 1 {
+            return self.quote_bits(s, ty);
+        }
+
+        let field = &self.field;
+        for (i, (get, set)) in self.flags.iter().enumerate() {
+            quote_into! {s +=
+                pub fn #get(&self) -> bool {
+                    (self.#field & (1 << #i)) == (1 << #i)
+                }
+
+                pub fn #set(&mut self, #get: bool) -> &mut Self {
+                    if #get {
+                        self.#field |= (1 << #i);
+                    } else {
+                        self.#field &= !(1 << #i);
+                    }
+                    self
+                }
+            };
+        }
+    }
 }
 
 enum ModelAttr {
@@ -278,25 +377,85 @@ fn parse_str_attr(
     }
 }
 
+type FlagsList = syn::punctuated::Punctuated<syn::Expr, syn::Token![,]>;
+
 fn parse_flags_attr(
     f: &syn::Field, attr: &syn::Attribute,
 ) -> syn::Result<FlagsField> {
+    const ARRERR: &str = "#[flags] array value must be [u8; ...]";
+    const ARGERR: &str = "#[flags(f1, fl2, bits = 2, f3)] is only valid";
+    let flag_ty = match &f.ty {
+        syn::Type::Array(a) => {
+            let syn::Type::Path(p) = &(*a.elem) else {
+                return err!(a.span(), ARRERR);
+            };
+            if !p.path.is_ident("u8") {
+                return err!(a.span(), ARRERR);
+            }
+            None
+        }
+        syn::Type::Path(p) => p.path.get_ident().cloned(),
+        _ => return err!(f.ty.span(), "invalid type for #[flags]"),
+    };
+
     match &attr.meta {
         syn::Meta::List(ml) => {
-            let parser = KeyList::parse_terminated;
+            let parser = FlagsList::parse_terminated;
             let keys = parser.parse(ml.tokens.clone().into());
             let Ok(keys) = keys else {
-                return err!(attr.span(), "invalid #[flags] attr");
+                return err!(attr.span(), ARGERR);
             };
 
-            Ok(FlagsField {
+            let mut ff = FlagsField {
                 field: f.ident.clone().unwrap(),
-                flags: keys.iter().cloned().collect::<_>(),
-                is_array: false,
+                flags: Vec::with_capacity(keys.len()),
+                flag_ty,
                 bits: 1,
-            })
+            };
+
+            for exp in &keys {
+                match exp {
+                    syn::Expr::Path(ep) => {
+                        let i = ep.path.get_ident().unwrap();
+                        ff.flags.push((i.clone(), format_ident!("set_{i}")));
+                    }
+                    syn::Expr::Assign(ea) => {
+                        let syn::Expr::Path(left) = &(*ea.left) else {
+                            return err!(ml.span(), ARGERR);
+                        };
+                        if !left.path.is_ident("bits") {
+                            return err!(ml.span(), ARGERR);
+                        }
+                        let syn::Expr::Lit(right) = &(*ea.right) else {
+                            return err!(
+                                ml.span(),
+                                "value of bits must be literal"
+                            );
+                        };
+                        let syn::Lit::Int(bits) = &right.lit else {
+                            return err!(
+                                ml.span(),
+                                "value of bits must be ",
+                                "a number in range of 2..8"
+                            );
+                        };
+                        ff.bits = bits.base10_parse::<u8>()?;
+                        if ff.bits > 7 || ff.bits < 2 {
+                            return err!(
+                                ml.span(),
+                                "value of bits must be in range of 2..8"
+                            );
+                        }
+                    }
+                    _ => return err!(ml.span(), ARGERR),
+                }
+            }
+
+            Ok(ff)
         }
-        _ => err!(attr.span(), "#[flags] attr must have at least one flag"),
+        _ => {
+            err!(attr.span(), "#[flags] attr must have at least have one flag")
+        }
     }
 }
 

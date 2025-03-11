@@ -1,5 +1,5 @@
 use shah::{
-    db::{entity::EntityKoch, snake::SnakeDb},
+    db::snake::SnakeDb,
     error::{IsNotFound, ShahError},
     models::{Performed, ShahState, Task, TaskList},
     ErrorCode,
@@ -43,9 +43,9 @@ impl State {
         }
         .init()
     }
-    pub fn init(mut self) -> Result<Self, ShahError> {
-        let mig = EntityKoch::new(user::db::old_init()?, ());
-        self.users.set_koch(mig)?;
+    pub fn init(self) -> Result<Self, ShahError> {
+        // let mig = EntityKoch::new(user::db::old_init()?, ());
+        // self.users.set_koch(mig)?;
         // let x = RefCell::new(self);
         // let mut s = x.borrow_mut();
         // let ng = s.users.new_gene();

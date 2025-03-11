@@ -45,7 +45,8 @@ pub struct Pond {
     pub stack: GeneId,
     pub growth: u64,
     pub entity_flags: u8,
-    #[flags(free)]
+    // NOTE: is_free flags is set but never read
+    #[flags(is_free)]
     pub flags: u8,
     pub alive: u8,
     /// not iter exhausted slots.
@@ -175,7 +176,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         pond.next.zeroed();
         pond.past.zeroed();
         pond.origin.zeroed();
-        pond.set_free(true);
+        pond.set_is_free(true);
         self.index.set(&mut pond)?;
         self.free_list.push(pond.gene);
         Ok(())
@@ -211,7 +212,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
         new.next.clear();
         new.alive = 0;
         new.origin = origin.gene;
-        new.set_free(false);
+        new.set_is_free(false);
 
         origin.ponds += 1;
 
@@ -392,7 +393,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
         self.items.write_buf_at(&buf, pond.stack)?;
 
-        pond.set_free(true);
+        pond.set_is_free(true);
         pond.alive = 0;
 
         self.index.set(pond)?;

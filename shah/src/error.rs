@@ -100,6 +100,7 @@ pub enum NotFound {
     GeneIterMismatch,
     GenePepperMismatch,
     OutOfBounds,
+    IndexOutOfBounds,
     EntityNotAlive,
     /// using set for deleting aka seting alive to false without .del(...)
     DeadSet,

@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::{err, utils::args::args_parse};
 use proc_macro2::{Literal, TokenStream as TokenStream2};
 use quote::{format_ident, quote, ToTokens};

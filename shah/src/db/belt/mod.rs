@@ -2,7 +2,9 @@ use crate::db::entity::{
     Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom,
 };
 use crate::models::{Gene, GeneId, Performed, Task, TaskList};
-use crate::{utils, IsNotFound, NotFound, OptNotFound, ShahError, PAGE_SIZE};
+use crate::{
+    utils, IsNotFound, OptNotFound, ShahError, SystemError, PAGE_SIZE,
+};
 use std::path::Path;
 
 #[derive(crate::ShahSchema)]
@@ -83,7 +85,8 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     pub fn buckle_add(&mut self, buckle: &mut Buckle) -> Result<(), ShahError> {
         buckle.set_alive(true);
         buckle.belts = 0;
-        buckle.growth = 0; buckle.head.clear();
+        buckle.growth = 0;
+        buckle.head.clear();
         buckle.tail.clear();
 
         self.buckle.add(buckle)
@@ -141,7 +144,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
         belt.next_mut().clear();
 
         self.belt.add(belt)?;
-        
+
         let old_tail_gene = buckle.tail;
         buckle.tail = *belt.gene();
         buckle.belts += 1;
@@ -166,7 +169,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
 
     pub fn belt_set(&mut self, belt: &mut B) -> Result<(), ShahError> {
         if !belt.is_alive() {
-            return Err(NotFound::DeadSet)?;
+            return Err(SystemError::DeadSet)?;
         }
 
         let mut old_belt = B::default();

@@ -499,7 +499,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
-            return Err(NotFound::DeadSet)?;
+            return Err(SystemError::DeadSet)?;
         }
 
         let mut old_entity = T::default();

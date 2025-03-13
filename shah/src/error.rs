@@ -102,8 +102,6 @@ pub enum NotFound {
     OutOfBounds,
     IndexOutOfBounds,
     EntityNotAlive,
-    /// using set for deleting aka seting alive to false without .del(...)
-    DeadSet,
     SnakeIsFree,
     NoTrieValue,
 }
@@ -147,6 +145,8 @@ pub enum SystemError {
     GeneFromHexErr,
     /// this may happen if id of gene on the disk is not the correct id
     GeneIdMismatch,
+    /// using set for deleting aka seting alive to false without .del(...)
+    DeadSet,
 }
 
 impl From<std::io::Error> for SystemError {

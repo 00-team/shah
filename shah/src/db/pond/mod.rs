@@ -3,8 +3,8 @@ use super::entity::{
 };
 use crate::models::task_list::{Performed, Task, TaskList};
 use crate::models::{Binary, DeadList, Gene, GeneId};
-use crate::{utils, OptNotFound, BLOCK_SIZE, PAGE_SIZE};
-use crate::{IsNotFound, NotFound, ShahError};
+use crate::{utils, OptNotFound, SystemError, BLOCK_SIZE, PAGE_SIZE};
+use crate::{IsNotFound, ShahError};
 
 use std::fmt::Debug;
 use std::path::Path;
@@ -318,7 +318,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
-            return Err(NotFound::DeadSet)?;
+            return Err(SystemError::DeadSet)?;
         }
 
         let mut old_entity = T::default();

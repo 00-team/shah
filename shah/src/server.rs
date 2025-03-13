@@ -44,7 +44,9 @@ pub fn run<T: ShahState>(
                 )
             };
             if num_events == -1 {
-                return Err(io::Error::last_os_error())?;
+                let e = io::Error::last_os_error();
+                log::error!("epoll: {e:?}");
+                return Err(e)?;
             }
 
             // NOTE: we really dont care about what events has happend
@@ -170,11 +172,10 @@ fn handle_order<T>(
             reply.head.error = e.as_u32();
             reply.head.size = 0;
             send(server, reply.head.as_binary(), &addr);
-            log::debug!(
-                "reply {}::{}: err({:x}) {}μs",
+            log::error!(
+                "reply {}::{}: err({e:?}) {}μs",
                 scope.name,
                 route.name,
-                reply.head.error,
                 reply.head.elapsed
             );
         }

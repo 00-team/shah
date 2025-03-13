@@ -318,6 +318,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
+            log::error!("{} deleting using the set method", self.ls);
             return Err(SystemError::DeadSet)?;
         }
 

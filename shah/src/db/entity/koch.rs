@@ -138,7 +138,7 @@ impl<T: EntityItem> EntityKochDb<T> {
     fn init(&mut self) -> Result<(), ShahError> {
         let file_size = self.file_size()?;
         if file_size < ENTITY_META + T::N {
-            log::error!("{} content is not valid", self.ls);
+            log::error!("{} db content is not valid", self.ls);
             return Err(DbError::InvalidDbContent)?;
         }
 
@@ -176,7 +176,10 @@ impl<T: EntityItem> EntityKochDb<T> {
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
-                _ => Err(e)?,
+                _ => {
+                    log::error!("{} read_buf_at: {e:?}", self.ls);
+                    Err(e)?
+                }
             },
         }
     }
@@ -191,6 +194,7 @@ impl<T: EntityItem> EntityKochDb<T> {
         self.read_at(entity, gene_id)?;
 
         if gene_id != entity.gene().id {
+            log::error!("{} get_id: gene id mismatch", self.ls);
             return Err(SystemError::GeneIdMismatch)?;
         }
 

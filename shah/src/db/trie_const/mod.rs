@@ -137,6 +137,7 @@ impl<
 
         for (i, c) in cache_key.chars().rev().enumerate() {
             let Some(x) = self.abc.convert_char(c) else {
+                log::error!("{} convert_key: bad trie key", self.ls);
                 return Err(SystemError::BadTrieKey)?;
             };
             tckey.cache += (ABC_LEN.pow(i as u32) * x) as u64;
@@ -144,6 +145,7 @@ impl<
 
         for (i, c) in index_key.chars().enumerate() {
             let Some(x) = self.abc.convert_char(c) else {
+                log::error!("{} convert_key: bad trie key", self.ls);
                 return Err(SystemError::BadTrieKey)?;
             };
             tckey.index[i] = x;
@@ -159,7 +161,10 @@ impl<
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
-                _ => Err(e)?,
+                _ => {
+                    log::error!("{} read_at: {e:?}", self.ls);
+                    Err(e)?
+                }
             },
         }
     }

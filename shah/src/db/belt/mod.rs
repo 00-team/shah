@@ -33,7 +33,7 @@ pub trait Belt: EntityItem {
 pub struct BeltDb<B: Belt + EntityKochFrom<OB, BS>, OB: Belt = B, BS = ()> {
     buckle: EntityDb<Buckle>,
     belt: EntityDb<B, OB, BS>,
-    // ls: String,
+    ls: String,
     tasks: TaskList<2, Task<Self>>,
 }
 
@@ -56,7 +56,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
             )?,
             buckle: EntityDb::<Buckle>::new(&format!("{path}/buckle"), 0)?,
             tasks: TaskList::new([Self::work_belt, Self::work_buckle]),
-            // ls: format!("<BeltDb {name} />"),
+            ls: format!("<BeltDb {name} />"),
         };
 
         Ok(db)
@@ -169,6 +169,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
 
     pub fn belt_set(&mut self, belt: &mut B) -> Result<(), ShahError> {
         if !belt.is_alive() {
+            log::error!("{} DeadSet: using set to delete", self.ls);
             return Err(SystemError::DeadSet)?;
         }
 

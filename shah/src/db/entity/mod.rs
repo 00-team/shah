@@ -123,6 +123,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
         let file_size = self.file_size()?;
         if file_size < ENTITY_META {
+            log::error!("{} init somehow failed", self.ls);
             return Err(DbError::BadInit)?;
         }
 
@@ -148,6 +149,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         let mut head = EntityHead::default();
         if let Err(e) = self.file.read_exact_at(head.as_binary_mut(), 0) {
             if e.kind() != ErrorKind::UnexpectedEof {
+                log::error!("{} read error: {e:?}", self.ls);
                 return Err(e)?;
             }
 
@@ -177,6 +179,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         let buf = self.koch_prog.as_binary_mut();
         if let Err(e) = self.file.read_exact_at(buf, EntityHead::N) {
             if e.kind() != ErrorKind::UnexpectedEof {
+                log::error!("{} read error: {e:?}", self.ls);
                 return Err(e)?;
             }
 
@@ -238,7 +241,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     fn inspection(&mut self, entity: &T) {
-        log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
+        // log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
         if !entity.is_alive() {
             let gene = entity.gene();
             log::debug!("{} inspector dead entity: {:?}", self.ls, gene.id);
@@ -247,7 +250,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
         if let Some(ei) = &self.inspector {
             if let Err(e) = ei.call(entity) {
-                log::error!("inspection failed: {e:#?}");
+                log::error!("{} inspection failed: {e:#?}", self.ls);
             }
         }
     }
@@ -354,7 +357,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
-                _ => Err(e)?,
+                _ => {
+                    log::error!("{} read_buf_at: {e:?}", self.ls);
+                    Err(e)?
+                }
             },
         }
     }
@@ -467,6 +473,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
                 return Ok(());
             }
 
+            log::error!("{} get: gene id mismatch", self.ls);
             return Err(SystemError::GeneIdMismatch)?;
         }
         egene.check(gene)?;
@@ -499,6 +506,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
         if !entity.is_alive() {
+            log::error!("{} deleteing entity using the set method", self.ls);
             return Err(SystemError::DeadSet)?;
         }
 

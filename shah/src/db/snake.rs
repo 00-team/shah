@@ -238,6 +238,7 @@ impl SnakeDb {
         &mut self, capacity: u64, head: &mut SnakeHead,
     ) -> Result<(), ShahError> {
         if capacity == 0 {
+            log::error!("{} alloc: capacity is zero", self.ls);
             return Err(SystemError::SnakeCapacityIsZero)?;
         }
 
@@ -280,6 +281,11 @@ impl SnakeDb {
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
         if offset >= head.capacity {
+            log::error!(
+                "{} check_offset: bad offset: {offset} >= {}",
+                self.ls,
+                head.capacity
+            );
             return Err(SystemError::BadOffset)?;
         }
         let len = if offset + (buflen as u64) > head.capacity {
@@ -331,6 +337,11 @@ impl SnakeDb {
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
         if length > head.capacity {
+            log::error!(
+                "{} set_length: bad length: {length} >= {}",
+                self.ls,
+                head.capacity
+            );
             return Err(SystemError::SnakeBadLength)?;
         }
 

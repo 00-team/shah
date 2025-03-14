@@ -175,6 +175,9 @@ impl utoipa::PartialSchema for Gene {
 }
 
 #[cfg(feature = "serde")]
+impl utoipa::ToSchema for Gene {}
+
+#[cfg(feature = "serde")]
 impl std::str::FromStr for Gene {
     type Err = SystemError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {

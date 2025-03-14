@@ -13,14 +13,17 @@ license-file.workspace = true
 [dependencies]
 # shah-macros = "1.1.0"
 shah-macros = { path = "../shah-macros" }
+
 log = "0.4.22"
+libc = "0.2.169"
+
 serde = { version = "1.0.210", features = ["derive"], optional = true }
 faster-hex = { version = "0.10.0", optional = true, default-features = false }
-libc = "0.2.169"
+utoipa = { version = "5.3.1", optional = true }
 
 [features]
 default = ["serde"]
-serde = ["dep:serde", "dep:faster-hex"]
+serde = ["dep:serde", "dep:faster-hex", "dep:utoipa"]
 
 [lints.clippy]
 needless_return_with_question_mark = "allow"

@@ -12,6 +12,7 @@ pub struct Taker {
     // reply: [u8; 1024 * 64],
     server: String,
     count: Mutex<u64>,
+    elapsed: Mutex<u64>,
 }
 
 impl Taker {
@@ -20,12 +21,17 @@ impl Taker {
         let conn = UnixDatagram::bind(path)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { conn, server: server.to_string(), count: Mutex::new(0) })
+        Ok(Self { conn, server: server.to_string(), count: Mutex::new(0), elapsed: Mutex::new(0) })
     }
 
     pub fn connect(&self) -> std::io::Result<()> {
         self.conn.connect(&self.server)?;
         Ok(())
+    }
+
+    pub fn clear_elapsed(&self) {
+        let mut elapsed = self.elapsed.lock().unwrap();
+        *elapsed = 0;
     }
 
     // pub fn reply_head(&self) -> &ReplyHead {
@@ -41,10 +47,9 @@ impl Taker {
         // self.reply[0..ReplyHead::S].fill(0);
 
         let mut count = self.count.lock().unwrap();
-        if *count == u64::MAX {
-            *count = 0;
-        }
-        *count += 1;
+        let mut elapsed = self.elapsed.lock().unwrap();
+
+        *count = count.wrapping_add(1);
         let order_head = OrderHead::from_binary_mut(order);
         order_head.id = *count;
 
@@ -65,9 +70,10 @@ impl Taker {
             }
         }
         self.conn.recv(reply.as_binary_mut())?;
+        *elapsed = elapsed.wrapping_add(reply.head.elapsed);
 
         if reply.head.id != *count {
-            Err(SystemError::BadOrderId)?;
+            return Err(SystemError::BadOrderId)?;
         }
 
         // let order_head = OrderHead::from_binary(order);

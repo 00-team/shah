@@ -21,7 +21,12 @@ impl Taker {
         let conn = UnixDatagram::bind(path)?;
         conn.set_read_timeout(Some(Duration::from_secs(5)))?;
         conn.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { conn, server: server.to_string(), count: Mutex::new(0), elapsed: Mutex::new(0) })
+        Ok(Self {
+            conn,
+            server: server.to_string(),
+            count: Mutex::new(0),
+            elapsed: Mutex::new(0),
+        })
     }
 
     pub fn connect(&self) -> std::io::Result<()> {
@@ -32,6 +37,14 @@ impl Taker {
     pub fn clear_elapsed(&self) {
         let mut elapsed = self.elapsed.lock().unwrap();
         *elapsed = 0;
+    }
+
+    pub fn elapsed(&self) -> u64 {
+        *self.elapsed.lock().unwrap()
+    }
+
+    pub fn count(&self) -> u64 {
+        *self.count.lock().unwrap()
     }
 
     // pub fn reply_head(&self) -> &ReplyHead {

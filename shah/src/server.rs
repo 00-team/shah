@@ -129,7 +129,7 @@ fn handle_order<T>(
         return Ok(true);
     };
 
-    log::debug!("order {}::{}", scope.name, route.name);
+    // log::debug!("order {}::{}", scope.name, route.name);
 
     if route.input_size != order_body.len() {
         log::warn!(

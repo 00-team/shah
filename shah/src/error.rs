@@ -147,6 +147,7 @@ pub enum SystemError {
     GeneIdMismatch,
     /// using set for deleting aka seting alive to false without .del(...)
     DeadSet,
+    SendTimeOut,
 }
 
 impl From<std::io::Error> for SystemError {

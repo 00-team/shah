@@ -163,9 +163,10 @@ impl utoipa::PartialSchema for Gene {
             .schema_type(u::schema::SchemaType::Type(u::Type::String))
             .title(Some("Gene"))
             .description(Some("universally unique gene if the item"))
+            // .examples(["00000000000000000000000000000000"])
             .max_length(Some(32))
             .min_length(Some(32))
-            .pattern(Some("^([a-f0-9]|[A-F0-9]){32}$"))
+            // .pattern(Some("^([a-f0-9]|[A-F0-9]){32}$"))
             .into()
     }
 }

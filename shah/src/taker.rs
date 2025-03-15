@@ -70,16 +70,21 @@ impl Taker {
             log::error!("send error: {e:#?}");
             match e.kind() {
                 ErrorKind::NotConnected | ErrorKind::ConnectionRefused => {
+                    let mut did_send = false;
                     for i in 0..3 {
                         log::info!("reconnect try: {i}");
                         if self.connect().is_ok() {
                             self.conn.send(order)?;
+                            did_send = true;
                             break;
                         }
                         sleep(Duration::from_secs(2));
                     }
+                    if !did_send {
+                        return Err(SystemError::SendTimeOut)?;
+                    }
                 }
-                _ => Err(e)?,
+                _ => return Err(e)?,
             }
         }
         self.conn.recv(reply.as_binary_mut())?;

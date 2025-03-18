@@ -78,7 +78,7 @@ impl SnakeDb {
             free_list: Box::new([None; BLOCK_SIZE]),
             file,
             index: SnakeIndexDb::new(&format!("{path}/index"), 0)?,
-            ls: format!("<Snake {name} />"),
+            ls: format!("<Snake {path} />"),
             name: name.to_string(),
             tasks: TaskList::new([Self::work_index]),
         };

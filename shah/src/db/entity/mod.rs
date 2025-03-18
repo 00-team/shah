@@ -60,8 +60,8 @@ pub struct EntityDb<
     Is = (),
 > {
     file: File,
-    pub live: GeneId,
-    pub dead_list: DeadList<GeneId, BLOCK_SIZE>,
+    live: GeneId,
+    dead_list: DeadList<GeneId, BLOCK_SIZE>,
     revision: u16,
     name: String,
     koch: Option<EntityKoch<T, O, S>>,
@@ -69,31 +69,29 @@ pub struct EntityDb<
     setup_prog: SetupProg,
     tasks: TaskList<2, Task<Self>>,
     ls: String,
-    inspector: Option<EntityInspector<T, Is>>, // inspector: Option<fn(&mut Self, &T)>,
-                                               // inspector: Option<fn(RefMut<Is>, &T)>,
-                                               // inspector_state: Option<RefCell<Is>>,
+    inspector: Option<EntityInspector<T, Is>>,
 }
 
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     EntityDb<T, O, S, Is>
 {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
-        let path = Path::new("data/").join(path);
-        let name = path
+        let data_path = Path::new("data/").join(path);
+        let name = data_path
             .file_name()
             .and_then(|v| v.to_str())
             .expect("could not get file_name from path: {path}");
 
         utils::validate_db_name(name)?;
 
-        std::fs::create_dir_all(&path)?;
+        std::fs::create_dir_all(&data_path)?;
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(path.join(format!("{name}.{revision}.shah")))?;
+            .open(data_path.join(format!("{name}.{revision}.shah")))?;
 
         let mut db = Self {
             live: GeneId(0),
@@ -105,7 +103,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             koch_prog: EntityKochProg::default(),
             setup_prog: SetupProg::default(),
             tasks: TaskList::new([Self::work_koch, Self::work_setup_task]),
-            ls: format!("<EntityDb {name}.{revision} />"),
+            ls: format!("<EntityDb {path}.{revision} />"),
             inspector: None,
         };
 

@@ -56,7 +56,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
             )?,
             buckle: EntityDb::<Buckle>::new(&format!("{path}/buckle"), 0)?,
             tasks: TaskList::new([Self::work_belt, Self::work_buckle]),
-            ls: format!("<BeltDb {name} />"),
+            ls: format!("<BeltDb {path} />"),
         };
 
         Ok(db)

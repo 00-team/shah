@@ -93,7 +93,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
                 Self::work_origins,
                 Self::work_items,
             ]),
-            ls: format!("<PondDb {name}.{revision} />"),
+            ls: format!("<PondDb {path}.{revision} />"),
         };
 
         Ok(db)

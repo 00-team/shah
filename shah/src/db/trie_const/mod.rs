@@ -72,14 +72,14 @@ impl<
         assert_eq!(Abc::chars().chars().count(), ABC_LEN, "invalid ABC_LEN");
 
         std::fs::create_dir_all("data/")?;
-        let path = PathBuf::from(format!("data/{name}.shah"));
+        let data_path = PathBuf::from(format!("data/{name}.shah"));
 
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(&path)?;
+            .open(&data_path)?;
 
         let mut db = Self {
             file,

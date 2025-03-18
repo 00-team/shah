@@ -104,6 +104,7 @@ pub enum NotFound {
     EntityNotAlive,
     SnakeIsFree,
     NoTrieValue,
+    ListIdZero,
 }
 
 impl From<NotFound> for ErrorCode {
@@ -126,6 +127,7 @@ pub enum DbError {
     InvalidDbContent,
     BadInit,
     NoDiskSpace,
+    NoKoch,
 }
 
 #[shah::enum_int(ty = u16)]
@@ -148,6 +150,7 @@ pub enum SystemError {
     /// using set for deleting aka seting alive to false without .del(...)
     DeadSet,
     SendTimeOut,
+    PondNoEmptySlotWasFound,
 }
 
 impl From<std::io::Error> for SystemError {

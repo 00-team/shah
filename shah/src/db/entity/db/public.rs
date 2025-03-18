@@ -83,14 +83,44 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     pub fn list(
-        &mut self, page: GeneId, result: &mut [T; PAGE_SIZE],
+        &mut self, id: GeneId, result: &mut [T; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
-        let pos = Self::id_to_pos(page * PAGE_SIZE as u64 + 1);
+        if id == 0 {
+            return Err(NotFound::ListIdZero)?;
+        }
+
+        let pos = Self::id_to_pos(id);
         let size = self.file.read_at(result.as_binary_mut(), pos)?;
         let count = size / T::S;
-        if count != PAGE_SIZE {
-            for item in result.iter_mut().skip(count) {
-                item.zeroed()
+
+        for (idx, item) in result.iter_mut().enumerate() {
+            if idx >= count {
+                item.zeroed();
+                continue;
+            }
+
+            let egene = item.gene();
+            if egene.id == 0 {
+                let Some(koch) = self.koch.as_mut() else {
+                    item.zeroed();
+                    continue;
+                    // log::error!(
+                    //     "{} list: item.gene.id == 0 and there is not koch",
+                    //     self.ls
+                    // );
+                    // return Err(DbError::NoKoch)?;
+                };
+
+                let Some(mut old) = koch.get_id(id + idx as u64).onf()? else {
+                    item.zeroed();
+                    continue;
+                };
+
+                self.set_unchecked(&mut old)?;
+                if !old.is_alive() {
+                    self.add_dead(old.gene());
+                }
+                item.clone_from(&old);
             }
         }
 

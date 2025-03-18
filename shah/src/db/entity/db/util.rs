@@ -1,3 +1,5 @@
+use self::config::ShahConfig;
+
 use super::*;
 
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
@@ -36,7 +38,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(())
     }
 
-    pub(crate) fn read_buf_at<B: Binary>(
+    pub(super) fn read_buf_at<B: Binary>(
         &self, buf: &mut B, id: GeneId,
     ) -> Result<(), ShahError> {
         let pos = Self::id_to_pos(id);
@@ -52,7 +54,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
     }
 
-    pub(crate) fn read_at(
+    pub(super) fn read_at(
         &self, entity: &mut T, id: GeneId,
     ) -> Result<(), ShahError> {
         self.read_buf_at(entity, id)
@@ -96,7 +98,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub(super) fn new_gene(&mut self) -> Result<Gene, ShahError> {
         let mut gene = Gene { id: self.take_dead_id(), ..Default::default() };
         utils::getrandom(&mut gene.pepper);
-        gene.server = 0;
+        gene.server = ShahConfig::get().server;
         gene.iter = 0;
 
         if gene.id != 0 {

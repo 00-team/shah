@@ -25,7 +25,11 @@ pub struct ShahConfig {
 impl ShahConfig {
     pub fn get() -> &'static Self {
         static STATE: OnceLock<ShahConfig> = OnceLock::new();
+        let server: u32 = eint!("SHAH_SERVER_INDEX", u32);
+        if server == 0 {
+            panic!("SHAH_SERVER_INDEX env must not be 0");
+        }
 
-        STATE.get_or_init(|| Self { server: eint!("SHAH_SERVER_INDEX", u32) })
+        STATE.get_or_init(|| Self { server })
     }
 }

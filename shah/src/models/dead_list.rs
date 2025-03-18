@@ -20,6 +20,10 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
         self.disabled = disabled;
     }
 
+    pub const fn disabled(&self) -> bool {
+        self.disabled
+    }
+
     pub fn push(&mut self, value: T) {
         if self.disabled {
             log::warn!("pushing on a disabled DeadList");

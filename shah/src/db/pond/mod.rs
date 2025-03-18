@@ -54,8 +54,6 @@ pub struct Pond {
     pub empty: u8,
     _pad: [u8; 4],
 }
-type PondIndexDb = EntityDb<Pond>;
-type OriginDb = EntityDb<Origin>;
 
 pub trait PondItem: EntityItem + Duck + Copy {}
 impl<T: EntityItem + Duck + Copy> PondItem for T {}
@@ -63,8 +61,8 @@ impl<T: EntityItem + Duck + Copy> PondItem for T {}
 #[derive(Debug)]
 pub struct PondDb<T: PondItem + EntityKochFrom<O, S>, O: EntityItem = T, S = ()>
 {
-    pub index: PondIndexDb,
-    pub origins: OriginDb,
+    pub index: EntityDb<Pond>,
+    pub origins: EntityDb<Origin>,
     free_list: DeadList<Gene, BLOCK_SIZE>,
     ls: String,
     items: EntityDb<T, O, S>,
@@ -83,10 +81,10 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
         std::fs::create_dir_all(&data_path)?;
 
-        let db = Self {
+        let mut db = Self {
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: PondIndexDb::new(&format!("{path}/index"), 0)?,
-            origins: OriginDb::new(&format!("{path}/origin"), 0)?,
+            index: EntityDb::<Pond>::new(&format!("{path}/index"), 0)?,
+            origins: EntityDb::<Origin>::new(&format!("{path}/origin"), 0)?,
             items: EntityDb::<T, O, S>::new(path, revision)?,
             tasks: TaskList::new([
                 Self::work_index,
@@ -95,6 +93,8 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
             ]),
             ls: format!("<PondDb {path}.{revision} />"),
         };
+
+        db.items.set_dead_list_disabled(true);
 
         Ok(db)
     }

@@ -2,6 +2,7 @@
 pub struct DeadList<T, const CAP: usize> {
     len: usize,
     arr: Box<[Option<T>; CAP]>,
+    disabled: bool,
 }
 
 impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
@@ -12,10 +13,18 @@ impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
 
 impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     pub fn new() -> Self {
-        Self { len: 0, arr: Box::new([const { None }; CAP]) }
+        Self { len: 0, arr: Box::new([const { None }; CAP]), disabled: false }
+    }
+
+    pub fn disable(&mut self, disabled: bool) {
+        self.disabled = disabled;
     }
 
     pub fn push(&mut self, value: T) {
+        if self.disabled {
+            log::warn!("pushing on a disabled DeadList");
+            return;
+        }
         if self.is_full() {
             return;
         }
@@ -55,6 +64,10 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     }
 
     pub fn pop<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<T> {
+        if self.disabled {
+            log::warn!("poping on a disabled DeadList");
+            return None;
+        }
         if self.is_empty() {
             return None;
         }
@@ -80,6 +93,10 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
     }
 
     pub fn clear(&mut self) {
+        if self.disabled {
+            log::warn!("clearing a disabled DeadList");
+            return;
+        }
         self.arr.fill(None);
         self.len = 0;
     }

@@ -63,10 +63,10 @@ impl<T: EntityItem + Duck + Copy> PondItem for T {}
 #[derive(Debug)]
 pub struct PondDb<T: PondItem + EntityKochFrom<O, S>, O: EntityItem = T, S = ()>
 {
-    pub free_list: DeadList<Gene, BLOCK_SIZE>,
     pub index: PondIndexDb,
     pub origins: OriginDb,
-    pub ls: String,
+    free_list: DeadList<Gene, BLOCK_SIZE>,
+    ls: String,
     items: EntityDb<T, O, S>,
     tasks: TaskList<3, Task<Self>>,
 }

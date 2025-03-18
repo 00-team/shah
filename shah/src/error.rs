@@ -105,6 +105,7 @@ pub enum NotFound {
     SnakeIsFree,
     NoTrieValue,
     ListIdZero,
+    EmptyItem,
 }
 
 impl From<NotFound> for ErrorCode {

@@ -94,6 +94,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             let old = match koch.get_id(id) {
                 Ok(v) => v,
                 Err(e) => {
+                    if matches!(e, ShahError::NotFound(NotFound::EmptyItem)) {
+                        performed = true;
+                        continue;
+                    }
+
                     log::warn!("{} koch.get_id({id:?}): {e:?}", self.ls);
                     e.not_found_ok()?;
                     self.koch_prog.end();

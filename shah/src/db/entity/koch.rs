@@ -193,6 +193,10 @@ impl<T: EntityItem> EntityKochDb<T> {
     ) -> Result<(), ShahError> {
         self.read_at(entity, gene_id)?;
 
+        if entity.gene().is_none() {
+            return Err(NotFound::EmptyItem)?;
+        }
+
         if gene_id != entity.gene().id {
             log::error!("{} get_id: gene id mismatch", self.ls);
             return Err(SystemError::GeneIdMismatch)?;

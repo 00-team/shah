@@ -11,6 +11,7 @@ use std::fmt::Debug;
 use std::path::Path;
 
 mod index;
+mod options;
 mod init;
 mod public;
 mod util;

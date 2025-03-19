@@ -1,8 +1,8 @@
 use super::entity::{
     Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom, ENTITY_META,
 };
-use crate::config::ShahConfig;
 use crate::models::task_list::{Performed, Task, TaskList};
+use crate::config::ShahConfig;
 use crate::models::{Binary, DeadList, Gene, GeneId};
 use crate::ShahError;
 use crate::{utils, OptNotFound, SystemError, BLOCK_SIZE, PAGE_SIZE};
@@ -11,8 +11,8 @@ use std::fmt::Debug;
 use std::path::Path;
 
 mod index;
-mod options;
 mod init;
+mod options;
 mod public;
 mod util;
 

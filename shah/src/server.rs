@@ -22,7 +22,7 @@ pub fn run<T: ShahState>(
 
     let mut order = [0u8; ORDER_SIZE];
     let mut reply = Reply::default();
-    let mut did_not_performed = 0u64;
+    let mut did_not_performed = 20u64;
     let mut wait = false;
 
     let epfd = epoll_init(&server)?;
@@ -80,19 +80,19 @@ pub fn run<T: ShahState>(
 
         wait = handle_order(&server, &mut order, &mut reply, state, routes)?;
 
-        match state.work() {
-            Ok(p) => {
-                if p.0 {
-                    did_not_performed = 0;
-                } else if did_not_performed < 20 {
-                    did_not_performed += 1
-                }
-            }
-            Err(e) => {
-                did_not_performed = 0;
-                log::error!("work failed: {e:#?}");
-            }
-        }
+        // match state.work() {
+        //     Ok(p) => {
+        //         if p.0 {
+        //             did_not_performed = 0;
+        //         } else if did_not_performed < 20 {
+        //             did_not_performed += 1
+        //         }
+        //     }
+        //     Err(e) => {
+        //         did_not_performed = 0;
+        //         log::error!("work failed: {e:#?}");
+        //     }
+        // }
     }
 }
 

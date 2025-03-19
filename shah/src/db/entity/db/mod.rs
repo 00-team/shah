@@ -10,6 +10,7 @@ use std::{
 };
 
 use super::*;
+use crate::config::ShahConfig;
 use crate::models::*;
 use crate::*;
 

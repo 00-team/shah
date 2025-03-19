@@ -2,6 +2,7 @@ use super::*;
 
 impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
+        ShahConfig::get();
         let data_path = Path::new("data/").join(path);
         let name = data_path
             .file_name()

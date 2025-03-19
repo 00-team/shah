@@ -1,5 +1,3 @@
-use self::config::ShahConfig;
-
 use super::*;
 
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>

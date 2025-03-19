@@ -20,6 +20,7 @@ pub const BLOCK_SIZE: usize = 4096;
 pub const VERSION_MAJOR: u16 = utils::env_num(env!("CARGO_PKG_VERSION_MAJOR"));
 pub const VERSION_MINER: u16 = utils::env_num(env!("CARGO_PKG_VERSION_MINOR"));
 pub const SHAH_VERSION: (u16, u16) = (VERSION_MAJOR, VERSION_MINER);
+pub const REPLY_BODY_SIZE: usize = BLOCK_SIZE * 16;
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

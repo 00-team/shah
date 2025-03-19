@@ -27,7 +27,7 @@ pub(crate) fn api(
 
     let ApiArgs { api_scope, user_error } = parse_args(args)?;
     let ci = crate::crate_ident();
-    // let mut uses = TokenStream2::new();
+    let mut use_list = TokenStream2::new();
     let mut user_funcs = Vec::<&syn::ItemFn>::new();
     // let mut user_client = TokenStream2::new();
     let bin = quote! { #ci::models::Binary };
@@ -46,13 +46,13 @@ pub(crate) fn api(
                     _ => user_funcs.push(f),
                 }
             }
-            // syn::Item::Use(u) => quote_into!(uses += #u),
-            syn::Item::Use(u) => {
-                return err!(
-                    u.span(),
-                    "put all of your `use`'s in the parent mod"
-                )
-            }
+            syn::Item::Use(u) => quote_into!(use_list += #u),
+            // syn::Item::Use(u) => {
+            //     return err!(
+            //         u.span(),
+            //         "put all of your `use`'s in the parent mod"
+            //     )
+            // }
             _ => return err!(item.span(), "only fn's and use's are valid"),
         }
     }
@@ -95,6 +95,16 @@ pub(crate) fn api(
             };
         }
 
+        let mut cos = quote!(0);
+        for (_, t) in out.iter() {
+            quote_into!(cos += + <#t as #bin>::S);
+        }
+
+        let mut cis = quote!(0);
+        for (_, t) in inp.iter() {
+            quote_into!(cis += + <#t as #bin>::S);
+        }
+
         let mut bf = TokenStream2::new();
         quote_into! {bf += 0};
         let mut input_var = TokenStream2::new();
@@ -105,16 +115,14 @@ pub(crate) fn api(
             quote_into! {bf += + <#t as #bin>::S};
         }
 
-        let return_value = if *ret {
-            quote!(Ok(res))
-        } else {
-            let mut os = TokenStream2::new();
-            quote_into!(os += 0);
-            out.iter().for_each(|(_, t)| quote_into!(os += + <#t as #bin>::S));
-            quote!(Ok(#os))
-        };
+        let retval = if *ret { quote!(Ok(res)) } else { quote!(Ok(#cos)) };
 
         quote_into! {a +=
+            const _: () = {
+                assert!(#cis < #ci::ORDER_BODY_SIZE, "input size exceeds the maximum");
+                assert!(#cos < #ci::REPLY_BODY_SIZE, "output size exceeds the maximum");
+            };
+
             #[allow(dead_code)]
             pub(crate) fn #api_ident(state: &mut #state, inp: &[u8], out: &mut [u8]) -> Result<usize, #ci::ErrorCode> {
                 let input = (#input_var);
@@ -123,7 +131,7 @@ pub(crate) fn api(
                     out.iter().for_each(|(vid, _)| quote_into!(a += #vid,))
                 });
                 let res = #user_mod :: #ident(state, input, output)?;
-                #return_value
+                #retval
             }
         };
     }
@@ -220,7 +228,9 @@ pub(crate) fn api(
     content.insert(
         0,
         syn::parse_quote!(
+            #![allow(unused_imports)]
             use super::*;
+            #use_list
         ),
     );
 
@@ -229,11 +239,10 @@ pub(crate) fn api(
 
         pub(crate) mod api {
 
+            #![allow(unused_imports)]
             use super::*;
+            #use_list
 
-            // #![allow(unused_imports)]
-
-            // #uses
             #a
 
             pub(crate) const ROUTES: [#ci::models::Api<#state>; #routes_len] = [#routes_api];
@@ -242,12 +251,11 @@ pub(crate) fn api(
         }
 
         pub mod client {
-            // #![allow(dead_code, unused_imports)]
-
+            #![allow(unused_imports)]
             use super::*;
-            // #uses
+            #use_list
+
             #c
-            // #user_client
         }
     };
 

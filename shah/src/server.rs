@@ -22,7 +22,7 @@ pub fn run<T: ShahState>(
 
     let mut order = [0u8; ORDER_SIZE];
     let mut reply = Reply::default();
-    let mut did_not_performed = 20u64;
+    let did_not_performed = 20u64;
     let mut wait = false;
 
     let epfd = epoll_init(&server)?;

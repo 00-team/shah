@@ -1,3 +1,5 @@
+use crate::REPLY_BODY_SIZE;
+
 #[crate::model]
 #[derive(Debug)]
 pub struct OrderHead {
@@ -21,5 +23,5 @@ pub struct ReplyHead {
 #[derive(Debug)]
 pub struct Reply {
     pub head: ReplyHead,
-    pub body: [u8; 1024 * 64],
+    pub body: [u8; REPLY_BODY_SIZE],
 }

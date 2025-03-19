@@ -22,6 +22,7 @@ use shah::{AsUtf8Str, ClientError, ErrorCode, Taker, BLOCK_SIZE};
 
 #[shah::api(scope = 2, error = crate::models::ExampleError)]
 mod eapi {
+    use super::*;
 
     pub fn init(
         state: &mut State, (capacity,): (&u64,), (head,): (&mut SnakeHead,),

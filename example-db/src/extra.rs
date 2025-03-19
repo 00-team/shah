@@ -37,6 +37,8 @@ pub(crate) mod db {
 
 #[shah::api(scope = 3, error = crate::models::ExampleError)]
 mod eapi {
+    use super::*;
+
     pub(crate) fn buckle_get(
         state: &mut State, (buckle_gene,): (&Gene,), (buckle,): (&mut Buckle,),
     ) -> Result<(), ErrorCode> {

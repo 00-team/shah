@@ -80,6 +80,7 @@ pub(crate) mod db {
 
 #[shah::api(scope = 0, error = crate::models::ExampleError)]
 mod uapi {
+    use super::*;
 
     pub(super) fn user_add(
         state: &mut State, (inp,): (&User,), (out,): (&mut User,),

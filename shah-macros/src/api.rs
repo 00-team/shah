@@ -241,7 +241,6 @@ pub(crate) fn api(
         pub(crate) mod api {
 
             #![allow(unused_imports)]
-            use super::*;
             #use_list
 
             #a
@@ -253,7 +252,6 @@ pub(crate) fn api(
 
         pub mod client {
             #![allow(unused_imports)]
-            use super::*;
             #use_list
 
             #c

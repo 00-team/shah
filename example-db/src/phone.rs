@@ -75,6 +75,7 @@ pub(crate) mod db {
 
 #[shah::api(scope = 1, error = crate::models::ExampleError)]
 mod eapi {
+    use super::*;
 
     pub(crate) fn phone_add(
         state: &mut State, inp: (&[u8; 12], &Gene),

@@ -41,6 +41,9 @@ pub trait Binary: Sized {
 // impl<T: Sized> Binary for T {}
 impl<const N: usize, T: Binary> Binary for [T; N] {}
 
+// impl<T: Binary> Binary for &mut [T] {}
+// impl<T: Binary> Binary for &[T] {}
+
 macro_rules! impl_binary {
     ($($ty:ty),*) => {
         $(impl Binary for $ty {})*

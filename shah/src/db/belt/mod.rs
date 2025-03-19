@@ -226,7 +226,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     }
 
     pub fn belt_list(
-        &mut self, page: GeneId, result: &mut [B; PAGE_SIZE],
+        &mut self, page: GeneId, result: &mut [B],
     ) -> Result<usize, ShahError> {
         self.belt.list(page, result)
     }

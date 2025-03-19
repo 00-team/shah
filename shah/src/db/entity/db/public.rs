@@ -83,14 +83,21 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     pub fn list(
-        &mut self, id: GeneId, result: &mut [T; PAGE_SIZE],
+        &mut self, id: GeneId, result: &mut [T],
     ) -> Result<usize, ShahError> {
         if id == 0 {
             return Err(NotFound::ListIdZero)?;
         }
 
+        let buf = unsafe {
+            std::slice::from_raw_parts_mut(
+                result as *mut [T] as *mut u8,
+                result.len() * T::S,
+            )
+        };
+
         let pos = Self::id_to_pos(id);
-        let size = self.file.read_at(result.as_binary_mut(), pos)?;
+        let size = self.file.read_at(buf, pos)?;
         let count = size / T::S;
 
         for (idx, item) in result.iter_mut().enumerate() {

@@ -117,10 +117,20 @@ pub(crate) fn api(
 
         let retval = if *ret { quote!(Ok(res)) } else { quote!(Ok(#cos)) };
 
+        let x = inp.iter().map(|(_, t)| t.into_token_stream().to_string());
+        let cis_ty = x.collect::<Vec<_>>().join(", ");
+        let cis_err =
+            format!("input size exceeds the maximum at: {ident}(inp: {cis_ty})");
+
+        let x = out.iter().map(|(_, t)| t.into_token_stream().to_string());
+        let cos_ty = x.collect::<Vec<_>>().join(", ");
+        let cos_err =
+            format!("output size exceeds the maximum at: {ident}(out: {cos_ty})");
+
         quote_into! {a +=
             const _: () = {
-                assert!(#cis < #ci::ORDER_BODY_SIZE, "input size exceeds the maximum");
-                assert!(#cos < #ci::REPLY_BODY_SIZE, "output size exceeds the maximum");
+                assert!(#cis < #ci::ORDER_BODY_SIZE, #cis_err);
+                assert!(#cos < #ci::REPLY_BODY_SIZE, #cos_err);
             };
 
             #[allow(dead_code)]
@@ -224,15 +234,6 @@ pub(crate) fn api(
     }
 
     let routes_len = routes.len();
-
-    content.insert(
-        0,
-        syn::parse_quote!(
-            #![allow(unused_imports)]
-            use super::*;
-            #use_list
-        ),
-    );
 
     quote_into! {s +=
         #item

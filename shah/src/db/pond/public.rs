@@ -22,6 +22,12 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
         let stack = if pond.stack == 0 {
             let stack = self.new_stack_id()?;
+            for (idx, x) in buf.iter_mut().enumerate() {
+                let xg = x.gene_mut();
+                xg.id = stack + idx as u64;
+                xg.server = ig.server;
+                *x.pond_mut() = pond.gene;
+            }
             ig.id = stack;
             ig.iter = 0;
             buf[0] = *item;

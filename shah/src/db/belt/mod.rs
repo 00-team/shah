@@ -18,6 +18,7 @@ pub struct Buckle {
     pub head: Gene,
     pub tail: Gene,
     pub belts: u64,
+    pub owner: Gene,
     growth: u64,
     entity_flags: u8,
     _pad: [u8; 7],

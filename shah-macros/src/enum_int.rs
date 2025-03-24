@@ -1,34 +1,75 @@
+use crate::err;
 use proc_macro::TokenStream;
-use proc_macro2::{Literal, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
 use quote_into::quote_into;
-use syn::{parse_quote, Fields, ItemEnum};
+use syn::spanned::Spanned;
 
-type Pargs = syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>;
+// type Pargs = syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>;
 
-pub(crate) fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
-    let mut item = syn::parse_macro_input!(code as ItemEnum);
-    let pargs = syn::parse_macro_input!(args with Pargs::parse_terminated);
-    let Args { ty, start } = parse_pargs(pargs);
+pub(crate) fn enum_int(
+    mut item: syn::ItemEnum, args: TokenStream,
+) -> syn::Result<TokenStream2> {
+    let ty = syn::parse::<syn::Path>(args)?;
 
     for attr in item.attrs.iter() {
-        if let syn::Meta::List(ml) = &attr.meta {
-            if ml.path.segments[0].ident == "repr" {
-                panic!("remove the #[repr(...)] attribute");
-            }
+        if attr.path().is_ident("repr") {
+            return err!(attr.span(), "remove the #[repr(...)] attr");
         }
     }
 
     item.attrs.push(syn::parse_quote! { #[repr(#ty)] });
 
-    let mut s = TokenStream2::new();
+    let mut brs = TokenStream2::new();
     let ident = &item.ident;
-    let variants = item.variants.iter().enumerate().map(|(i, v)| {
-        if let Fields::Unit = v.fields {
-            return (Literal::isize_unsuffixed(start + i as isize), &v.ident);
+    // let mut br = TokenStream2::new();
+    // let mut vars = Vec::<(usize, &syn::Ident)>::with_capacity(item.variants.len());
+    let mut index = 0usize;
+    let mut discr: Option<(&syn::Expr, Option<usize>)> = None;
+
+    for v in item.variants.iter() {
+        let syn::Fields::Unit = v.fields else {
+            return err!(v.span(), "all variants must be a unit");
+        };
+        if let Some((_, exp)) = &v.discriminant {
+            index = 0;
+            if let syn::Expr::Lit(lit) = exp {
+                let syn::Lit::Int(int) = &lit.lit else {
+                    return err!(exp.span(), "only numbers are allowed");
+                };
+                let val = int.base10_parse::<usize>()?;
+                discr = Some((exp, Some(val)));
+            } else {
+                discr = Some((exp, None));
+            }
         }
-        panic!("all enum variants must be Unit")
-    });
-    quote_into! {s +=
+        let vi = &v.ident;
+        match discr {
+            Some((e, None)) => {
+                let idx = proc_macro2::Literal::usize_unsuffixed(index);
+                quote_into!(brs += v if v == #e + #idx => Self::#vi,);
+            }
+            Some((_, Some(base))) => {
+                let idx = proc_macro2::Literal::usize_unsuffixed(index + base);
+                quote_into!(brs += #idx => Self::#vi,);
+            }
+            None => {
+                let idx = proc_macro2::Literal::usize_unsuffixed(index);
+                quote_into!(brs += #idx => Self::#vi,);
+            }
+        }
+        index += 1;
+    }
+
+    // let variants = item.variants.iter().enumerate().map(|(i, v)| {
+    //     v.discriminant
+    //     if let syn::Fields::Unit = v.fields {
+    //         return (Literal::isize_unsuffixed(start + i as isize), &v.ident);
+    //     }
+    //     panic!("all enum variants must be Unit")
+    // });
+
+    Ok(quote! {
         #item
 
         impl From<#ident> for #ty {
@@ -40,51 +81,11 @@ pub(crate) fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
         impl From<#ty> for #ident {
             fn from(value: #ty) -> Self {
                 match value {
-                    #{variants.for_each(|(x, v)| quote_into!(s += #x => Self::#v,))}
+                    #brs
+                    // #{variants.for_each(|(x, v)| quote_into!(s += #x => Self::#v,))}
                     _ => Default::default(),
                 }
             }
         }
-    };
-
-    s.into()
-}
-
-struct Args {
-    ty: syn::Path,
-    start: isize,
-}
-
-fn parse_pargs(pargs: Pargs) -> Args {
-    let mut args = Args {
-        // ty: syn::Path { leading_colon: None, segments: Default::default() },
-        ty: parse_quote!(u8),
-        start: 0,
-    };
-    // args.ty.segments.push(syn::PathSegment {
-    //     ident: format_ident!("u8"),
-    //     arguments: Default::default(),
-    // });
-
-    for meta in pargs.iter() {
-        let key = meta.path.segments[0].ident.to_string();
-        match key.as_str() {
-            "start" => {
-                if let syn::Expr::Lit(lit) = &meta.value {
-                    if let syn::Lit::Int(int) = &lit.lit {
-                        args.start =
-                            int.base10_parse().expect("invalid start value");
-                    }
-                }
-            }
-            "ty" => {
-                if let syn::Expr::Path(path) = &meta.value {
-                    args.ty = path.path.clone();
-                }
-            }
-            _ => {}
-        }
-    }
-
-    args
+    })
 }

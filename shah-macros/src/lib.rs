@@ -103,7 +103,7 @@ pub fn legacy(_args: TokenStream, code: TokenStream) -> TokenStream {
 /// default **start** is `0` and default **ty** is `u8`
 /// Example:
 /// ```ignore
-/// #[shah::enum_int(ty = u16, start = 0)]
+/// #[shah::enum_int(u16)]
 /// #[derive(Debug, Default, Clone, Copy)]
 /// pub enum ExampleError {
 ///     #[default]
@@ -115,7 +115,10 @@ pub fn legacy(_args: TokenStream, code: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn enum_int(args: TokenStream, code: TokenStream) -> TokenStream {
-    enum_int::enum_int(args, code)
+    let item = syn::parse_macro_input!(code as syn::ItemEnum);
+    enum_int::enum_int(item, args)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_attribute]

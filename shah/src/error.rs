@@ -90,11 +90,11 @@ impl<T: Into<SystemError>> From<T> for ShahError {
     }
 }
 
-#[shah::enum_int(ty = u16)]
+#[shah::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum NotFound {
     #[default]
-    Unknown = 0,
+    Unknown,
     GeneIdZero,
     GeneServerZero,
     GeneIterMismatch,
@@ -114,11 +114,11 @@ impl From<NotFound> for ErrorCode {
     }
 }
 
-#[shah::enum_int(ty = u16)]
+#[shah::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum DbError {
     #[default]
-    Unknown = 0,
+    Unknown,
     InvalidSchemaData,
     /// database name can only contain [a-Z] | - | [0-9]
     InvalidDbName,
@@ -131,11 +131,11 @@ pub enum DbError {
     NoKoch,
 }
 
-#[shah::enum_int(ty = u16)]
+#[shah::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SystemError {
     #[default]
-    Unknown = 0,
+    Unknown,
     BadOrderId,
     Io,
     BadInputLength,

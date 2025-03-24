@@ -16,6 +16,10 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
 
         self.belt.add(belt)?;
 
+        if buckle.head.is_none() {
+            buckle.head = *belt.gene();
+        }
+
         let old_tail_gene = buckle.tail;
         buckle.tail = *belt.gene();
         buckle.belts += 1;

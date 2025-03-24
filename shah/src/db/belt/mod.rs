@@ -7,7 +7,7 @@ use crate::{
 };
 use std::path::Path;
 
-mod belt;
+mod belt_api;
 mod buckle;
 
 #[derive(crate::ShahSchema)]

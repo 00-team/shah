@@ -116,7 +116,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
             self.write_buf_at(&old, id)?;
             self.inspection(&old);
-            log::debug!("koched: {:?}", old.gene());
+            log::debug!("{} koched: {:?}", self.ls, old.gene());
         }
 
         if performed {

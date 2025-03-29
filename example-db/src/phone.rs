@@ -1,9 +1,11 @@
 use crate::models::{ExampleError, State};
-use shah::db::trie_const::{TrieAbc, TrieConst};
+use shah::db::trie::TrieAbc;
+use shah::db::trie_const::TrieConst;
 use shah::models::Gene;
 use shah::{ErrorCode, ShahError};
 
 pub(crate) mod db {
+
     use super::*;
 
     #[derive(Debug)]

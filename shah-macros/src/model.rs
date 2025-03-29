@@ -56,11 +56,11 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
         f.attrs = retained_attrs;
     }
 
-    let fields_len = item.fields.len();
+    // let fields_len = item.fields.len();
 
     let mut assprv: Option<(&syn::Ident, &syn::Type)> = None;
     let mut asspad = TokenStream2::new();
-    for (i, f) in item.fields.iter().enumerate() {
+    for f in item.fields.iter() {
         let Some(fid) = &f.ident else {
             return err!(f.span(), "field must have an ident");
         };
@@ -91,24 +91,6 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
             );
         }
     }
-
-    item.fields
-        .iter()
-        .enumerate()
-        .scan(None as Option<&syn::Field>, |state, (i, f)| {
-            let field = f.ident.clone().unwrap();
-
-            if let Some(prev) = state {
-            } else {
-                quote_into! { asspad +=
-                    assert!(::core::mem::offset_of!(#ident, #field) == 0);
-                }
-            }
-
-            *state = Some(f);
-            Some((i, f))
-        })
-        .for_each(|_| {});
 
     let mut default_impl = TokenStream2::new();
     for f in item.fields.iter() {

@@ -178,6 +178,7 @@ pub enum ClientError<T> {
     Unknown,
     System(SystemError),
     NotFound(NotFound),
+    Db(DbError),
     User(T),
 }
 
@@ -196,8 +197,19 @@ impl<T: From<u16> + Copy> From<ErrorCode> for ClientError<T> {
         match value.scope {
             1 => ClientError::System(value.code.into()),
             2 => ClientError::NotFound(value.code.into()),
+            3 => ClientError::Db(value.code.into()),
             127 => ClientError::User(value.code.into()),
             _ => ClientError::Unknown,
+        }
+    }
+}
+
+impl<T: From<u16> + Copy> From<ShahError> for ClientError<T> {
+    fn from(value: ShahError) -> Self {
+        match value {
+            ShahError::Db(e) => ClientError::Db(e),
+            ShahError::NotFound(e) => ClientError::NotFound(e),
+            ShahError::System(e) => ClientError::System(e),
         }
     }
 }

@@ -20,13 +20,13 @@ impl TrieConstMeta {
     pub fn init<Abc: TrieAbc>(
         &mut self, name: &str, index: usize, cache: usize,
     ) {
-        let chars = Abc::chars();
+        let abc = Abc::ABC;
         self.db.init(TRIE_CONST_MAGIC, 0, name, TRIE_CONST_VERSION);
         self.index = index as u64;
         self.cache = cache as u64;
-        self.abc_len = chars.len() as u64;
+        self.abc_len = abc.len() as u64;
         self.abc = [0; 4096];
-        self.abc[..chars.len()].clone_from_slice(chars.as_bytes());
+        self.abc[..abc.len()].clone_from_slice(abc.as_bytes());
     }
 
     pub fn check<Abc: TrieAbc>(
@@ -44,7 +44,7 @@ impl TrieConstMeta {
             return Err(DbError::InvalidDbMeta)?;
         }
 
-        let chars = Abc::chars();
+        let chars = Abc::ABC;
         assert!(chars.len() < 4096);
 
         if self.abc_len != chars.len() as u64 {

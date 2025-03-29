@@ -165,7 +165,7 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     Ok(quote! {
         #item
 
-        impl #ident {
+        impl #impl_gnc #ident #ty_gnc #where_gnc {
             const __ASSERT_PADDING: () = { #asspad };
         }
 

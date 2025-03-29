@@ -16,7 +16,7 @@ pub struct TrieMeta {
 
 impl TrieMeta {
     pub fn init<Abc: TrieAbc>(&mut self, name: &str) {
-        let chars = Abc::chars();
+        let chars = Abc::ABC;
         self.db.init(TRIE_MAGIC, 0, name, TRIE_VERSION);
         self.abc_len = chars.len() as u64;
         self.abc = [0; 4096];
@@ -26,22 +26,22 @@ impl TrieMeta {
     pub fn check<Abc: TrieAbc>(&self, ls: &str) -> Result<(), ShahError> {
         self.db.check(ls, TRIE_MAGIC, 0, TRIE_VERSION)?;
 
-        let chars = Abc::chars();
-        assert!(chars.len() < 4096);
+        let abc = Abc::ABC;
+        assert!(abc.len() < 4096);
 
-        if self.abc_len != chars.len() as u64 {
+        if self.abc_len != abc.len() as u64 {
             log::error!(
                 "{ls} abc_len chaged. {} != {}",
                 self.abc_len,
-                chars.len()
+                abc.len()
             );
             return Err(DbError::InvalidDbMeta)?;
         }
 
-        let abc = chars.as_bytes();
-        if &self.abc[..abc.len()] != abc {
+        let abcb = abc.as_bytes();
+        if &self.abc[..abcb.len()] != abcb {
             log::error!(
-                "{ls} abc changed. {} != {chars}",
+                "{ls} abc changed. {} != {abc}",
                 self.abc.as_utf8_str_null_terminated()
             );
             return Err(DbError::InvalidDbMeta)?;

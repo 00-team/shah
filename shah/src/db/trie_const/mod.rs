@@ -66,7 +66,7 @@ impl<
         assert!(CACHE > 0, "TrieConst CACHE must be at least 1");
         assert!(INDEX > 0, "TrieConst INDEX must be at least 1");
 
-        assert_eq!(Abc::chars().chars().count(), ABC_LEN, "invalid ABC_LEN");
+        assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
 
         std::fs::create_dir_all("data/")?;
         let data_path = PathBuf::from(format!("data/{name}.shah"));

@@ -1,5 +1,7 @@
 mod meta;
 
+use crate::{models::Binary, OptNotFound};
+use crate::{utils, NotFound, ShahError, SystemError};
 use std::{
     fmt::Debug,
     io::{ErrorKind, Seek, SeekFrom},
@@ -8,29 +10,19 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{models::{Binary, Gene}, OptNotFound};
-use crate::{utils, NotFound, ShahError, SystemError};
-
 pub use meta::*;
 
 type Pos = u64;
 
 pub trait TrieAbc {
+    const ABC: &str;
     fn convert_char(&self, c: char) -> Option<usize>;
-    fn chars() -> &'static str;
 }
 
 #[shah::model]
 struct Node<const ABC_LEN: usize, Val: Binary + Default> {
     value: Val,
-    x: u8,
     child: [Pos; ABC_LEN],
-}
-
-
-type GeneNode = Node<37, Gene>;
-fn cool() {
-    GeneNode::default();
 }
 
 #[derive(Debug)]
@@ -48,8 +40,8 @@ pub struct Trie<
 
 #[derive(Debug)]
 pub struct TrieKey {
-    root: usize,
-    tree: Vec<usize>,
+    pub root: usize,
+    pub tree: Vec<usize>,
 }
 
 impl TrieKey {
@@ -65,7 +57,7 @@ impl<
     > Trie<ABC_LEN, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
-        assert_eq!(Abc::chars().chars().count(), ABC_LEN, "invalid ABC_LEN");
+        assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
 
         std::fs::create_dir_all("data/")?;
         let data_path = PathBuf::from(format!("data/{name}.shah"));
@@ -215,10 +207,9 @@ impl<
         // unreachable!()
     }
 
-    fn add(&mut self, tree: &[usize], val: Val) -> Result<Pos, ShahError> {
+    fn add(&mut self, tree: &[usize], value: Val) -> Result<Pos, ShahError> {
         let mut child_pos = self.file.seek(SeekFrom::End(0))?;
-        let mut node = Node::<ABC_LEN, Val>::default();
-        node.value = val;
+        let mut node = Node::<ABC_LEN, Val> { value, ..Default::default() };
         self.write_at(&node, child_pos)?;
 
         for x in tree.iter().rev() {

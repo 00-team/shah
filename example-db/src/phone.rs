@@ -12,19 +12,18 @@ pub(crate) mod db {
     pub struct PhoneAbc;
 
     impl TrieAbc for PhoneAbc {
+        const ABC: &str = "0123456789";
+
         fn convert_char(&self, c: char) -> Option<usize> {
             if !c.is_ascii_digit() {
                 return None;
             }
             Some((c as u8 - b'0') as usize)
         }
-        fn chars() -> &'static str {
-            "0123456789"
-        }
     }
 
     // const PHONE_ABC: &str = "0123456789";
-    pub type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
+    pub type PhoneDb = TrieConst<{ PhoneAbc::ABC.len() }, 2, 7, PhoneAbc, Gene>;
 
     #[allow(dead_code)]
     pub(crate) fn setup() -> Result<PhoneDb, ShahError> {

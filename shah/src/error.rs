@@ -106,6 +106,7 @@ pub enum NotFound {
     NoTrieValue,
     ListIdZero,
     EmptyItem,
+    TriePosZero,
 }
 
 impl From<NotFound> for ErrorCode {
@@ -152,6 +153,7 @@ pub enum SystemError {
     DeadSet,
     SendTimeOut,
     PondNoEmptySlotWasFound,
+    TrieKeyEmpty,
 }
 
 impl From<std::io::Error> for SystemError {

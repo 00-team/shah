@@ -7,8 +7,6 @@ use syn::{parse::Parser, spanned::Spanned};
 pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     let (impl_gnc, ty_gnc, where_gnc) = item.generics.split_for_impl();
 
-    let is_generic = !item.generics.params.is_empty();
-
     if !matches!(item.fields, syn::Fields::Named(_)) {
         return err!(item.span(), "invalid struct type must be named");
     }
@@ -60,47 +58,57 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
 
     let fields_len = item.fields.len();
 
+    let mut assprv: Option<(&syn::Ident, &syn::Type)> = None;
     let mut asspad = TokenStream2::new();
-    if !is_generic {
-        item.fields
-            .iter()
-            .enumerate()
-            .scan(None as Option<&syn::Field>, |state, (i, f)| {
-                let field = f.ident.clone().unwrap();
+    for (i, f) in item.fields.iter().enumerate() {
+        let Some(fid) = &f.ident else {
+            return err!(f.span(), "field must have an ident");
+        };
+        let Some((pid, pty)) = assprv else {
+            assprv = Some((fid, &f.ty));
+            quote_into! { asspad +=
+                assert!(::core::mem::offset_of!(Self, #fid) == 0);
+            }
+            continue;
+        };
 
-                if let Some(prev) = state {
-                    let pfi = prev.ident.clone().unwrap();
-                    let pft = &prev.ty;
-                    quote_into! { asspad +=
-                        assert!(
-                            ::core::mem::offset_of!(#ident, #field) ==
-                            ::core::mem::offset_of!(#ident, #pfi) +
-                            ::core::mem::size_of::<#pft>()
-                        );
-                    }
-                } else {
-                    quote_into! { asspad +=
-                        assert!(::core::mem::offset_of!(#ident, #field) == 0);
-                    }
-                }
-
-                if i == fields_len - 1 {
-                    let ty = &f.ty;
-
-                    quote_into! { asspad +=
-                        assert!(
-                            ::core::mem::size_of::<#ident>() ==
-                            ::core::mem::offset_of!(#ident, #field) +
-                            ::core::mem::size_of::<#ty>()
-                        );
-                    }
-                }
-
-                *state = Some(f);
-                Some((i, f))
-            })
-            .for_each(|_| {});
+        assprv = Some((fid, &f.ty));
+        quote_into! { asspad +=
+            assert!(
+                ::core::mem::offset_of!(Self, #fid) ==
+                ::core::mem::offset_of!(Self, #pid) +
+                ::core::mem::size_of::<#pty>()
+            );
+        }
     }
+
+    if let Some((lid, lty)) = assprv {
+        quote_into! { asspad +=
+            assert!(
+                ::core::mem::size_of::<Self>() ==
+                ::core::mem::offset_of!(Self, #lid) +
+                ::core::mem::size_of::<#lty>()
+            );
+        }
+    }
+
+    item.fields
+        .iter()
+        .enumerate()
+        .scan(None as Option<&syn::Field>, |state, (i, f)| {
+            let field = f.ident.clone().unwrap();
+
+            if let Some(prev) = state {
+            } else {
+                quote_into! { asspad +=
+                    assert!(::core::mem::offset_of!(#ident, #field) == 0);
+                }
+            }
+
+            *state = Some(f);
+            Some((i, f))
+        })
+        .for_each(|_| {});
 
     let mut default_impl = TokenStream2::new();
     for f in item.fields.iter() {
@@ -175,7 +183,10 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
     Ok(quote! {
         #item
 
-        const _: () = { #asspad };
+        impl #ident {
+            const __ASSERT_PADDING: () = { #asspad };
+        }
+
 
         #[automatically_derived]
         impl #impl_gnc ::core::default::Default for #ident #ty_gnc #where_gnc {

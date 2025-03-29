@@ -13,10 +13,7 @@ use crate::{utils, NotFound, ShahError, SystemError};
 
 pub use meta::*;
 
-pub trait TrieAbc {
-    fn convert_char(&self, c: char) -> Option<usize>;
-    fn chars() -> &'static str;
-}
+use super::trie::TrieAbc;
 
 #[derive(Debug)]
 pub struct TrieConst<

@@ -17,6 +17,7 @@ pub enum ShahMagicDb {
     Pond,
     Snake,
     TrieConst,
+    Trie,
 }
 
 impl ShahMagic {

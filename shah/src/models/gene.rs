@@ -131,20 +131,20 @@ impl Gene {
         Ok(())
     }
 
-    pub fn check(&self, other: &Self) -> Result<(), ShahError> {
+    pub fn check(&self, other: &Self, ls: &str) -> Result<(), ShahError> {
         if self.id != other.id {
-            log::error!("mismatch {:?} != {:?}", self.id, other.id);
+            log::error!("{ls} gene id {:?} != {:?}", self.id, other.id);
             return Err(SystemError::GeneIdMismatch)?;
         }
 
         if self.iter != other.iter {
-            log::warn!("mismatch gene iter {} != {}", self.iter, other.iter);
+            log::warn!("{ls} gene iter {} != {}", self.iter, other.iter);
             return Err(NotFound::GeneIterMismatch)?;
         }
 
         if self.pepper != other.pepper {
             log::warn!(
-                "mismatch gene pepper {:?} != {:?}",
+                "{ls} gene pepper {:?} != {:?}",
                 self.pepper,
                 other.pepper
             );

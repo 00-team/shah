@@ -78,17 +78,23 @@ impl From<DbError> for ShahError {
     }
 }
 
+impl From<SystemError> for ShahError {
+    fn from(value: SystemError) -> Self {
+        Self::System(value)
+    }
+}
+
 impl From<Infallible> for ShahError {
     fn from(_: Infallible) -> Self {
         unreachable!()
     }
 }
 
-impl<T: Into<SystemError>> From<T> for ShahError {
-    fn from(value: T) -> Self {
-        Self::System(value.into())
-    }
-}
+// impl<T: Into<SystemError>> From<T> for ShahError {
+//     fn from(value: T) -> Self {
+//         Self::System(value.into())
+//     }
+// }
 
 #[shah::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -154,12 +160,13 @@ pub enum SystemError {
     SendTimeOut,
     PondNoEmptySlotWasFound,
     TrieKeyEmpty,
+    BadCoords,
 }
 
-impl From<std::io::Error> for SystemError {
+impl From<std::io::Error> for ShahError {
     fn from(value: std::io::Error) -> Self {
         log::warn!("IO {value:#?}");
-        Self::Io
+        Self::System(SystemError::Io)
     }
 }
 

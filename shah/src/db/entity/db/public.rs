@@ -20,14 +20,14 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
                     return Err(NotFound::EntityNotAlive)?;
                 }
                 entity.clone_from(&oldie);
-                oldie.gene().check(gene)?;
+                oldie.gene().check(gene, &self.ls)?;
                 return Ok(());
             }
 
-            log::error!("{} get: gene id mismatch", self.ls);
+            log::error!("{} get: gene id 0 != {:?}", self.ls, gene);
             return Err(SystemError::GeneIdMismatch)?;
         }
-        egene.check(gene)?;
+        egene.check(gene, &self.ls)?;
 
         if !entity.is_alive() {
             return Err(NotFound::EntityNotAlive)?;

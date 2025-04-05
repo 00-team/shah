@@ -208,7 +208,7 @@ impl<T: EntityItem> EntityKochDb<T> {
     pub fn get(&self, gene: &Gene, entity: &mut T) -> Result<(), ShahError> {
         gene.validate()?;
         self.read_at(entity, gene.id)?;
-        gene.check(entity.gene())?;
+        gene.check(entity.gene(), &self.ls)?;
         Ok(())
     }
 }

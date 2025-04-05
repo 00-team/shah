@@ -1,9 +1,10 @@
 mod legacy;
 
-pub mod extra;
-pub mod username;
 pub mod detail;
+pub mod extra;
+pub mod map;
 pub mod models;
 pub mod note;
 pub mod phone;
 pub mod user;
+pub mod username;

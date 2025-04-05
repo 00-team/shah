@@ -1,5 +1,6 @@
 mod detail;
 mod extra;
+mod map;
 mod models;
 mod note;
 mod phone;
@@ -8,14 +9,14 @@ mod username;
 
 // use std::io::Write;
 
-use std::io::Write;
+// use std::io::Write;
 
 use rand::Rng;
 use shah::{
     db::trie_const::TrieConstKey, error::ShahError, Command, ShahSchema,
 };
 
-const SOCK_PATH: &str = "/tmp/shah.sock";
+// const SOCK_PATH: &str = "/tmp/shah.sock";
 
 #[derive(ShahSchema)]
 #[shah::model]
@@ -49,8 +50,11 @@ fn phone_to_str(key: &TrieConstKey<2>) -> String {
 }
 
 fn main() -> Result<(), ShahError> {
+    unsafe { std::env::set_var("SHAH_SERVER_INDEX", "7") };
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
+
+    let _map = map::db::MapDb::new()?;
 
     // let mut rng = rand::thread_rng();
     // let mut phone = phone::db::setup()?;
@@ -75,18 +79,18 @@ fn main() -> Result<(), ShahError> {
     // }
     // drop(phone);
 
-    let routes = shah::routes!(models::State, user, phone, detail);
-
-    log::debug!("init state");
-    let mut state = models::State::new(
-        user::db::init()?,
-        phone::db::setup()?,
-        detail::db::setup()?,
-        note::db::init()?,
-        extra::db::init()?,
-    )?;
-
-    let mut _user = user::db::User::default();
+    // let routes = shah::routes!(models::State, user, phone, detail);
+    //
+    // log::debug!("init state");
+    // let mut state = models::State::new(
+    //     user::db::init()?,
+    //     phone::db::setup()?,
+    //     detail::db::setup()?,
+    //     note::db::init()?,
+    //     extra::db::init()?,
+    // )?;
+    //
+    // let mut _user = user::db::User::default();
 
     // let gene_57 = Gene { id: 57, iter: 0, pepper: [149, 231, 78], server: 0 };
     // state.users.get(&gene_57, &mut user)?;
@@ -123,12 +127,12 @@ fn main() -> Result<(), ShahError> {
     //
     // Ok(())
 
-    match shah::command() {
-        Commands::Help => {
-            std::io::stdout().write_all(Commands::help().as_bytes())?
-        }
-        Commands::Run => shah::run(SOCK_PATH, &mut state, &routes)?,
-    }
+    // match shah::command() {
+    //     Commands::Help => {
+    //         std::io::stdout().write_all(Commands::help().as_bytes())?
+    //     }
+    //     Commands::Run => shah::run(SOCK_PATH, &mut state, &routes)?,
+    // }
 
     Ok(())
 }

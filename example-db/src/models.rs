@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use shah::{
     db::snake::SnakeDb,
     error::{IsNotFound, ShahError},

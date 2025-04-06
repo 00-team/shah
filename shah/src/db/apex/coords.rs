@@ -1,21 +1,74 @@
 use crate::{ShahError, SystemError};
 
-#[non_exhaustive]
-pub struct ApexCoords {
-    pub z: usize,
-    pub x: usize,
-    pub y: usize,
+pub const MAX_ZOOM: usize = 22;
+
+pub struct ApexSetKey<const LEN: usize> {
+    key: [usize; LEN],
 }
 
-impl ApexCoords {
-    pub const MAX_ZOOM: usize = 22;
+impl<const LEN: usize> ApexSetKey<LEN> {
+    fn new() -> Self {
+        Self { key: [0; LEN] }
+    }
+
+    pub fn key(&self) -> &[usize; LEN] {
+        &self.key
+    }
+
+    pub const fn root(&self) -> usize {
+        self.key[0]
+    }
+
+    pub fn tree(&self) -> &[usize] {
+        &self.key[1..]
+    }
+
+    pub fn tree_rest(&self, idx: usize) -> &[usize] {
+        &self.key[idx + 1..]
+    }
+
+    /// tree[..tree.len() - 1]
+    pub fn branch(&self) -> &[usize] {
+        &self.key[1..self.key.len() - 1]
+    }
+
+    /// `key[key.len() - 1]`
+    pub fn leaf(&self) -> usize {
+        self.key[self.key.len() - 1]
+    }
+}
+
+#[non_exhaustive]
+pub struct ApexCoords<const LVL: usize, const LEN: usize> {
+    z: usize,
+    x: usize,
+    y: usize,
+}
+
+impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
+    pub const fn z(&self) -> usize {
+        self.z
+    }
+
+    pub const fn x(&self) -> usize {
+        self.x
+    }
+
+    pub const fn y(&self) -> usize {
+        self.y
+    }
+
+    pub const fn zxy(&self) -> (usize, usize, usize) {
+        (self.z, self.x, self.y)
+    }
+
     pub fn new(z: usize, x: usize, y: usize) -> Result<Self, ShahError> {
-        if z > Self::MAX_ZOOM {
-            log::error!("max zoom is {}. zoom: {z}", Self::MAX_ZOOM);
+        if z > MAX_ZOOM {
+            log::error!("max zoom is {MAX_ZOOM}. your zoom: {z}");
             return Err(SystemError::BadCoords)?;
         }
 
-        let max: usize = 1 << z;
+        let max: usize = (1 << z) - 1;
         if x > max || y > max {
             log::error!("max x,y is {max} for zoom {z}. x: {x} | y {y}");
             return Err(SystemError::BadCoords)?;
@@ -24,37 +77,56 @@ impl ApexCoords {
         Ok(Self { z, x, y })
     }
 
-    pub fn calc_len<const LVL: usize>(&self) -> usize {
+    pub const fn calc_len(&self) -> usize {
         1usize << ((LVL - self.z) * 2)
     }
 
-    pub fn split<const LVL: usize>(&mut self) -> Self {
-        let b: usize = 1 << (self.z - LVL);
-        let old = Self { z: LVL, x: self.x / b, y: self.y / b };
-        self.z -= LVL;
-        self.x %= b;
-        self.y %= b;
+    pub fn full_key(&self) -> Result<ApexSetKey<LEN>, ShahError> {
+        if self.z < LVL * LEN {
+            return Err(SystemError::BadCoords)?;
+        }
 
-        old
+        let mut key = ApexSetKey::new();
 
-        // z -= LVL;
-        // let idx = Self::calc_index(LVL, x / b, y / b);
-        // x = x % b;
-        // y = y % b;
+        let (mut z, mut x, mut y) = self.zxy();
+        for slot in key.key.iter_mut() {
+            z -= LVL;
+            let b: usize = 1 << z;
+            *slot = Self::index(LVL, x / b, y / b);
+            x %= b;
+            y %= b;
+        }
+
+        Ok(key)
     }
 
-    pub fn calc_index<const LVL: usize>(&self) -> usize {
+    // pub fn split(&mut self) -> Self {
+    //     let b: usize = 1 << (self.z - LVL);
+    //     let old = Self { z: LVL, x: self.x / b, y: self.y / b };
+    //     self.z -= LVL;
+    //     self.x %= b;
+    //     self.y %= b;
+    //
+    //     old
+    //
+    //     // z -= LVL;
+    //     // let idx = Self::calc_index(LVL, x / b, y / b);
+    //     // x = x % b;
+    //     // y = y % b;
+    // }
+
+    fn index(z: usize, x: usize, y: usize) -> usize {
         let mut index = 0;
-        for z in 1..=self.z {
+        for z in 1..=z {
             // 1 << (3 - 1) == 4 ** 2 -> 16  * idx
             // 1 << (3 - 2) == 2 ** 2 -> 4   * idx
             // 1 << (3 - 3) == 1 ** 2 -> 1   * idx
             let b = 1usize << (LVL - z);
             let sq = b * b;
-            match ((self.x / b) % 2, (self.y / b) % 2) {
+            match ((x / b) % 2, (y / b) % 2) {
                 (0, 0) => continue,
-                (0, 1) => index += sq,
-                (1, 0) => index += sq * 2,
+                (1, 0) => index += sq,
+                (0, 1) => index += sq * 2,
                 (1, 1) => index += sq * 3,
                 _ => unreachable!(),
             }
@@ -63,12 +135,14 @@ impl ApexCoords {
     }
 }
 
-pub trait IntoApexCoords {
-    fn into(self) -> Result<ApexCoords, ShahError>;
+pub trait IntoApexCoords<const LVL: usize, const LEN: usize> {
+    fn into(self) -> Result<ApexCoords<LVL, LEN>, ShahError>;
 }
 
-impl IntoApexCoords for (u8, u32, u32) {
-    fn into(self) -> Result<ApexCoords, ShahError> {
+impl<const LVL: usize, const LEN: usize> IntoApexCoords<LVL, LEN>
+    for (u8, u32, u32)
+{
+    fn into(self) -> Result<ApexCoords<LVL, LEN>, ShahError> {
         ApexCoords::new(self.0 as usize, self.1 as usize, self.2 as usize)
     }
 }

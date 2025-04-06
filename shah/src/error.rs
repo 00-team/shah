@@ -113,6 +113,7 @@ pub enum NotFound {
     ListIdZero,
     EmptyItem,
     TriePosZero,
+    ApexRootNotFound,
 }
 
 impl From<NotFound> for ErrorCode {

@@ -58,45 +58,45 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         self.read_buf_at(entity, id)
     }
 
-    pub(crate) fn get_id(
-        &mut self, gene_id: GeneId, entity: &mut T,
-    ) -> Result<(), ShahError> {
-        if gene_id == 0 {
-            return Err(NotFound::GeneIdZero)?;
-        }
-
-        self.read_at(entity, gene_id)?;
-
-        let egene = entity.gene();
-        if egene.id == 0 {
-            if let Some(koch) = self.koch.as_mut() {
-                let mut oldie = koch.get_id(gene_id)?;
-                self.set_unchecked(&mut oldie)?;
-                if !oldie.is_alive() {
-                    self.add_dead(oldie.gene());
-                    return Err(NotFound::EntityNotAlive)?;
-                }
-                entity.clone_from(&oldie);
-                let old_id = oldie.gene().id;
-                if old_id != gene_id {
-                    log::error!("{} gene id {old_id} != {gene_id}", self.ls);
-                    return Err(SystemError::GeneIdMismatch)?;
-                }
-                return Ok(());
-            }
-        }
-
-        if egene.id != gene_id {
-            log::error!("{} gene id {} != {gene_id}", self.ls, egene.id);
-            return Err(SystemError::GeneIdMismatch)?;
-        }
-
-        if !entity.is_alive() {
-            return Err(NotFound::EntityNotAlive)?;
-        }
-
-        Ok(())
-    }
+    // pub(crate) fn get_id(
+    //     &mut self, gene_id: GeneId, entity: &mut T,
+    // ) -> Result<(), ShahError> {
+    //     if gene_id == 0 {
+    //         return Err(NotFound::GeneIdZero)?;
+    //     }
+    //
+    //     self.read_at(entity, gene_id)?;
+    //
+    //     let egene = entity.gene();
+    //     if egene.id == 0 {
+    //         if let Some(koch) = self.koch.as_mut() {
+    //             let mut oldie = koch.get_id(gene_id)?;
+    //             self.set_unchecked(&mut oldie)?;
+    //             if !oldie.is_alive() {
+    //                 self.add_dead(oldie.gene());
+    //                 return Err(NotFound::EntityNotAlive)?;
+    //             }
+    //             entity.clone_from(&oldie);
+    //             let old_id = oldie.gene().id;
+    //             if old_id != gene_id {
+    //                 log::error!("{} gene id {old_id} != {gene_id}", self.ls);
+    //                 return Err(SystemError::GeneIdMismatch)?;
+    //             }
+    //             return Ok(());
+    //         }
+    //     }
+    //
+    //     if egene.id != gene_id {
+    //         log::error!("{} gene id {} != {gene_id}", self.ls, egene.id);
+    //         return Err(SystemError::GeneIdMismatch)?;
+    //     }
+    //
+    //     if !entity.is_alive() {
+    //         return Err(NotFound::EntityNotAlive)?;
+    //     }
+    //
+    //     Ok(())
+    // }
 
     pub(crate) fn del_unchecked(
         &mut self, entity: &mut T,

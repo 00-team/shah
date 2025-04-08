@@ -11,10 +11,7 @@ mod username;
 
 use rand::Rng;
 use shah::{
-    db::trie_const::TrieConstKey,
-    error::ShahError,
-    models::{Gene, GeneId},
-    Command, ShahSchema,
+    db::trie_const::TrieConstKey, error::ShahError, Command, ShahSchema,
 };
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
@@ -55,7 +52,7 @@ fn main() -> Result<(), ShahError> {
     log::set_logger(&SimpleLogger).expect("could not init logger");
     log::set_max_level(log::LevelFilter::Trace);
 
-    let mut map = map::db::MapDb::new()?;
+    // let mut map = map::db::MapDb::new()?;
 
     // let mut rng = rand::thread_rng();
     // let mut phone = phone::db::setup()?;

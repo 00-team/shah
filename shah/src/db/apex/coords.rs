@@ -2,11 +2,11 @@ use crate::{ShahError, SystemError};
 
 pub const MAX_ZOOM: usize = 22;
 
-pub struct ApexSetKey<const LEN: usize> {
+pub struct ApexFullKey<const LEN: usize> {
     key: [usize; LEN],
 }
 
-impl<const LEN: usize> ApexSetKey<LEN> {
+impl<const LEN: usize> ApexFullKey<LEN> {
     fn new() -> Self {
         Self { key: [0; LEN] }
     }
@@ -35,6 +35,30 @@ impl<const LEN: usize> ApexSetKey<LEN> {
     /// `key[key.len() - 1]`
     pub fn leaf(&self) -> usize {
         self.key[self.key.len() - 1]
+    }
+}
+
+pub struct ApexDisplayKey<const LEN: usize> {
+    key: [usize; LEN],
+    len: usize,
+    size: usize,
+}
+
+impl<const LEN: usize> ApexDisplayKey<LEN> {
+    fn new() -> Self {
+        Self { key: [0; LEN], len: 0, size: 0 }
+    }
+
+    pub fn key(&self) -> &[usize] {
+        &self.key[..self.len - 1]
+    }
+
+    pub fn last(&self) -> usize {
+        self.key[self.len]
+    }
+
+    pub const fn size(&self) -> usize {
+        self.size
     }
 }
 
@@ -68,7 +92,7 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
             return Err(SystemError::BadCoords)?;
         }
 
-        let max: usize = (1 << z) - 1;
+        let max: usize = (1 << (z * 2)) - 1;
         if x > max || y > max {
             log::error!("max x,y is {max} for zoom {z}. x: {x} | y {y}");
             return Err(SystemError::BadCoords)?;
@@ -81,12 +105,37 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
         1usize << ((LVL - self.z) * 2)
     }
 
-    pub fn full_key(&self) -> Result<ApexSetKey<LEN>, ShahError> {
+    pub fn display_key(&self) -> ApexDisplayKey<LEN> {
+        let mut key = ApexDisplayKey::new();
+
+        let (mut z, mut x, mut y) = self.zxy();
+
+        for slot in key.key.iter_mut() {
+            key.len += 1;
+
+            if z <= LVL {
+                *slot = Self::index(z, x, y);
+                key.size = 1 << ((LVL - z) * 2);
+                return key;
+            }
+
+            z -= LVL;
+            let b: usize = 1 << z;
+            *slot = Self::index(LVL, x / b, y / b);
+            x %= b;
+            y %= b;
+        }
+
+        key.size = 1;
+        key
+    }
+
+    pub fn full_key(&self) -> Result<ApexFullKey<LEN>, ShahError> {
         if self.z < LVL * LEN {
             return Err(SystemError::BadCoords)?;
         }
 
-        let mut key = ApexSetKey::new();
+        let mut key = ApexFullKey::new();
 
         let (mut z, mut x, mut y) = self.zxy();
         for slot in key.key.iter_mut() {

@@ -62,7 +62,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<Gene, ShahError> {
         let key = ac.into()?.full_key()?;
 
-        let mut gene = ShahConfig::apex_root().clone();
+        let mut gene = *ShahConfig::apex_root();
         let mut tile = ApexTile::<SIZ>::default();
 
         for x in key.key().iter() {
@@ -74,9 +74,25 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     }
 
     pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, _data: &mut [bool; SIZ],
+        &mut self, ac: Ac, data: &mut [bool; SIZ],
     ) -> Result<usize, ShahError> {
-        let mut _ac = ac.into()?;
+        let key = ac.into()?.display_key();
+
+        let mut gene = *ShahConfig::apex_root();
+        let mut tile = ApexTile::<SIZ>::default();
+
+        for x in key.key().iter() {
+            self.tiles.get(&gene, &mut tile)?;
+            gene = tile.tiles[*x];
+        }
+
+        let list = &tile.tiles[key.last()..key.last() + key.size()];
+
+        for (i, g) in list.iter().enumerate() {
+            data[i] = g.is_some();
+        }
+
+        Ok(key.size())
 
         // let mut tile = ApexTile::<SIZ>::default();
         // self.tiles.get(&APEX_ROOT, &mut tile)?;
@@ -107,7 +123,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         //     self.tiles.get(&gene, &mut tile)?;
         // }
 
-        unreachable!()
+        // unreachable!()
     }
 
     fn add(&mut self, tree: &[usize], value: Gene) -> Result<Gene, ShahError> {

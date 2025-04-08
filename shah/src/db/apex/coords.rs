@@ -92,7 +92,7 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
             return Err(SystemError::BadCoords)?;
         }
 
-        let max: usize = (1 << (z * 2)) - 1;
+        let max: usize = (1 << z) - 1;
         if x > max || y > max {
             log::error!("max x,y is {max} for zoom {z}. x: {x} | y {y}");
             return Err(SystemError::BadCoords)?;

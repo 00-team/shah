@@ -12,7 +12,7 @@ mod buckle;
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, Clone, crate::Entity)]
+#[derive(Debug, Clone, Copy, crate::Entity)]
 pub struct Buckle {
     pub gene: Gene,
     pub head: Gene,

@@ -1,7 +1,10 @@
+use std::fmt::Debug;
+
 use crate::{ShahError, SystemError};
 
 pub const MAX_ZOOM: usize = 22;
 
+#[derive(Debug)]
 pub struct ApexFullKey<const LEN: usize> {
     key: [usize; LEN],
 }
@@ -38,6 +41,7 @@ impl<const LEN: usize> ApexFullKey<LEN> {
     }
 }
 
+#[derive(Debug)]
 pub struct ApexDisplayKey<const LEN: usize> {
     key: [usize; LEN],
     len: usize,
@@ -50,11 +54,11 @@ impl<const LEN: usize> ApexDisplayKey<LEN> {
     }
 
     pub fn key(&self) -> &[usize] {
-        &self.key[..self.len - 1]
+        &self.key[..self.len]
     }
 
     pub fn last(&self) -> usize {
-        self.key[self.len]
+        self.key[self.len - 1]
     }
 
     pub const fn size(&self) -> usize {
@@ -62,6 +66,7 @@ impl<const LEN: usize> ApexDisplayKey<LEN> {
     }
 }
 
+#[derive(Debug)]
 #[non_exhaustive]
 pub struct ApexCoords<const LVL: usize, const LEN: usize> {
     z: usize,
@@ -116,6 +121,10 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
             if z <= LVL {
                 *slot = Self::index(z, x, y);
                 key.size = 1 << ((LVL - z) * 2);
+                if z == LVL && key.len != LEN {
+                    key.len += 1;
+                    key.size = 1 << (LVL * 2);
+                }
                 return key;
             }
 
@@ -166,11 +175,11 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
 
     fn index(z: usize, x: usize, y: usize) -> usize {
         let mut index = 0;
-        for z in 1..=z {
+        for cz in 1..=z {
             // 1 << (3 - 1) == 4 ** 2 -> 16  * idx
             // 1 << (3 - 2) == 2 ** 2 -> 4   * idx
             // 1 << (3 - 3) == 1 ** 2 -> 1   * idx
-            let b = 1usize << (LVL - z);
+            let b = 1usize << (z - cz);
             let sq = b * b;
             match ((x / b) % 2, (y / b) % 2) {
                 (0, 0) => continue,
@@ -184,7 +193,7 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
     }
 }
 
-pub trait IntoApexCoords<const LVL: usize, const LEN: usize> {
+pub trait IntoApexCoords<const LVL: usize, const LEN: usize>: Debug {
     fn into(self) -> Result<ApexCoords<LVL, LEN>, ShahError>;
 }
 

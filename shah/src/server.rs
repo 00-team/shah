@@ -1,14 +1,15 @@
+use std::fmt::Debug;
 use std::io;
 use std::os::fd::AsRawFd;
 use std::os::unix::net::{SocketAddr, UnixDatagram};
 use std::time::{Duration, Instant};
 
 use crate::models::{Binary, OrderHead, Reply, ReplyHead, Scope, ShahState};
-use crate::ShahError;
+use crate::{ClientError, ShahError};
 
 const ORDER_SIZE: usize = 1024 * 64;
 
-pub fn run<T: ShahState>(
+pub fn run<T: ShahState, E: From<u16> + Copy + Debug>(
     path: &str, state: &mut T, routes: &[Scope<T>],
 ) -> Result<(), ShahError> {
     let _ = std::fs::remove_file(path);
@@ -78,7 +79,9 @@ pub fn run<T: ShahState>(
             // }
         }
 
-        wait = handle_order(&server, &mut order, &mut reply, state, routes)?;
+        wait = handle_order::<T, E>(
+            &server, &mut order, &mut reply, state, routes,
+        )?;
 
         match state.work() {
             Ok(p) => {
@@ -96,7 +99,7 @@ pub fn run<T: ShahState>(
     }
 }
 
-fn handle_order<T>(
+fn handle_order<T, E: From<u16> + Copy + Debug>(
     server: &UnixDatagram, order: &mut [u8; ORDER_SIZE], reply: &mut Reply,
     state: &mut T, routes: &[Scope<T>],
 ) -> Result<bool, ShahError> {
@@ -172,8 +175,9 @@ fn handle_order<T>(
             reply.head.error = e.as_u32();
             reply.head.size = 0;
             send(server, reply.head.as_binary(), &addr);
+            let err = ClientError::<E>::from(e);
             log::error!(
-                "reply {}::{}: err({e:?}) {}μs",
+                "reply {}::{}: c({e:?}) e({err:?}) {}μs",
                 scope.name,
                 route.name,
                 reply.head.elapsed

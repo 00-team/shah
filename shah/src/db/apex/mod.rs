@@ -76,15 +76,15 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac, data: &mut [bool; SIZ],
     ) -> Result<usize, ShahError> {
-        log::debug!("ac: {ac:?}");
         let key = ac.into()?.display_key();
 
         let mut gene = *ShahConfig::apex_root();
         let mut tile = ApexTile::<SIZ>::default();
 
-        log::debug!("key: {key:#?}");
         for x in key.key().iter() {
-            self.tiles.get(&gene, &mut tile)?;
+            if self.tiles.get(&gene, &mut tile).onf()?.is_none() {
+                return Ok(0);
+            }
             gene = tile.tiles[*x];
         }
 

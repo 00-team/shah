@@ -9,6 +9,8 @@ use crate::{
 };
 use coords::{IntoApexCoords, MAX_ZOOM};
 
+pub use coords::ApexCoords;
+
 #[derive(shah::ShahSchema)]
 #[shah::model]
 #[derive(Debug, Clone, Copy, shah::Entity)]

@@ -173,7 +173,7 @@ impl<const LVL: usize, const LEN: usize> ApexCoords<LVL, LEN> {
     //     // y = y % b;
     // }
 
-    fn index(z: usize, x: usize, y: usize) -> usize {
+    pub fn index(z: usize, x: usize, y: usize) -> usize {
         let mut index = 0;
         for cz in 1..=z {
             // 1 << (3 - 1) == 4 ** 2 -> 16  * idx

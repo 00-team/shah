@@ -76,7 +76,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     }
 
     pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, data: &mut [bool; SIZ],
+        &mut self, ac: Ac, data: &mut [u8; SIZ],
     ) -> Result<usize, ShahError> {
         let key = ac.into()?.display_key();
 
@@ -93,42 +93,16 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         let (last, size) = (key.last(), key.size());
         let list = &tile.tiles[(last * size)..(last + 1) * size];
 
+        data.fill(0);
         for (i, g) in list.iter().enumerate() {
-            data[i] = g.is_some();
+            let (byte, bit) = (i / 8, i % 8);
+            if g.is_some() {
+                data[byte] |= 1 << bit;
+            }
+            // data[i] = g.is_some();
         }
 
         Ok(size)
-
-        // let mut tile = ApexTile::<SIZ>::default();
-        // self.tiles.get(&APEX_ROOT, &mut tile)?;
-        //
-        // for i in 0..LEN {
-        //     if ac.z() <= LVL {
-        //         let idx = ac.calc_index();
-        //         let len = ac.calc_len();
-        //         // let len: usize = 1 << ((LVL - z) * 2);
-        //         // let idx = Self::calc_index(z, x, y);
-        //         let src = &tile.tiles[idx..idx + len];
-        //         data[..len].copy_from_slice(src);
-        //         return Ok(len);
-        //     }
-        //
-        //     let idx = ac.split().calc_index();
-        //     // z -= LVL;
-        //     // let b: usize = 1 << z;
-        //     // let idx = Self::calc_index(LVL, x / b, y / b);
-        //     // x = x % b;
-        //     // y = y % b;
-        //
-        //     let gene = tile.tiles[idx];
-        //     if i + 1 == LEN {
-        //         data[0] = gene;
-        //         return Ok(1);
-        //     }
-        //     self.tiles.get(&gene, &mut tile)?;
-        // }
-
-        // unreachable!()
     }
 
     fn add(&mut self, tree: &[usize], value: Gene) -> Result<Gene, ShahError> {
@@ -145,9 +119,10 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
     pub fn set<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac, value: &Gene,
-    ) -> Result<(), ShahError> {
+    ) -> Result<Option<Gene>, ShahError> {
         let key = ac.into()?.full_key()?;
 
+        let voiding = value.is_none();
         let apex_root = ShahConfig::apex_root();
         let mut parent = ApexTile::<SIZ>::default();
         let mut curnet = ApexTile::<SIZ>::default();
@@ -159,25 +134,33 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
             parent.set_alive(true);
             self.tiles.set_unchecked(&mut parent)?;
 
-            parent.tiles[key.root()] = self.add(key.tree(), *value)?;
-            self.tiles.set_unchecked(&mut parent)?;
-            return Ok(());
+            if !voiding {
+                parent.tiles[key.root()] = self.add(key.tree(), *value)?;
+                self.tiles.set_unchecked(&mut parent)?;
+            }
+            return Ok(None);
         };
 
         let keykey = key.key();
         for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {
             let gene = parent.tiles[*x];
             if self.tiles.get(&gene, &mut curnet).onf()?.is_none() {
-                parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
-                self.tiles.set_unchecked(&mut parent)?;
-                return Ok(());
+                if !voiding {
+                    parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
+                    self.tiles.set_unchecked(&mut parent)?;
+                }
+                return Ok(None);
             }
             parent = curnet;
         }
 
+        let old_value = parent.tiles[key.leaf()];
         parent.tiles[key.leaf()] = *value;
+        // if voiding && !parent.tiles.iter().any(|g| g.is_some()) {
+        //     self.tiles.del_unchecked(&mut parent)
+        // }
         self.tiles.set_unchecked(&mut parent)?;
 
-        Ok(())
+        Ok(Some(old_value))
     }
 }

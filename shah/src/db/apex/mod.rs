@@ -1,15 +1,14 @@
+mod api;
 mod coords;
 
+pub use self::coords::ApexCoords;
+
+use self::coords::MAX_ZOOM;
 use super::entity::EntityDb;
 use crate::{
-    config::ShahConfig,
-    db::entity::Entity,
-    models::{Binary, Gene},
-    utils, OptNotFound, ShahError,
+    models::{Gene, Performed, Task, TaskList, Worker},
+    utils, ShahError,
 };
-use coords::{IntoApexCoords, MAX_ZOOM};
-
-pub use coords::ApexCoords;
 
 #[derive(shah::ShahSchema)]
 #[shah::model]
@@ -26,6 +25,7 @@ struct ApexTile<const S: usize> {
 #[derive(Debug)]
 pub struct ApexDb<const LVL: usize, const LEN: usize, const SIZ: usize> {
     tiles: EntityDb<ApexTile<SIZ>>,
+    tasks: TaskList<1, Task<Self>>,
 }
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
@@ -54,56 +54,27 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         std::fs::create_dir_all(&data_path)?;
 
-        let db = Self { tiles: EntityDb::new(&format!("{path}/apex"), 0)? };
+        let db = Self {
+            tiles: EntityDb::new(&format!("{path}/apex"), 0)?,
+            tasks: TaskList::new([Self::work_tiles]),
+        };
 
         Ok(db)
     }
 
-    pub fn get_value<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac,
-    ) -> Result<Gene, ShahError> {
-        let key = ac.into()?.full_key()?;
-
-        let mut gene = *ShahConfig::apex_root();
-        let mut tile = ApexTile::<SIZ>::default();
-
-        for x in key.key().iter() {
-            self.tiles.get(&gene, &mut tile)?;
-            gene = tile.tiles[*x];
-        }
-
-        Ok(gene)
+    fn work_tiles(&mut self) -> Result<Performed, ShahError> {
+        self.tiles.work()
     }
 
-    pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, data: &mut [u8; SIZ],
-    ) -> Result<usize, ShahError> {
-        let key = ac.into()?.display_key();
-
-        let mut gene = *ShahConfig::apex_root();
-        let mut tile = ApexTile::<SIZ>::default();
-
-        for x in key.key().iter() {
-            if self.tiles.get(&gene, &mut tile).onf()?.is_none() {
-                return Ok(0);
-            }
-            gene = tile.tiles[*x];
-        }
-
-        let (last, size) = (key.last(), key.size());
-        let list = &tile.tiles[(last * size)..(last + 1) * size];
-
-        data.fill(0);
-        for (i, g) in list.iter().enumerate() {
-            let (byte, bit) = (i / 8, i % 8);
-            if g.is_some() {
-                data[byte] |= 1 << bit;
-            }
-            // data[i] = g.is_some();
-        }
-
-        Ok(size)
-    }
+    // pub fn work(&mut self) -> Result<Performed, ShahError> {
+    //     self.tasks.start();
+    //     while let Some(task) = self.tasks.next() {
+    //         if task(self)?.0 {
+    //             return Ok(Performed(true));
+    //         }
+    //     }
+    //     Ok(Performed(false))
+    // }
 
     fn add(&mut self, tree: &[usize], value: Gene) -> Result<Gene, ShahError> {
         let mut gene = value;
@@ -116,51 +87,12 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         }
         Ok(gene)
     }
+}
 
-    pub fn set<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, value: &Gene,
-    ) -> Result<Option<Gene>, ShahError> {
-        let key = ac.into()?.full_key()?;
-
-        let voiding = value.is_none();
-        let apex_root = ShahConfig::apex_root();
-        let mut parent = ApexTile::<SIZ>::default();
-        let mut curnet = ApexTile::<SIZ>::default();
-
-        if self.tiles.get(apex_root, &mut parent).onf()?.is_none() {
-            parent.zeroed();
-            parent.level = 0;
-            parent.gene = *apex_root;
-            parent.set_alive(true);
-            self.tiles.set_unchecked(&mut parent)?;
-
-            if !voiding {
-                parent.tiles[key.root()] = self.add(key.tree(), *value)?;
-                self.tiles.set_unchecked(&mut parent)?;
-            }
-            return Ok(None);
-        };
-
-        let keykey = key.key();
-        for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {
-            let gene = parent.tiles[*x];
-            if self.tiles.get(&gene, &mut curnet).onf()?.is_none() {
-                if !voiding {
-                    parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
-                    self.tiles.set_unchecked(&mut parent)?;
-                }
-                return Ok(None);
-            }
-            parent = curnet;
-        }
-
-        let old_value = parent.tiles[key.leaf()];
-        parent.tiles[key.leaf()] = *value;
-        // if voiding && !parent.tiles.iter().any(|g| g.is_some()) {
-        //     self.tiles.del_unchecked(&mut parent)
-        // }
-        self.tiles.set_unchecked(&mut parent)?;
-
-        Ok(Some(old_value))
+impl<const LVL: usize, const LEN: usize, const SIZ: usize> Worker<1>
+    for ApexDb<LVL, LEN, SIZ>
+{
+    fn tasks(&mut self) -> &mut TaskList<1, Task<Self>> {
+        &mut self.tasks
     }
 }

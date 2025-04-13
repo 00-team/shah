@@ -1,7 +1,7 @@
 use crate::db::entity::{
     Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom,
 };
-use crate::models::{Gene, GeneId, Performed, Task, TaskList};
+use crate::models::{Gene, GeneId, Performed, Task, TaskList, Worker};
 use crate::{
     utils, IsNotFound, OptNotFound, ShahError, SystemError, PAGE_SIZE,
 };
@@ -74,13 +74,21 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
         self.buckle.work()
     }
 
-    pub fn work(&mut self) -> Result<Performed, ShahError> {
-        self.tasks.start();
-        while let Some(task) = self.tasks.next() {
-            if task(self)?.0 {
-                return Ok(Performed(true));
-            }
-        }
-        Ok(Performed(false))
+    // pub fn work(&mut self) -> Result<Performed, ShahError> {
+    //     self.tasks.start();
+    //     while let Some(task) = self.tasks.next() {
+    //         if task(self)?.0 {
+    //             return Ok(Performed(true));
+    //         }
+    //     }
+    //     Ok(Performed(false))
+    // }
+}
+
+impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> Worker<2>
+    for BeltDb<B, OB, BS>
+{
+    fn tasks(&mut self) -> &mut TaskList<2, Task<Self>> {
+        &mut self.tasks
     }
 }

@@ -44,3 +44,16 @@ impl<const N: usize, T: Copy> Iterator for TaskList<N, T> {
         task
     }
 }
+
+pub trait Worker<const N: usize> {
+    fn tasks(&mut self) -> &mut TaskList<N, Task<Self>>;
+    fn work(&mut self) -> Result<Performed, ShahError> {
+        self.tasks().start();
+        while let Some(task) = self.tasks().next() {
+            if task(self)?.0 {
+                return Ok(Performed(true));
+            }
+        }
+        Ok(Performed(false))
+    }
+}

@@ -1,3 +1,5 @@
+use crate::models::Worker;
+
 use super::*;
 
 impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
@@ -42,14 +44,12 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     fn work_origins(&mut self) -> Result<Performed, ShahError> {
         self.origins.work()
     }
+}
 
-    pub fn work(&mut self) -> Result<Performed, ShahError> {
-        self.tasks.start();
-        while let Some(task) = self.tasks.next() {
-            if task(self)?.0 {
-                return Ok(Performed(true));
-            }
-        }
-        Ok(Performed(false))
+impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> Worker<3>
+    for PondDb<T, O, S>
+{
+    fn tasks(&mut self) -> &mut TaskList<3, Task<Self>> {
+        &mut self.tasks
     }
 }

@@ -3,16 +3,6 @@ use super::*;
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     EntityDb<T, O, S, Is>
 {
-    pub fn work(&mut self) -> Result<Performed, ShahError> {
-        self.tasks.start();
-        while let Some(task) = self.tasks.next() {
-            if task(self)?.0 {
-                return Ok(Performed(true));
-            }
-        }
-        Ok(Performed(false))
-    }
-
     pub(super) fn inspection(&mut self, entity: &T) {
         // log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
         if !self.dead_list.disabled() && !entity.is_alive() {
@@ -124,5 +114,13 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
 
         Ok(Performed(performed))
+    }
+}
+
+impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
+    Worker<2> for EntityDb<T, O, S, Is>
+{
+    fn tasks(&mut self) -> &mut TaskList<2, Task<Self>> {
+        &mut self.tasks
     }
 }

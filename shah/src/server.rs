@@ -14,9 +14,9 @@ const ORDER_SIZE: usize = 1024 * 64;
 pub struct Server<
     's,
     'r,
+    E: From<u16> + Copy + Debug,
     const TL: usize,
     State: ShahState<TL> + 'static,
-    E: From<u16> + Copy + Debug,
 > {
     #[allow(dead_code)]
     path: PathBuf,
@@ -33,10 +33,10 @@ impl<
         const TL: usize,
         State: ShahState<TL> + 'static,
         E: From<u16> + Copy + Debug,
-    > Server<'s, 'r, TL, State, E>
+    > Server<'s, 'r, E, TL, State>
 {
     pub fn new<P: Into<PathBuf>>(
-        path: P, state: &'s mut State, routes: &'r [Scope<State>],
+        path: P, state: &'s mut State, routes: &'r [Scope<State>], _err: E,
     ) -> Result<Self, ShahError> {
         let path: PathBuf = path.into();
         let _ = std::fs::remove_file(&path);

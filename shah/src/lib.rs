@@ -9,7 +9,7 @@ pub mod models;
 pub(crate) mod utils;
 
 pub use error::*;
-pub use server::run;
+pub use server::Server;
 pub use taker::*;
 pub use utils::AsStatic;
 

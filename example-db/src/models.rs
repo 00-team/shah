@@ -3,7 +3,7 @@
 use shah::{
     db::snake::SnakeDb,
     error::{IsNotFound, ShahError},
-    models::{Performed, ShahState, Task, TaskList},
+    models::{Performed, Task, TaskList, Worker},
     ErrorCode,
 };
 
@@ -61,15 +61,9 @@ impl State {
     work_fn!(detail, work_detail);
 }
 
-impl ShahState for State {
-    fn work(&mut self) -> Result<Performed, ShahError> {
-        self.tasks.start();
-        while let Some(task) = self.tasks.next() {
-            if task(self)?.0 {
-                return Ok(Performed(true));
-            }
-        }
-        Ok(Performed(false))
+impl Worker<3> for State {
+    fn tasks(&mut self) -> &mut TaskList<3, Task<Self>> {
+        &mut self.tasks
     }
 }
 

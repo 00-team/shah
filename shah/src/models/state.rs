@@ -1,6 +1,5 @@
-use crate::models::Performed;
-use crate::ShahError;
+use super::Worker;
 
-pub trait ShahState {
-    fn work(&mut self) -> Result<Performed, ShahError>;
-}
+pub trait ShahState<const N: usize>: Worker<N> {}
+
+impl<const N: usize, T: Worker<N>> ShahState<N> for T {}

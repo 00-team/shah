@@ -1,5 +1,10 @@
 use super::{coords::IntoApexCoords, ApexDb, ApexTile};
-use crate::{config::ShahConfig, db::entity::Entity, models::{Binary, Gene}, OptNotFound, ShahError};
+use crate::{
+    config::ShahConfig,
+    db::entity::Entity,
+    models::{Binary, Gene},
+    OptNotFound, ShahError,
+};
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ApexDb<LVL, LEN, SIZ>
@@ -50,12 +55,19 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         Ok(size)
     }
 
-    pub fn set<Ac: IntoApexCoords<LVL, LEN>>(
+    pub fn void<Ac: IntoApexCoords<LVL, LEN>>(
+        &mut self, ac: Ac,
+    ) -> Result<Option<Gene>, ShahError> {
+        let _key = ac.into()?.full_key()?;
+        todo!("impl this")
+    }
+
+    pub fn mark<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac, value: &Gene,
     ) -> Result<Option<Gene>, ShahError> {
+        assert!(value.is_some(), "use void api for voiding");
         let key = ac.into()?.full_key()?;
 
-        let voiding = value.is_none();
         let apex_root = ShahConfig::apex_root();
         let mut parent = ApexTile::<SIZ>::default();
         let mut curnet = ApexTile::<SIZ>::default();
@@ -67,10 +79,9 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
             parent.set_alive(true);
             self.tiles.set_unchecked(&mut parent)?;
 
-            if !voiding {
-                parent.tiles[key.root()] = self.add(key.tree(), *value)?;
-                self.tiles.set_unchecked(&mut parent)?;
-            }
+            parent.tiles[key.root()] = self.add(key.tree(), *value)?;
+            self.tiles.set_unchecked(&mut parent)?;
+
             return Ok(None);
         };
 
@@ -78,10 +89,9 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {
             let gene = parent.tiles[*x];
             if self.tiles.get(&gene, &mut curnet).onf()?.is_none() {
-                if !voiding {
-                    parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
-                    self.tiles.set_unchecked(&mut parent)?;
-                }
+                parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
+                self.tiles.set_unchecked(&mut parent)?;
+
                 return Ok(None);
             }
             parent = curnet;
@@ -89,9 +99,6 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         let old_value = parent.tiles[key.leaf()];
         parent.tiles[key.leaf()] = *value;
-        // if voiding && !parent.tiles.iter().any(|g| g.is_some()) {
-        //     self.tiles.del_unchecked(&mut parent)
-        // }
         self.tiles.set_unchecked(&mut parent)?;
 
         Ok(Some(old_value))

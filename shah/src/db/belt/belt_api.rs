@@ -105,4 +105,9 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     ) -> Result<usize, ShahError> {
         self.belt.list(page, result)
     }
+
+    /// put the head as tail and return the head
+    pub fn recycle(&mut self, _recycled: &mut B) -> Result<(), ShahError> {
+        todo!("make this")
+    }
 }

@@ -1,9 +1,9 @@
-use super::{coords::IntoApexCoords, ApexDb, ApexTile};
+use super::{ApexDb, ApexTile, coords::IntoApexCoords};
 use crate::{
+    OptNotFound, ShahError,
     config::ShahConfig,
     db::entity::Entity,
     models::{Binary, Gene},
-    OptNotFound, ShahError,
 };
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
@@ -57,9 +57,37 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
     pub fn void<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac,
-    ) -> Result<Option<Gene>, ShahError> {
-        let _key = ac.into()?.full_key()?;
-        todo!("impl this")
+    ) -> Result<Gene, ShahError> {
+        let apex_root = ShahConfig::apex_root();
+        let key = ac.into()?.full_key()?;
+        let mut tile_tree = [ApexTile::<SIZ>::default(); LEN];
+        self.tiles.get(apex_root, &mut tile_tree[0])?;
+
+        for (i, x) in key.key_branch().iter().enumerate() {
+            let gene = tile_tree[i].tiles[*x];
+            if self.tiles.get(&gene, &mut tile_tree[i + 1]).onf()?.is_none() {
+                tile_tree[i + 1].set_alive(false);
+                break;
+            }
+        }
+
+        let old_value = tile_tree[LEN - 1].tiles[key.leaf()];
+
+        for (i, x) in key.key().iter().enumerate().rev() {
+            let t = &mut tile_tree[i];
+            if !t.is_alive() {
+                continue;
+            }
+            t.tiles[*x].clear();
+            if i != 0 || t.tiles.iter().any(|g| g.is_some()) {
+                self.tiles.set(t)?;
+                break;
+            }
+            let gene = t.gene;
+            self.tiles.del(&gene, t).onf()?;
+        }
+
+        Ok(old_value)
     }
 
     pub fn mark<Ac: IntoApexCoords<LVL, LEN>>(

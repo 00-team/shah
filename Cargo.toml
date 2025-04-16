@@ -3,7 +3,7 @@ members = ["shah", "shah-macros", "example-db", "example-client"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license-file = "./LICENSE"
 repository = "https://github.com/00-team/shah/"
 readme = "./README.md"

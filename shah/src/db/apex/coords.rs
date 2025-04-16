@@ -35,6 +35,11 @@ impl<const LEN: usize> ApexFullKey<LEN> {
         &self.key[1..self.key.len() - 1]
     }
 
+    /// key[..key.len() - 1]
+    pub fn key_branch(&self) -> &[usize] {
+        &self.key[..self.key.len() - 1]
+    }
+
     /// `key[key.len() - 1]`
     pub fn leaf(&self) -> usize {
         self.key[self.key.len() - 1]

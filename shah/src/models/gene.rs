@@ -205,7 +205,7 @@ impl serde::Serialize for Gene {
 #[cfg(feature = "serde")]
 struct StrVisitor;
 #[cfg(feature = "serde")]
-impl<'de> serde::de::Visitor<'de> for StrVisitor {
+impl serde::de::Visitor<'_> for StrVisitor {
     type Value = String;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

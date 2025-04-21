@@ -1,6 +1,20 @@
+use crate::models::Binary;
+
 use super::*;
 
 impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
+    pub fn buckle_root(&mut self) -> Result<(), ShahError> {
+        let mut buckle = Buckle::default();
+        if self.buckle.get(&Gene::ROOT, &mut buckle).onf()?.is_none() {
+            buckle.zeroed();
+            buckle.set_alive(true);
+            buckle.gene = Gene::ROOT;
+            self.buckle.set_unchecked(&mut buckle)?;
+        }
+
+        Ok(())
+    }
+
     pub fn buckle_add(&mut self, buckle: &mut Buckle) -> Result<(), ShahError> {
         buckle.set_alive(true);
         buckle.belts = 0;

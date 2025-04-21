@@ -98,6 +98,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
         let pos = Self::id_to_pos(id);
         let size = self.file.read_at(buf, pos)?;
+        if size < T::S {
+            return Err(NotFound::OutOfBounds)?;
+        }
         let count = size / T::S;
 
         for (idx, item) in result.iter_mut().enumerate() {

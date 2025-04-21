@@ -91,6 +91,9 @@ impl ShahSchema for Gene {
 }
 
 impl Gene {
+    pub const ROOT: Self =
+        Self { id: GeneId(1), iter: 0, server: 0, pepper: [0, 0, 7] };
+
     #[cfg(feature = "serde")]
     pub fn as_hex(&self) -> String {
         use super::Binary;

@@ -1,7 +1,5 @@
 use std::sync::OnceLock;
 
-use crate::models::{Gene, GeneId};
-
 macro_rules! evar {
     ($name:literal) => {
         std::env::var($name).expect(concat!($name, " was not found in env"))
@@ -22,7 +20,6 @@ macro_rules! eint {
 /// Shah Config
 pub struct ShahConfig {
     pub server: u32,
-    apex_root: Gene,
 }
 
 impl ShahConfig {
@@ -33,18 +30,6 @@ impl ShahConfig {
             panic!("SHAH_SERVER_INDEX env must not be 0");
         }
 
-        STATE.get_or_init(|| Self {
-            server,
-            apex_root: Gene {
-                id: GeneId(1),
-                server,
-                iter: 0,
-                pepper: [0, 0, 7],
-            },
-        })
-    }
-
-    pub fn apex_root() -> &'static Gene {
-        &Self::get().apex_root
+        STATE.get_or_init(|| Self { server })
     }
 }

@@ -1,7 +1,6 @@
 use super::{ApexDb, ApexTile, coords::IntoApexCoords};
 use crate::{
     OptNotFound, ShahError,
-    config::ShahConfig,
     db::entity::Entity,
     models::{Binary, Gene},
 };
@@ -14,7 +13,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<Gene, ShahError> {
         let key = ac.into()?.full_key()?;
 
-        let mut gene = *ShahConfig::apex_root();
+        let mut gene = Gene::ROOT;
         let mut tile = ApexTile::<SIZ>::default();
 
         for x in key.key().iter() {
@@ -30,7 +29,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<usize, ShahError> {
         let key = ac.into()?.display_key();
 
-        let mut gene = *ShahConfig::apex_root();
+        let mut gene = Gene::ROOT;
         let mut tile = ApexTile::<SIZ>::default();
 
         for x in key.key().iter() {
@@ -58,10 +57,9 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     pub fn void<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac,
     ) -> Result<Gene, ShahError> {
-        let apex_root = ShahConfig::apex_root();
         let key = ac.into()?.full_key()?;
         let mut tile_tree = [ApexTile::<SIZ>::default(); LEN];
-        self.tiles.get(apex_root, &mut tile_tree[0])?;
+        self.tiles.get(&Gene::ROOT, &mut tile_tree[0])?;
 
         for (i, x) in key.key_branch().iter().enumerate() {
             let gene = tile_tree[i].tiles[*x];
@@ -79,7 +77,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
                 continue;
             }
             t.tiles[*x].clear();
-            if i != 0 || t.tiles.iter().any(|g| g.is_some()) {
+            if i == 0 || t.tiles.iter().any(|g| g.is_some()) {
                 self.tiles.set(t)?;
                 break;
             }
@@ -96,14 +94,13 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         assert!(value.is_some(), "use void api for voiding");
         let key = ac.into()?.full_key()?;
 
-        let apex_root = ShahConfig::apex_root();
         let mut parent = ApexTile::<SIZ>::default();
         let mut curnet = ApexTile::<SIZ>::default();
 
-        if self.tiles.get(apex_root, &mut parent).onf()?.is_none() {
+        if self.tiles.get(&Gene::ROOT, &mut parent).onf()?.is_none() {
             parent.zeroed();
             parent.level = 0;
-            parent.gene = *apex_root;
+            parent.gene = Gene::ROOT;
             parent.set_alive(true);
             self.tiles.set_unchecked(&mut parent)?;
 

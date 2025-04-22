@@ -3,7 +3,7 @@ use crate::db::entity::{
 };
 use crate::models::{Gene, GeneId, Performed, Task, TaskList, Worker};
 use crate::{
-    utils, IsNotFound, OptNotFound, ShahError, SystemError, PAGE_SIZE,
+    IsNotFound, OptNotFound, PAGE_SIZE, ShahError, SystemError, utils,
 };
 use std::path::Path;
 
@@ -12,7 +12,7 @@ mod buckle;
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, Clone, Copy, crate::Entity)]
+#[derive(Debug, crate::Entity)]
 pub struct Buckle {
     pub gene: Gene,
     pub head: Gene,

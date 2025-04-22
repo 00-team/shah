@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 
 #[crate::model]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct ErrorCode {
     pub scope: u16,
     pub code: u16,
@@ -192,11 +192,7 @@ pub enum ClientError<T> {
 
 impl<T: IsNotFound> ClientError<T> {
     pub fn not_found_ok(self) -> Result<(), ClientError<T>> {
-        if self.is_not_found() {
-            Ok(())
-        } else {
-            Err(self)
-        }
+        if self.is_not_found() { Ok(()) } else { Err(self) }
     }
 }
 

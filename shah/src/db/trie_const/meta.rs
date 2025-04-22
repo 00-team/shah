@@ -8,6 +8,7 @@ pub const TRIE_CONST_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::TrieConst as u16);
 
 #[crate::model]
+#[derive(Debug)]
 pub struct TrieConstMeta {
     pub db: DbHead,
     pub index: u64,

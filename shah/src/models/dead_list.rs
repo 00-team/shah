@@ -5,13 +5,13 @@ pub struct DeadList<T, const CAP: usize> {
     disabled: bool,
 }
 
-impl<T: Clone + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
+impl<T: Copy + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
+impl<T: Copy + PartialEq, const CAP: usize> DeadList<T, CAP> {
     pub fn new() -> Self {
         Self { len: 0, arr: Box::new([const { None }; CAP]), disabled: false }
     }
@@ -79,7 +79,7 @@ impl<T: Clone + PartialEq, const CAP: usize> DeadList<T, CAP> {
         for slot in self.arr.iter_mut() {
             if let Some(item) = slot {
                 if f(item) {
-                    let v = item.clone();
+                    let v = *item;
                     *slot = None;
                     if self.len > 0 {
                         self.len -= 1;

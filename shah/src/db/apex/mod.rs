@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(shah::ShahSchema)]
 #[shah::model]
-#[derive(Debug, Clone, Copy, shah::Entity)]
+#[derive(Debug, shah::Entity)]
 struct ApexTile<const S: usize> {
     gene: Gene,
     growth: u64,

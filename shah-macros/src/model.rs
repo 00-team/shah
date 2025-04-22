@@ -1,6 +1,6 @@
 use crate::{err, utils::args::args_parse};
 use proc_macro2::{Literal, TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use quote_into::quote_into;
 use syn::{parse::Parser, spanned::Spanned};
 
@@ -27,12 +27,19 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
                     continue;
                 };
 
-                if t == "Default" {
-                    return err!(token.span(), "remove the Default derive");
+                match t.to_string().as_str() {
+                    "Default" | "Copy" | "Clone" => {
+                        return err!(
+                            token.span(),
+                            format!("remove the {t} derive")
+                        );
+                    }
+                    _ => {}
                 }
             }
         }
     }
+    item.attrs.push(syn::parse_quote! { #[derive(Copy)] });
     item.attrs.push(syn::parse_quote! { #[repr(C)] });
 
     let ident = item.ident.clone();
@@ -147,7 +154,7 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
                         vlen
                     };
 
-                    self.#field[..len].clone_from_slice(&value.as_bytes()[..len]);
+                    self.#field[..len].copy_from_slice(&value.as_bytes()[..len]);
                     if len < flen {
                         self.#field[len] = 0;
                     }
@@ -181,7 +188,17 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
         }
 
         #[automatically_derived]
+        impl #impl_gnc Clone for #ident #ty_gnc #where_gnc {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        #[automatically_derived]
         impl #impl_gnc #ci::models::Binary for #ident #ty_gnc #where_gnc {}
+
+        #[automatically_derived]
+        impl #impl_gnc #ci::ShahModel for #ident #ty_gnc #where_gnc {}
     };
 
     if is_generic {

@@ -30,7 +30,7 @@ pub struct SnakeFree {
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, Entity, Clone, Copy)]
+#[derive(Debug, Entity)]
 pub struct SnakeHead {
     pub gene: Gene,
     pub capacity: u64,

@@ -11,7 +11,7 @@ pub(crate) mod db {
     use super::*;
 
     #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
+    #[derive(Debug, PartialEq, ShahSchema)]
     pub struct SessionInfo {
         pub client: u8,
         pub os: u8,
@@ -24,7 +24,7 @@ pub(crate) mod db {
     }
 
     #[shah::model]
-    #[derive(Debug, PartialEq, Clone, Copy, ShahSchema)]
+    #[derive(Debug, PartialEq, ShahSchema)]
     pub struct Session {
         ip: [u8; 4],
         info: SessionInfo,
@@ -34,7 +34,7 @@ pub(crate) mod db {
 
     #[derive(ShahSchema)]
     #[shah::model]
-    #[derive(Entity, Debug, PartialEq, Clone, Copy)]
+    #[derive(Entity, Debug, PartialEq)]
     pub struct User {
         // pub flags: u64,
         pub gene: Gene,

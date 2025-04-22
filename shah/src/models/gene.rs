@@ -76,7 +76,7 @@ impl ShahSchema for GeneId {
 }
 
 #[crate::model]
-#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+#[derive(Debug, PartialEq, Hash, Eq)]
 pub struct Gene {
     pub id: GeneId,
     pub iter: u8,

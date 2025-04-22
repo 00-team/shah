@@ -1,4 +1,4 @@
-pub trait Binary: Sized {
+pub trait Binary: Sized + Copy + Send {
     const S: usize = core::mem::size_of::<Self>();
     const N: u64 = core::mem::size_of::<Self>() as u64;
 

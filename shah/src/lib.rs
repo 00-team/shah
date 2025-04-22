@@ -8,6 +8,8 @@ pub mod models;
 
 pub(crate) mod utils;
 
+use std::fmt::Debug;
+
 pub use error::*;
 pub use server::Server;
 pub use taker::*;
@@ -22,6 +24,8 @@ pub const VERSION_MINER: u16 = utils::env_num(env!("CARGO_PKG_VERSION_MINOR"));
 pub const SHAH_VERSION: (u16, u16) = (VERSION_MAJOR, VERSION_MINER);
 pub const REPLY_BODY_SIZE: usize = BLOCK_SIZE * 16;
 pub const ORDER_BODY_SIZE: usize = BLOCK_SIZE * 16;
+
+pub trait ShahModel: models::Binary + Default + Debug {}
 
 #[allow(unused_extern_crates)]
 extern crate self as shah;

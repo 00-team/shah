@@ -10,19 +10,9 @@ mod username;
 // use std::io::Write;
 
 use rand::Rng;
-use shah::{
-    db::trie_const::TrieConstKey, error::ShahError, Command, ShahSchema,
-};
+use shah::{Command, db::trie_const::TrieConstKey, error::ShahError};
 
 // const SOCK_PATH: &str = "/tmp/shah.sock";
-
-#[derive(ShahSchema)]
-#[shah::model]
-struct Whip<const N: usize> {
-    // data: [u8; N],
-    #[str]
-    name: [u8; N],
-}
 
 #[derive(Debug, Default, Command)]
 enum Commands {

@@ -42,7 +42,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         if gene.is_some() {
             log::warn!("{} entity gene is not cleared: {gene:?}", self.ls);
         }
-        gene.clone_from(&self.new_gene()?);
+        *gene = self.new_gene()?;
 
         *entity.growth_mut() = 0;
         self.set_unchecked(entity)?;

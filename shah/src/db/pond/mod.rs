@@ -23,7 +23,7 @@ mod util;
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, Clone, crate::Entity)]
+#[derive(Debug, crate::Entity)]
 pub struct Origin {
     pub gene: Gene,
     pub head: Gene,
@@ -36,6 +36,8 @@ pub struct Origin {
     growth: u64,
 }
 
+// pub trait Origin {}
+
 pub trait Duck {
     fn pond(&self) -> &Gene;
     fn pond_mut(&mut self) -> &mut Gene;
@@ -43,7 +45,7 @@ pub trait Duck {
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, crate::Entity, Clone)]
+#[derive(Debug, crate::Entity)]
 pub struct Pond {
     pub gene: Gene,
     pub next: Gene,

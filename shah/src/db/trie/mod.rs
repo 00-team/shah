@@ -1,7 +1,7 @@
 mod meta;
 
-use crate::{models::Binary, OptNotFound};
-use crate::{utils, NotFound, ShahError, SystemError};
+use crate::{NotFound, ShahError, ShahModel, SystemError, utils};
+use crate::{OptNotFound, models::Binary};
 use std::{
     fmt::Debug,
     io::{ErrorKind, Seek, SeekFrom},
@@ -20,7 +20,8 @@ pub trait TrieAbc {
 }
 
 #[shah::model]
-struct Node<const ABC_LEN: usize, Val: Binary + Default> {
+#[derive(Debug)]
+struct Node<const ABC_LEN: usize, Val: ShahModel> {
     value: Val,
     child: [Pos; ABC_LEN],
 }
@@ -50,11 +51,8 @@ impl TrieKey {
     }
 }
 
-impl<
-        const ABC_LEN: usize,
-        Abc: TrieAbc,
-        Val: Binary + Default + Copy + Debug,
-    > Trie<ABC_LEN, Abc, Val>
+impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
+    Trie<ABC_LEN, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
         assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");

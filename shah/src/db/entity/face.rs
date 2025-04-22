@@ -1,6 +1,7 @@
-use std::fmt::Debug;
-
-use crate::models::{Binary, Gene, ShahSchema};
+use crate::{
+    ShahModel,
+    models::{Gene, ShahSchema},
+};
 
 macro_rules! flag {
     ($name:ident, $set:ident) => {
@@ -9,25 +10,19 @@ macro_rules! flag {
     };
 }
 
-pub trait Entity {
+pub trait Entity: ShahModel {
     fn gene(&self) -> &Gene;
     fn gene_mut(&mut self) -> &mut Gene;
     fn growth(&self) -> u64;
     fn growth_mut(&mut self) -> &mut u64;
 
     flag! {is_alive, set_alive}
-    flag! {is_edited, set_edited}
-    flag! {is_private, set_private}
+    // flag! {is_edited, set_edited}
+    // flag! {is_private, set_private}
 }
 
-pub trait EntityItem:
-    Default + Entity + Debug + Clone + Binary + ShahSchema
-{
-}
-impl<T: Default + Entity + Debug + Clone + Binary + ShahSchema> EntityItem
-    for T
-{
-}
+pub trait EntityItem: Entity + ShahSchema {}
+impl<T: Entity + ShahSchema> EntityItem for T {}
 
 macro_rules! id_iter {
     ($name:ident) => {

@@ -8,6 +8,7 @@ pub const ENTITY_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::Entity as u16);
 
 #[crate::model]
+#[derive(Debug)]
 pub struct EntityHead {
     pub db_head: DbHead,
     pub item_size: u64,

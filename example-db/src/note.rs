@@ -6,7 +6,7 @@ pub(crate) mod db {
     use super::*;
 
     #[shah::model]
-    #[derive(Debug, Entity, Duck, Clone, Copy, ShahSchema)]
+    #[derive(Debug, Entity, Duck, ShahSchema)]
     pub struct Note {
         pub gene: Gene,
         pub user: Gene,

@@ -15,7 +15,7 @@ pub(crate) mod db {
 
     #[derive(shah::ShahSchema)]
     #[shah::model]
-    #[derive(Debug, Clone, shah::Entity, shah::Belt)]
+    #[derive(Debug, shah::Entity, shah::Belt)]
     pub struct Extra {
         pub gene: Gene,
         pub next: Gene,

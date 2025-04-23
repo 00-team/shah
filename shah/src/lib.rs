@@ -2,14 +2,15 @@ mod config;
 mod server;
 mod taker;
 
+pub use signal_hook as sk;
+
 pub mod db;
 pub mod error;
 pub mod exp;
 pub mod models;
+pub mod signals;
 
 pub(crate) mod utils;
-
-use std::fmt::Debug;
 
 pub use error::*;
 pub use server::Server;
@@ -26,6 +27,7 @@ pub const SHAH_VERSION: (u16, u16) = (VERSION_MAJOR, VERSION_MINER);
 pub const REPLY_BODY_SIZE: usize = BLOCK_SIZE * 16;
 pub const ORDER_BODY_SIZE: usize = BLOCK_SIZE * 16;
 
+use std::fmt::Debug;
 pub trait ShahModel: models::Binary + Default + Debug {}
 
 #[allow(unused_extern_crates)]

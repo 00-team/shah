@@ -7,12 +7,11 @@ mod phone;
 mod user;
 mod username;
 
-// use std::io::Write;
-
+use example_db::models::ExampleError;
 use rand::Rng;
 use shah::{Command, db::trie_const::TrieConstKey, error::ShahError};
 
-// const SOCK_PATH: &str = "/tmp/shah.sock";
+const SOCK_PATH: &str = "/tmp/shah.example-db.sock";
 
 #[derive(Debug, Default, Command)]
 enum Commands {
@@ -67,18 +66,16 @@ fn main() -> Result<(), ShahError> {
     // }
     // drop(phone);
 
-    // let routes = shah::routes!(models::State, user, phone, detail);
-    //
-    // log::debug!("init state");
-    // let mut state = models::State::new(
-    //     user::db::init()?,
-    //     phone::db::setup()?,
-    //     detail::db::setup()?,
-    //     note::db::init()?,
-    //     extra::db::init()?,
-    // )?;
-    //
-    // let mut _user = user::db::User::default();
+    let routes = shah::routes!(models::State, user, phone, detail);
+
+    log::debug!("init state");
+    let mut state = models::State::new(
+        user::db::init()?,
+        phone::db::setup()?,
+        detail::db::setup()?,
+        note::db::init()?,
+        extra::db::init()?,
+    )?;
 
     // let gene_57 = Gene { id: 57, iter: 0, pepper: [149, 231, 78], server: 0 };
     // state.users.get(&gene_57, &mut user)?;
@@ -89,38 +86,47 @@ fn main() -> Result<(), ShahError> {
     // log::info!("users: {}", state.users.live);
     // let mut npf = 0;
     // let mut dpf = 0;
+
+    // let exit = Arc::new(AtomicBool::new(false));
+    // shah::signals::register_exit(&exit)?;
     // loop {
-    //     log::info!("========================");
-    //     if !state.users.work()?.0 {
-    //         npf += 1;
-    //     } else {
-    //         dpf += 1;
-    //     }
-    //     user.gene.id = GeneId(0);
-    //     user.set_name("a new user");
-    //     state.users.add(&mut user)?;
-    //     if dpf > 1 {
+    //     log::debug!("doing something");
+    //     if exit.load(Ordering::Relaxed) {
+    //         log::info!("exiting");
     //         break;
     //     }
-    //     if npf > 10 {
-    //         break;
-    //     }
-    //     // std::thread::sleep(std::time::Duration::from_secs(2));
+    // if !state.users.work()?.0 {
+    //     npf += 1;
+    // } else {
+    //     dpf += 1;
+    // }
+    // user.gene.id = GeneId(0);
+    // user.set_name("a new user");
+    // state.users.add(&mut user)?;
+    // if dpf > 1 {
+    //     break;
+    // }
+    // if npf > 10 {
+    //     break;
+    // }
+    //     std::thread::sleep(std::time::Duration::from_millis(700));
     // }
 
-    // Ok(())
-
-    // println!("tasks: {tasks:?}");
-
-    //
-    // Ok(())
-
-    // match shah::command() {
-    //     Commands::Help => {
-    //         std::io::stdout().write_all(Commands::help().as_bytes())?
-    //     }
-    //     Commands::Run => shah::run(SOCK_PATH, &mut state, &routes)?,
-    // }
+    log::info!("commands");
+    match shah::command() {
+        Commands::Help => {
+            println!("{}", Commands::help())
+        }
+        Commands::Run => {
+            shah::Server::new(
+                SOCK_PATH,
+                &mut state,
+                &routes,
+                ExampleError::Unknown,
+            )?
+            .run()?;
+        }
+    }
 
     Ok(())
 }

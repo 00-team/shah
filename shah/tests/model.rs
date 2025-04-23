@@ -2,6 +2,7 @@
 mod tests {
 
     #[shah::model]
+    #[derive(Debug)]
     struct User {
         #[flags(f_1, f_2, f_3, f_4, f_5, f_6, f_7, f8, f9)]
         pub flags: u64,

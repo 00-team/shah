@@ -4,6 +4,8 @@ use std::marker::PhantomData;
 use std::os::fd::AsRawFd;
 use std::os::unix::net::{SocketAddr, UnixDatagram};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use crate::models::{Binary, OrderHead, Reply, ReplyHead, Scope, ShahState};
@@ -25,15 +27,16 @@ pub struct Server<
     _err: PhantomData<E>,
     epfd: i32,
     sock: UnixDatagram,
+    exit: Arc<AtomicBool>,
 }
 
 impl<
-        's,
-        'r,
-        const TL: usize,
-        State: ShahState<TL> + 'static,
-        E: From<u16> + Copy + Debug,
-    > Server<'s, 'r, E, TL, State>
+    's,
+    'r,
+    const TL: usize,
+    State: ShahState<TL> + 'static,
+    E: From<u16> + Copy + Debug,
+> Server<'s, 'r, E, TL, State>
 {
     pub fn new<P: Into<PathBuf>>(
         path: P, state: &'s mut State, routes: &'r [Scope<State>], _err: E,
@@ -46,9 +49,19 @@ impl<
         sock.set_read_timeout(Some(Duration::from_secs(5)))?;
         sock.set_write_timeout(Some(Duration::from_secs(5)))?;
 
-        let server =
-            Self { path, state, routes, epfd: 0, sock, _err: PhantomData::<E> }
-                .epoll_init()?;
+        let exit = Arc::new(AtomicBool::new(false));
+        crate::signals::register_exit(&exit)?;
+
+        let server = Self {
+            exit,
+            path,
+            state,
+            routes,
+            epfd: 0,
+            sock,
+            _err: PhantomData::<E>,
+        }
+        .epoll_init()?;
 
         Ok(server)
     }
@@ -61,6 +74,11 @@ impl<
         let mut events = [libc::epoll_event { events: 0, u64: 0 }; 5];
 
         loop {
+            if self.exit.load(Ordering::Relaxed) {
+                log::info!("exited");
+                break Ok(());
+            }
+
             if wait && did_not_performed > 10 {
                 let num_events = unsafe {
                     libc::epoll_wait(
@@ -72,6 +90,10 @@ impl<
                 };
                 if num_events == -1 {
                     let e = io::Error::last_os_error();
+                    if matches!(e.kind(), io::ErrorKind::Interrupted) {
+                        log::info!("exited while wating");
+                        return Ok(());
+                    }
                     log::error!("epoll: {e:?}");
                     return Err(e)?;
                 }

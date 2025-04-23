@@ -1,6 +1,4 @@
-use crate::db::entity::{
-    Entity, EntityCount, EntityDb, EntityItem, EntityKochFrom,
-};
+use crate::db::entity::{EntityCount, EntityDb, EntityItem, EntityKochFrom};
 use crate::models::{Gene, GeneId, Performed, Task, TaskList, Worker};
 use crate::{
     IsNotFound, OptNotFound, PAGE_SIZE, ShahError, SystemError, utils,
@@ -10,19 +8,19 @@ use std::path::Path;
 mod belt_api;
 mod buckle;
 
-// pub trait Buckle: EntityItem {
-//     fn head(&self) -> &Gene;
-//     fn head_mut(&mut self) -> &mut Gene;
-//     fn tail(&self) -> &Gene;
-//     fn tail_mut(&mut self) -> &mut Gene;
-//     fn belt_count(&self) -> &u64;
-//     fn belt_count_mut(&mut self) -> &mut u64;
-// }
+pub trait Buckle: EntityItem {
+    fn head(&self) -> &Gene;
+    fn head_mut(&mut self) -> &mut Gene;
+    fn tail(&self) -> &Gene;
+    fn tail_mut(&mut self) -> &mut Gene;
+    fn belt_count(&self) -> &u64;
+    fn belt_count_mut(&mut self) -> &mut u64;
+}
 
 #[derive(crate::ShahSchema)]
 #[crate::model]
-#[derive(Debug, crate::Entity)]
-pub struct Buckle {
+#[derive(Debug, crate::Entity, crate::Buckle)]
+pub struct ShahBuckle {
     pub gene: Gene,
     pub head: Gene,
     pub tail: Gene,
@@ -42,14 +40,29 @@ pub trait Belt: EntityItem {
 }
 
 #[derive(Debug)]
-pub struct BeltDb<B: Belt + EntityKochFrom<OB, BS>, OB: Belt = B, BS = ()> {
-    buckle: EntityDb<Buckle>,
-    belt: EntityDb<B, OB, BS>,
+pub struct BeltDb<
+    Bt: Belt + EntityKochFrom<BtO, BtS>,
+    Bk: Buckle + EntityKochFrom<BkO, BkS> = ShahBuckle,
+    BtO: Belt = Bt,
+    BkO: Buckle = Bk,
+    BtS = (),
+    BkS = (),
+> {
+    buckle: EntityDb<Bk, BkO, BkS>,
+    belt: EntityDb<Bt, BtO, BtS>,
     ls: String,
     tasks: TaskList<2, Task<Self>>,
 }
 
-impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
+impl<
+    Bt: Belt + EntityKochFrom<BtO, BtS>,
+    Bk: Buckle + EntityKochFrom<BkO, BkS>,
+    BtO: Belt,
+    BkO: Buckle,
+    BtS,
+    BkS,
+> BeltDb<Bt, Bk, BtO, BkO, BtS, BkS>
+{
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         let data_path = Path::new("data/").join(path);
         let name = data_path
@@ -62,11 +75,8 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
         std::fs::create_dir_all(&data_path)?;
 
         let db = Self {
-            belt: EntityDb::<B, OB, BS>::new(
-                &format!("{path}/belt"),
-                revision,
-            )?,
-            buckle: EntityDb::<Buckle>::new(&format!("{path}/buckle"), 0)?,
+            belt: EntityDb::new(&format!("{path}/belt"), revision)?,
+            buckle: EntityDb::new(&format!("{path}/buckle"), 0)?,
             tasks: TaskList::new([Self::work_belt, Self::work_buckle]),
             ls: format!("<BeltDb {path} />"),
         };
@@ -93,8 +103,14 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     // }
 }
 
-impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> Worker<2>
-    for BeltDb<B, OB, BS>
+impl<
+    Bt: Belt + EntityKochFrom<BtO, BtS>,
+    Bk: Buckle + EntityKochFrom<BkO, BkS>,
+    BtO: Belt,
+    BkO: Buckle,
+    BtS,
+    BkS,
+> Worker<2> for BeltDb<Bt, Bk, BtO, BkO, BtS, BkS>
 {
     fn tasks(&mut self) -> &mut TaskList<2, Task<Self>> {
         &mut self.tasks

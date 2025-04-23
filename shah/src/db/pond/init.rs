@@ -1,17 +1,17 @@
+use super::*;
 use crate::models::Worker;
 
-use super::*;
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
-    DkO: Duck,
-    DkS,
     Pn: Pond + EntityKochFrom<PnO, PnS>,
-    PnO: Pond,
-    PnS,
     Og: Origin + EntityKochFrom<OgO, OgS>,
+    DkO: Duck,
+    PnO: Pond,
     OgO: Origin,
+    DkS,
+    PnS,
     OgS,
-> PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
+> PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         ShahConfig::get();
@@ -61,15 +61,15 @@ impl<
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
-    DkO: Duck,
-    DkS,
     Pn: Pond + EntityKochFrom<PnO, PnS>,
-    PnO: Pond,
-    PnS,
     Og: Origin + EntityKochFrom<OgO, OgS>,
+    DkO: Duck,
+    PnO: Pond,
     OgO: Origin,
+    DkS,
+    PnS,
     OgS,
-> Worker<3> for PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
+> Worker<3> for PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
     fn tasks(&mut self) -> &mut TaskList<3, Task<Self>> {
         &mut self.tasks

@@ -7,15 +7,15 @@ use std::ops::AddAssign;
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
-    DkO: Duck,
-    DkS,
     Pn: Pond + EntityKochFrom<PnO, PnS>,
-    PnO: Pond,
-    PnS,
     Og: Origin + EntityKochFrom<OgO, OgS>,
+    DkO: Duck,
+    PnO: Pond,
     OgO: Origin,
+    DkS,
+    PnS,
     OgS,
-> PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
+> PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
     pub fn pond_list(
         &mut self, pond: &mut Pn, result: &mut [Dk; PAGE_SIZE],

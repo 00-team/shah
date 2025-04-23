@@ -1,31 +1,39 @@
 use super::*;
 
-impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
+impl<
+    Bt: Belt + EntityKochFrom<BtO, BtS>,
+    Bk: Buckle + EntityKochFrom<BkO, BkS>,
+    BtO: Belt,
+    BkO: Buckle,
+    BtS,
+    BkS,
+> BeltDb<Bt, Bk, BtO, BkO, BtS, BkS>
+{
     pub fn belt_add(
-        &mut self, buckle_gene: &Gene, belt: &mut B,
+        &mut self, buckle_gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
         belt.set_alive(true);
 
-        let mut buckle = Buckle::default();
+        let mut buckle = Bk::default();
         self.buckle.get(buckle_gene, &mut buckle)?;
 
-        *belt.buckle_mut() = buckle.gene;
+        *belt.buckle_mut() = *buckle.gene();
         *belt.growth_mut() = 0;
-        *belt.past_mut() = buckle.tail;
+        *belt.past_mut() = *buckle.tail();
         belt.next_mut().clear();
 
         self.belt.add(belt)?;
 
-        if buckle.head.is_none() {
-            buckle.head = *belt.gene();
+        if buckle.head().is_none() {
+            *buckle.head_mut() = *belt.gene();
         }
 
-        let old_tail_gene = buckle.tail;
-        buckle.tail = *belt.gene();
-        buckle.belt_count += 1;
+        let old_tail_gene = *buckle.tail();
+        *buckle.tail_mut() = *belt.gene();
+        *buckle.belt_count_mut() += 1;
 
         if self.belt.get(&old_tail_gene, belt).onf()?.is_some() {
-            *belt.next_mut() = buckle.tail;
+            *belt.next_mut() = *buckle.tail();
             self.belt.set(belt)?;
         }
 
@@ -33,7 +41,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     }
 
     pub fn belt_get(
-        &mut self, gene: &Gene, belt: &mut B,
+        &mut self, gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
         self.belt.get(gene, belt)
     }
@@ -42,13 +50,13 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
         self.belt.count()
     }
 
-    pub fn belt_set(&mut self, belt: &mut B) -> Result<(), ShahError> {
+    pub fn belt_set(&mut self, belt: &mut Bt) -> Result<(), ShahError> {
         if !belt.is_alive() {
             log::error!("{} DeadSet: using set to delete", self.ls);
             return Err(SystemError::DeadSet)?;
         }
 
-        let mut old_belt = B::default();
+        let mut old_belt = Bt::default();
         self.belt.get(belt.gene(), &mut old_belt)?;
 
         *belt.growth_mut() = old_belt.growth();
@@ -60,27 +68,27 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     }
 
     pub fn belt_del(
-        &mut self, gene: &Gene, belt: &mut B,
+        &mut self, gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
         self.belt.get(gene, belt)?;
 
-        let mut buckle = Buckle::default();
+        let mut buckle = Bk::default();
         self.buckle.get(belt.buckle(), &mut buckle)?;
 
-        buckle.belt_count = buckle.belt_count.saturating_sub(1);
+        *buckle.belt_count_mut() = buckle.belt_count().saturating_sub(1);
         // if buckle.belts > 0 {
         //     buckle.belts -= 1;
         // }
 
-        if buckle.head == *belt.gene() {
-            buckle.head = *belt.next();
+        if buckle.head() == belt.gene() {
+            *buckle.head_mut() = *belt.next();
         }
 
-        if buckle.tail == *belt.gene() {
-            buckle.tail = *belt.past();
+        if buckle.tail() == belt.gene() {
+            *buckle.tail_mut() = *belt.past();
         }
 
-        let mut sibling = B::default();
+        let mut sibling = Bt::default();
 
         if let Err(e) = self.belt.get(belt.past(), &mut sibling) {
             e.not_found_ok()?;
@@ -102,13 +110,13 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
     }
 
     pub fn belt_list(
-        &mut self, page: GeneId, result: &mut [B],
+        &mut self, page: GeneId, result: &mut [Bt],
     ) -> Result<usize, ShahError> {
         self.belt.list(page, result)
     }
 
     /// put the head as tail and return the head
-    pub fn recycle(&mut self, _recycled: &mut B) -> Result<(), ShahError> {
+    pub fn recycle(&mut self, _recycled: &mut Bt) -> Result<(), ShahError> {
         todo!("make this")
     }
 }

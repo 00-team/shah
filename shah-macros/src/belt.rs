@@ -13,5 +13,5 @@ ez_trait! {
     belt::Buckle,
     "head", models::Gene, head_ident, head, head_mut;
     "tail", models::Gene, tail_ident, tail, tail_mut;
-    "belt_count", u64, belt_count_ident, belt_count, belt_count_mut;
+    "belt_count", exp::u64, belt_count_ident, belt_count, belt_count_mut;
 }

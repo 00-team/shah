@@ -1,17 +1,30 @@
 use crate::models::{ExampleError, State};
-use shah::db::belt::Buckle;
 use shah::models::{Binary, Gene};
-use shah::{db::belt::BeltDb, ShahError};
-use shah::{AsUtf8Str, ClientError, ErrorCode, OptNotFound, Taker, BLOCK_SIZE};
+use shah::{AsUtf8Str, BLOCK_SIZE, ClientError, ErrorCode, OptNotFound, Taker};
+use shah::{ShahError, db::belt::BeltDb};
 
 #[allow(unused_imports)]
 pub use client::*;
-pub use db::Extra;
+pub use db::{Extra, ExtraRoot};
 
 const EXTRA_DATA: usize = BLOCK_SIZE * 2 - 3;
 
 pub(crate) mod db {
     use super::*;
+
+    #[derive(shah::ShahSchema)]
+    #[shah::model]
+    #[derive(Debug, shah::Entity, shah::Buckle)]
+    pub struct ExtraRoot {
+        pub gene: Gene,
+        pub head: Gene,
+        pub tail: Gene,
+        pub belt_count: u64,
+        growth: u64,
+        entity_flags: u8,
+        _pad: [u8; 3],
+        pub length: u32,
+    }
 
     #[derive(shah::ShahSchema)]
     #[shah::model]
@@ -27,7 +40,7 @@ pub(crate) mod db {
         pub data: [u8; EXTRA_DATA],
     }
 
-    pub type ExtraDb = BeltDb<Extra>;
+    pub type ExtraDb = BeltDb<Extra, ExtraRoot>;
 
     #[allow(dead_code)]
     pub fn init() -> Result<ExtraDb, ShahError> {
@@ -39,15 +52,15 @@ pub(crate) mod db {
 mod eapi {
     use super::*;
 
-    pub(crate) fn buckle_get(
-        state: &mut State, (buckle_gene,): (&Gene,), (buckle,): (&mut Buckle,),
+    pub(crate) fn root_get(
+        state: &mut State, (gene,): (&Gene,), (root,): (&mut ExtraRoot,),
     ) -> Result<(), ErrorCode> {
-        state.extra.buckle_get(buckle_gene, buckle)?;
+        state.extra.buckle_get(gene, root)?;
         Ok(())
     }
 
     pub(crate) fn buckle_add(
-        state: &mut State, _: (), (out,): (&mut Buckle,),
+        state: &mut State, _: (), (out,): (&mut ExtraRoot,),
     ) -> Result<(), ErrorCode> {
         out.zeroed();
         state.extra.buckle_add(out)?;
@@ -97,7 +110,7 @@ mod eapi {
 pub fn get_all(
     taker: &Taker, buckle_gene: &Gene,
 ) -> Result<String, ClientError<ExampleError>> {
-    let buckle = buckle_get(taker, buckle_gene)?;
+    let buckle = root_get(taker, buckle_gene)?;
     let mut data = Vec::with_capacity(buckle.belt_count as usize * EXTRA_DATA);
 
     let mut gene = buckle.head;
@@ -122,7 +135,7 @@ pub fn set_all(
     let data = data.as_bytes();
 
     let b = if let Some(og) = buckle_gene {
-        buckle_get(taker, og).onf()?
+        root_get(taker, og).onf()?
     } else {
         None
     };

@@ -94,13 +94,15 @@ pub trait Duck: EntityItem {
 #[derive(Debug)]
 pub struct PondDb<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
-    DkO: Duck = Dk,
-    DkS = (),
     Pn: Pond + EntityKochFrom<PnO, PnS> = ShahPond,
-    PnO: Pond = Pn,
-    PnS = (),
     Og: Origin + EntityKochFrom<OgO, OgS> = ShahOrigin,
+
+    DkO: Duck = Dk,
+    PnO: Pond = Pn,
     OgO: Origin = Og,
+
+    DkS = (),
+    PnS = (),
     OgS = (),
 > {
     pub index: EntityDb<Pn, PnO, PnS>,

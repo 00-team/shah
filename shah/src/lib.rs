@@ -4,6 +4,7 @@ mod taker;
 
 pub mod db;
 pub mod error;
+pub mod exp;
 pub mod models;
 
 pub(crate) mod utils;

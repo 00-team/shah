@@ -17,7 +17,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
 
     pub fn buckle_add(&mut self, buckle: &mut Buckle) -> Result<(), ShahError> {
         buckle.set_alive(true);
-        buckle.belts = 0;
+        buckle.belt_count = 0;
         buckle.growth = 0;
         buckle.head.clear();
         buckle.tail.clear();

@@ -1,8 +1,18 @@
 use crate::models::Worker;
 
 use super::*;
-
-impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
+impl<
+    Dk: Duck + EntityKochFrom<DkO, DkS>,
+    DkO: Duck,
+    DkS,
+    Pn: Pond + EntityKochFrom<PnO, PnS>,
+    PnO: Pond,
+    PnS,
+    Og: Origin + EntityKochFrom<OgO, OgS>,
+    OgO: Origin,
+    OgS,
+> PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
+{
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
         ShahConfig::get();
         let data_path = Path::new("data/").join(path);
@@ -17,9 +27,12 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
 
         let mut db = Self {
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: EntityDb::<Pond>::new(&format!("{path}/index"), 0)?,
-            origins: EntityDb::<Origin>::new(&format!("{path}/origin"), 0)?,
-            items: EntityDb::<T, O, S>::new(path, revision)?,
+            index: EntityDb::<Pn, PnO, PnS>::new(&format!("{path}/index"), 0)?,
+            origins: EntityDb::<Og, OgO, OgS>::new(
+                &format!("{path}/origin"),
+                0,
+            )?,
+            items: EntityDb::<Dk, DkO, DkS>::new(path, revision)?,
             tasks: TaskList::new([
                 Self::work_index,
                 Self::work_origins,
@@ -46,8 +59,17 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
     }
 }
 
-impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> Worker<3>
-    for PondDb<T, O, S>
+impl<
+    Dk: Duck + EntityKochFrom<DkO, DkS>,
+    DkO: Duck,
+    DkS,
+    Pn: Pond + EntityKochFrom<PnO, PnS>,
+    PnO: Pond,
+    PnS,
+    Og: Origin + EntityKochFrom<OgO, OgS>,
+    OgO: Origin,
+    OgS,
+> Worker<3> for PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
 {
     fn tasks(&mut self) -> &mut TaskList<3, Task<Self>> {
         &mut self.tasks

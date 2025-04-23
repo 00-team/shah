@@ -1,13 +1,13 @@
 mod api;
 mod belt;
 mod command;
-mod duck;
 mod entity;
 mod enum_code;
 mod enum_int;
 mod legacy;
 mod model;
 mod perms;
+mod pond;
 mod routes;
 mod schema;
 mod utils;
@@ -153,9 +153,24 @@ pub fn belt(code: TokenStream) -> TokenStream {
     belt::belt(code)
 }
 
-#[proc_macro_derive(Duck)]
+#[proc_macro_derive(Buckle, attributes(buckle))]
+pub fn buckle(code: TokenStream) -> TokenStream {
+    belt::buckle(code)
+}
+
+#[proc_macro_derive(Duck, attributes(duck))]
 pub fn duck(code: TokenStream) -> TokenStream {
-    duck::duck(code)
+    pond::duck(code)
+}
+
+#[proc_macro_derive(Pond, attributes(pond))]
+pub fn pond(code: TokenStream) -> TokenStream {
+    pond::pond(code)
+}
+
+#[proc_macro_derive(Origin, attributes(origin))]
+pub fn origin(code: TokenStream) -> TokenStream {
+    pond::origin(code)
 }
 
 #[proc_macro_derive(ShahSchema)]

@@ -98,7 +98,7 @@ pub fn get_all(
     taker: &Taker, buckle_gene: &Gene,
 ) -> Result<String, ClientError<ExampleError>> {
     let buckle = buckle_get(taker, buckle_gene)?;
-    let mut data = Vec::with_capacity(buckle.belts as usize * EXTRA_DATA);
+    let mut data = Vec::with_capacity(buckle.belt_count as usize * EXTRA_DATA);
 
     let mut gene = buckle.head;
     loop {

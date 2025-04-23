@@ -10,6 +10,15 @@ use std::path::Path;
 mod belt_api;
 mod buckle;
 
+// pub trait Buckle: EntityItem {
+//     fn head(&self) -> &Gene;
+//     fn head_mut(&mut self) -> &mut Gene;
+//     fn tail(&self) -> &Gene;
+//     fn tail_mut(&mut self) -> &mut Gene;
+//     fn belt_count(&self) -> &u64;
+//     fn belt_count_mut(&mut self) -> &mut u64;
+// }
+
 #[derive(crate::ShahSchema)]
 #[crate::model]
 #[derive(Debug, crate::Entity)]
@@ -17,8 +26,7 @@ pub struct Buckle {
     pub gene: Gene,
     pub head: Gene,
     pub tail: Gene,
-    pub belts: u64,
-    pub owner: Gene,
+    pub belt_count: u64,
     growth: u64,
     entity_flags: u8,
     _pad: [u8; 7],

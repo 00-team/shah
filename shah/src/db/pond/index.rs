@@ -1,52 +1,63 @@
-use super::{Origin, Pond, PondDb, PondItem};
-use crate::db::entity::{EntityItem, EntityKochFrom};
-use crate::models::Gene;
+use super::{Duck, Origin, Pond, PondDb};
 use crate::PAGE_SIZE;
+use crate::db::entity::EntityKochFrom;
+use crate::models::Gene;
 use crate::{IsNotFound, ShahError};
 use std::ops::AddAssign;
 
-impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
+impl<
+    Dk: Duck + EntityKochFrom<DkO, DkS>,
+    DkO: Duck,
+    DkS,
+    Pn: Pond + EntityKochFrom<PnO, PnS>,
+    PnO: Pond,
+    PnS,
+    Og: Origin + EntityKochFrom<OgO, OgS>,
+    OgO: Origin,
+    OgS,
+> PondDb<Dk, DkO, DkS, Pn, PnO, PnS, Og, OgO, OgS>
+{
     pub fn pond_list(
-        &mut self, pond: &mut Pond, result: &mut [T; PAGE_SIZE],
+        &mut self, pond: &mut Pn, result: &mut [Dk; PAGE_SIZE],
     ) -> Result<(), ShahError> {
-        let pond_gene = pond.gene;
+        let pond_gene = *pond.gene();
         self.index.get(&pond_gene, pond)?;
-        self.items.list(pond.stack, result)?;
+        self.items.list(*pond.stack(), result)?;
         Ok(())
     }
 
-    pub fn pond_free(&mut self, pond: &mut Pond) -> Result<(), ShahError> {
-        let mut buf = [T::default(); PAGE_SIZE];
-        self.items.list(pond.stack, &mut buf)?;
+    pub fn pond_free(&mut self, pond: &mut Pn) -> Result<(), ShahError> {
+        let mut buf = [Dk::default(); PAGE_SIZE];
+        self.items.list(*pond.stack(), &mut buf)?;
 
-        pond.empty = 0;
+        *pond.empty_mut() = 0;
         for item in buf.iter_mut() {
             if item.is_alive() {
                 item.growth_mut().add_assign(1);
                 item.set_alive(false);
             }
             if !item.gene().exhausted() {
-                pond.empty += 1;
+                *pond.empty_mut() += 1;
             }
         }
 
-        self.items.write_buf_at(&buf, pond.stack)?;
+        self.items.write_buf_at(&buf, *pond.stack())?;
 
-        pond.set_is_free(true);
-        pond.alive = 0;
+        // pond.set_is_free(true);
+        *pond.alive_mut() = 0;
 
         self.index.set(pond)?;
-        self.free_list.push(pond.gene);
+        self.free_list.push(*pond.gene());
 
         Ok(())
     }
 
     pub fn cascade(&mut self, origene: &Gene) -> Result<(), ShahError> {
-        let mut origin = Origin::default();
+        let mut origin = Og::default();
         self.origins.get(origene, &mut origin)?;
 
-        let mut pond_gene = origin.head;
-        let mut pond = Pond::default();
+        let mut pond_gene = *origin.head();
+        let mut pond = Pn::default();
         loop {
             if let Err(e) = self.index.get(&pond_gene, &mut pond) {
                 if e.is_not_found() {
@@ -54,7 +65,7 @@ impl<T: PondItem + EntityKochFrom<O, S>, O: EntityItem, S> PondDb<T, O, S> {
                 }
                 return Err(e)?;
             }
-            pond_gene = pond.next;
+            pond_gene = *pond.next();
             self.pond_free(&mut pond)?;
         }
 

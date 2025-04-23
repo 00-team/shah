@@ -22,7 +22,7 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
 
         let old_tail_gene = buckle.tail;
         buckle.tail = *belt.gene();
-        buckle.belts += 1;
+        buckle.belt_count += 1;
 
         if self.belt.get(&old_tail_gene, belt).onf()?.is_some() {
             *belt.next_mut() = buckle.tail;
@@ -67,9 +67,10 @@ impl<B: Belt + EntityKochFrom<OB, BS>, OB: Belt, BS> BeltDb<B, OB, BS> {
         let mut buckle = Buckle::default();
         self.buckle.get(belt.buckle(), &mut buckle)?;
 
-        if buckle.belts > 0 {
-            buckle.belts -= 1;
-        }
+        buckle.belt_count = buckle.belt_count.saturating_sub(1);
+        // if buckle.belts > 0 {
+        //     buckle.belts -= 1;
+        // }
 
         if buckle.head == *belt.gene() {
             buckle.head = *belt.next();

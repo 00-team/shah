@@ -1,5 +1,7 @@
+use syn::parse_quote;
+use utils::traitor::{Traitor, TraitorField};
+
 mod api;
-mod belt;
 mod command;
 mod entity;
 mod enum_code;
@@ -7,7 +9,6 @@ mod enum_int;
 mod legacy;
 mod model;
 mod perms;
-mod pond;
 mod routes;
 mod schema;
 mod utils;
@@ -150,27 +151,99 @@ pub fn entity(code: TokenStream) -> TokenStream {
 /// You can use `#[belt(next)]`, `#[belt(past)]` and `#[belt(buckle)]`
 /// to set custom fields for these methods.
 pub fn belt(code: TokenStream) -> TokenStream {
-    belt::belt(code)
+    let ci = crate_ident();
+    let inp = syn::parse_macro_input!(code as syn::DeriveInput);
+
+    let gene = parse_quote!(#ci::models::Gene);
+
+    let tr = Traitor::new(
+        "belt",
+        parse_quote!(#ci::db::belt::Belt),
+        [
+            TraitorField::new("next", &gene, false),
+            TraitorField::new("past", &gene, false),
+            TraitorField::new("buckle", &gene, false),
+        ],
+    );
+    tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_derive(Buckle, attributes(buckle))]
 pub fn buckle(code: TokenStream) -> TokenStream {
-    belt::buckle(code)
+    let ci = crate_ident();
+    let inp = syn::parse_macro_input!(code as syn::DeriveInput);
+
+    let gene = parse_quote!(#ci::models::Gene);
+    let pu64 = parse_quote!(u64);
+
+    let tr = Traitor::new(
+        "belt",
+        parse_quote!(#ci::db::belt::Belt),
+        [
+            TraitorField::new("head", &gene, false),
+            TraitorField::new("tail", &gene, false),
+            TraitorField::new("belt_count", &pu64, true),
+        ],
+    );
+    tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_derive(Duck, attributes(duck))]
 pub fn duck(code: TokenStream) -> TokenStream {
-    pond::duck(code)
+    let ci = crate_ident();
+    let inp = syn::parse_macro_input!(code as syn::DeriveInput);
+    let gene = parse_quote!(#ci::models::Gene);
+    let tr = Traitor::new(
+        "duck",
+        parse_quote!(#ci::db::pond::Duck),
+        [TraitorField::new("pond", &gene, false)],
+    );
+    tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_derive(Pond, attributes(pond))]
 pub fn pond(code: TokenStream) -> TokenStream {
-    pond::pond(code)
+    let ci = crate_ident();
+    let inp = syn::parse_macro_input!(code as syn::DeriveInput);
+
+    let gene = parse_quote!(#ci::models::Gene);
+    let pru8 = parse_quote!(u8);
+    let gene_id = parse_quote!(#ci::models::GeneId);
+
+    let tr = Traitor::new(
+        "pond",
+        parse_quote!(#ci::db::pond::Pond),
+        [
+            TraitorField::new("next", &gene, false),
+            TraitorField::new("past", &gene, false),
+            TraitorField::new("origin", &gene, false),
+            TraitorField::new("stack", &gene_id, true),
+            TraitorField::new("alive", &pru8, true),
+            TraitorField::new("empty", &pru8, true),
+        ],
+    );
+    tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_derive(Origin, attributes(origin))]
 pub fn origin(code: TokenStream) -> TokenStream {
-    pond::origin(code)
+    let ci = crate_ident();
+    let inp = syn::parse_macro_input!(code as syn::DeriveInput);
+
+    let gene = parse_quote!(#ci::models::Gene);
+    let pu64 = parse_quote!(u64);
+
+    let tr = Traitor::new(
+        "origin",
+        parse_quote!(#ci::db::pond::Origin),
+        [
+            TraitorField::new("head", &gene, false),
+            TraitorField::new("tail", &gene, false),
+            TraitorField::new("pond_count", &pu64, true),
+            TraitorField::new("item_count", &pu64, true),
+        ],
+    );
+    tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 #[proc_macro_derive(ShahSchema)]

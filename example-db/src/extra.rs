@@ -44,7 +44,7 @@ pub(crate) mod db {
 
     #[allow(dead_code)]
     pub fn init() -> Result<ExtraDb, ShahError> {
-        ExtraDb::new("extra", 1)
+        ExtraDb::new("extra", 1, 1)
     }
 }
 

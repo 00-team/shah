@@ -21,6 +21,6 @@ pub(crate) mod db {
 
     #[allow(dead_code)]
     pub(crate) fn init() -> Result<NoteDb, ShahError> {
-        NoteDb::new("note", 1)
+        NoteDb::new("note", 1, 1, 1)
     }
 }

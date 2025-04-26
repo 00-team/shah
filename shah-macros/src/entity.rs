@@ -41,7 +41,7 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
         }
     }
 
-    const ENTITY_FLAGS: [&str; 1] = ["alive"];
+    const ENTITY_FLAGS: [&str; 3] = ["alive", "dep_edited", "dep_private"];
     let mut f = TokenStream2::new();
     for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
         let fi = format_ident!("{flag}");

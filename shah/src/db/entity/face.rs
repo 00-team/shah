@@ -17,8 +17,8 @@ pub trait Entity: ShahModel {
     fn growth_mut(&mut self) -> &mut u64;
 
     flag! {is_alive, set_alive}
-    // flag! {is_edited, set_edited}
-    // flag! {is_private, set_private}
+    flag! {is_dep_edited, set_dep_edited}
+    flag! {is_dep_private, set_dep_private}
 }
 
 pub trait EntityItem: Entity + ShahSchema {}

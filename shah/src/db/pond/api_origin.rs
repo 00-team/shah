@@ -1,0 +1,60 @@
+use super::{Duck, Origin, Pond, PondDb};
+use crate::SystemError;
+use crate::db::derr;
+use crate::db::entity::EntityKochFrom;
+use crate::models::Gene;
+use crate::{IsNotFound, ShahError};
+
+impl<
+    Dk: Duck + EntityKochFrom<DkO, DkS>,
+    Pn: Pond + EntityKochFrom<PnO, PnS>,
+    Og: Origin + EntityKochFrom<OgO, OgS>,
+    DkO: Duck,
+    PnO: Pond,
+    OgO: Origin,
+    DkS,
+    PnS,
+    OgS,
+> PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
+{
+    pub fn origin_set(&mut self, origin: &mut Og) -> Result<(), ShahError> {
+        if !origin.is_alive() {
+            return derr!(self.ls, SystemError::DeadSet);
+        }
+
+        let mut old = Og::default();
+        self.origin.get(origin.gene(), &mut old)?;
+
+        *origin.growth_mut() = old.growth();
+        *origin.head_mut() = *old.head();
+        *origin.tail_mut() = *old.tail();
+        *origin.pond_count_mut() = old.pond_count();
+        *origin.item_count_mut() = old.item_count();
+
+        self.origin.set_unchecked(origin)?;
+
+        Ok(())
+    }
+
+    pub fn origin_del(&mut self, gene: &Gene) -> Result<(), ShahError> {
+        let mut origin = Og::default();
+        self.origin.get(gene, &mut origin)?;
+
+        let mut pond_gene = *origin.head();
+        let mut pond = Pn::default();
+        loop {
+            if let Err(e) = self.pond.get(&pond_gene, &mut pond) {
+                if e.is_not_found() {
+                    break;
+                }
+                return Err(e)?;
+            }
+            pond_gene = *pond.next();
+            self.pond_free(&mut pond)?;
+        }
+
+        self.origin.del(gene, &mut origin)?;
+
+        Ok(())
+    }
+}

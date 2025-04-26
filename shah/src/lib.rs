@@ -6,7 +6,6 @@ pub use signal_hook as sk;
 
 pub mod db;
 pub mod error;
-pub mod exp;
 pub mod models;
 pub mod signals;
 

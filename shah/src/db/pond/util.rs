@@ -1,4 +1,8 @@
 use super::*;
+use crate::ShahError;
+use crate::db::entity::{ENTITY_META, EntityKochFrom};
+use crate::models::{Binary, Gene, GeneId};
+use crate::{OptNotFound, PAGE_SIZE};
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
@@ -25,7 +29,7 @@ impl<
         // }
 
         let mut buf = [Dk::default(); PAGE_SIZE];
-        self.items.list(*pond.stack(), &mut buf)?;
+        self.item.list(pond.stack(), &mut buf)?;
 
         *pond.empty_mut() = 0;
         *pond.alive_mut() = 0;
@@ -49,25 +53,25 @@ impl<
 
         let mut old_pond = Pn::default();
 
-        if let Err(e) = self.index.get(pond.past(), &mut old_pond) {
+        if let Err(e) = self.pond.get(pond.past(), &mut old_pond) {
             e.not_found_ok()?;
         } else {
             *old_pond.next_mut() = *pond.next();
-            self.index.set_unchecked(&mut old_pond)?;
+            self.pond.set_unchecked(&mut old_pond)?;
         }
 
-        if let Err(e) = self.index.get(pond.next(), &mut old_pond) {
+        if let Err(e) = self.pond.get(pond.next(), &mut old_pond) {
             e.not_found_ok()?;
         } else {
             *old_pond.past_mut() = *pond.past();
-            self.index.set_unchecked(&mut old_pond)?;
+            self.pond.set_unchecked(&mut old_pond)?;
         }
 
         pond.next_mut().zeroed();
         pond.past_mut().zeroed();
         pond.origin_mut().zeroed();
         // *pond.set_is_free(true);
-        self.index.set(&mut pond)?;
+        self.pond.set(&mut pond)?;
         self.free_list.push(*pond.gene());
         Ok(())
     }
@@ -78,11 +82,11 @@ impl<
         let mut pond_gene = *origin.head();
         let mut pond = Pn::default();
         loop {
-            if self.index.get(&pond_gene, &mut pond).onf()?.is_none() {
+            if self.pond.get(&pond_gene, &mut pond).onf()?.is_none() {
                 break;
             }
 
-            if *pond.empty() > 0 {
+            if pond.empty() > 0 {
                 return Ok(pond);
             }
             pond_gene = *pond.next();
@@ -90,14 +94,14 @@ impl<
 
         let mut new = Pn::default();
         let add_new = if let Some(free) = self.take_free() {
-            self.index.get(&free, &mut new).onf()?.is_none()
+            self.pond.get(&free, &mut new).onf()?.is_none()
         } else {
             true
         };
 
         if add_new {
             new.gene_mut().clear();
-            self.index.add(&mut new)?;
+            self.pond.add(&mut new)?;
         }
         new.next_mut().clear();
         *new.alive_mut() = 0;
@@ -110,7 +114,7 @@ impl<
             *pond.next_mut() = *new.gene();
             *new.past_mut() = *origin.tail();
             *origin.tail_mut() = *new.gene();
-            self.index.set(&mut pond)?;
+            self.pond.set(&mut pond)?;
         } else {
             new.past_mut().clear();
             *origin.head_mut() = *new.gene();
@@ -121,7 +125,7 @@ impl<
     }
 
     pub(super) fn new_stack_id(&mut self) -> Result<GeneId, ShahError> {
-        let pos = self.items.file_size()?;
+        let pos = self.item.file_size()?;
         if pos < ENTITY_META + Dk::N {
             return Ok(GeneId(1));
         }

@@ -14,7 +14,7 @@ pub trait Buckle: EntityItem {
     fn head_mut(&mut self) -> &mut Gene;
     fn tail(&self) -> &Gene;
     fn tail_mut(&mut self) -> &mut Gene;
-    fn belt_count(&self) -> &u64;
+    fn belt_count(&self) -> u64;
     fn belt_count_mut(&mut self) -> &mut u64;
 }
 

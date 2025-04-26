@@ -177,8 +177,8 @@ pub fn buckle(code: TokenStream) -> TokenStream {
     let pu64 = parse_quote!(u64);
 
     let tr = Traitor::new(
-        "belt",
-        parse_quote!(#ci::db::belt::Belt),
+        "buckle",
+        parse_quote!(#ci::db::belt::Buckle),
         [
             TraitorField::new("head", &gene, false),
             TraitorField::new("tail", &gene, false),
@@ -272,6 +272,9 @@ fn crate_ident() -> syn::Ident {
 
 macro_rules! ident {
     ($name:literal) => {
+        syn::Ident::new($name, proc_macro2::Span::call_site())
+    };
+    ($name:expr) => {
         syn::Ident::new($name, proc_macro2::Span::call_site())
     };
 }

@@ -1,19 +1,16 @@
-use super::entity::{
-    ENTITY_META, EntityCount, EntityDb, EntityItem, EntityKochFrom,
-};
-use crate::ShahError;
-use crate::config::ShahConfig;
-use crate::models::task_list::{Performed, Task, TaskList};
-use crate::models::{Binary, DeadList, Gene, GeneId};
-use crate::{BLOCK_SIZE, OptNotFound, PAGE_SIZE, SystemError, utils};
+use super::entity::{EntityDb, EntityItem, EntityKochFrom};
+use crate::BLOCK_SIZE;
+use crate::models::task_list::{Task, TaskList};
+use crate::models::{DeadList, Gene, GeneId};
 
 use std::fmt::Debug;
-use std::path::Path;
 
-mod index;
+mod api_item;
+mod api_origin;
+mod api_pond;
+
 mod init;
 mod options;
-mod public;
 mod util;
 
 // NOTE's for sorted ponds.
@@ -27,10 +24,10 @@ pub trait Origin: EntityItem {
     fn tail(&self) -> &Gene;
     fn tail_mut(&mut self) -> &mut Gene;
 
-    fn pond_count(&self) -> &u64;
+    fn pond_count(&self) -> u64;
     fn pond_count_mut(&mut self) -> &mut u64;
 
-    fn item_count(&self) -> &u64;
+    fn item_count(&self) -> u64;
     fn item_count_mut(&mut self) -> &mut u64;
 }
 
@@ -56,12 +53,12 @@ pub trait Pond: EntityItem {
     fn origin(&self) -> &Gene;
     fn origin_mut(&mut self) -> &mut Gene;
 
-    fn stack(&self) -> &GeneId;
+    fn stack(&self) -> GeneId;
     fn stack_mut(&mut self) -> &mut GeneId;
 
-    fn alive(&self) -> &u8;
+    fn alive(&self) -> u8;
     fn alive_mut(&mut self) -> &mut u8;
-    fn empty(&self) -> &u8;
+    fn empty(&self) -> u8;
     fn empty_mut(&mut self) -> &mut u8;
 }
 
@@ -96,19 +93,19 @@ pub struct PondDb<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
     Pn: Pond + EntityKochFrom<PnO, PnS> = ShahPond,
     Og: Origin + EntityKochFrom<OgO, OgS> = ShahOrigin,
-
+    // old
     DkO: Duck = Dk,
     PnO: Pond = Pn,
     OgO: Origin = Og,
-
+    // state
     DkS = (),
     PnS = (),
     OgS = (),
 > {
-    pub index: EntityDb<Pn, PnO, PnS>,
-    pub origins: EntityDb<Og, OgO, OgS>,
+    item: EntityDb<Dk, DkO, DkS>,
+    pond: EntityDb<Pn, PnO, PnS>,
+    origin: EntityDb<Og, OgO, OgS>,
     free_list: DeadList<Gene, BLOCK_SIZE>,
     ls: String,
-    items: EntityDb<Dk, DkO, DkS>,
     tasks: TaskList<3, Task<Self>>,
 }

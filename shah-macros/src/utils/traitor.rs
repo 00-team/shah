@@ -13,12 +13,7 @@ pub struct TraitorField<'a> {
 
 impl<'a> TraitorField<'a> {
     pub fn new(name: &'static str, ty: &'a syn::Type, copy: bool) -> Self {
-        Self {
-            name,
-            ty,
-            copy,
-            ident: syn::Ident::new(name, proc_macro2::Span::call_site()),
-        }
+        Self { name, ty, copy, ident: crate::ident!(name) }
     }
 }
 
@@ -39,10 +34,13 @@ impl<'a, const LEN: usize> Traitor<'a, LEN> {
     pub fn derive(mut self, inp: syn::DeriveInput) -> syn::Result<TokenStream> {
         let (impl_gnc, ty_gnc, where_gnc) = inp.generics.split_for_impl();
         let syn::Data::Struct(data) = &inp.data else {
-            panic!(
-                "{} trait is only ment for structs",
-                self.tpath.to_token_stream()
-            )
+            return err!(
+                inp.span(),
+                format!(
+                    "{} trait is only for struct",
+                    self.tpath.to_token_stream()
+                )
+            );
         };
         for f in &data.fields {
             for a in &f.attrs {
@@ -77,18 +75,18 @@ impl<'a, const LEN: usize> Traitor<'a, LEN> {
         let mut s = TokenStream::new();
 
         for TraitorField { ident, name, copy, ty } in self.fields {
-            let mutid = format_ident!("{name}_mut");
+            let getfn = crate::ident!(name);
+            let mutfn = format_ident!("{name}_mut");
             quote_into! {s +=
-                fn #name(&self) -> #{if !copy {quote_into!(s += &)}} #ty {
+                fn #getfn(&self) -> #{if !copy {quote_into!(s += &)}} #ty {
                     #{
                         if copy { quote_into!(s += *); }
-                        else { quote_into!(s += &); }
                     }
-                    self.#ident
+                    &(self.#ident)
                 }
 
-                fn #mutid(&mut self) -> &mut #ty {
-                    &mut self.#ty
+                fn #mutfn(&mut self) -> &mut #ty {
+                    &mut self.#ident
                 }
             };
         }

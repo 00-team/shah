@@ -31,6 +31,23 @@ impl<
         self.buckle.add(buckle)
     }
 
+    pub fn buckle_set(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {
+        if !buckle.is_alive() {
+            log::error!("{} DeadSet: using set to delete", self.ls);
+            return Err(SystemError::DeadSet)?;
+        }
+
+        let mut old = Bk::default();
+        self.buckle.get(buckle.gene(), &mut old)?;
+
+        *buckle.growth_mut() = old.growth();
+        *buckle.head_mut() = *old.head();
+        *buckle.tail_mut() = *old.tail();
+        *buckle.belt_count_mut() = old.belt_count();
+
+        self.buckle.set_unchecked(buckle)
+    }
+
     pub fn buckle_get(
         &mut self, gene: &Gene, buckle: &mut Bk,
     ) -> Result<(), ShahError> {

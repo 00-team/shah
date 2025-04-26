@@ -1,5 +1,11 @@
 use super::*;
+use crate::ShahError;
+use crate::config::ShahConfig;
+use crate::db::entity::{EntityDb, EntityKochFrom};
 use crate::models::Worker;
+use crate::models::task_list::{Performed, Task, TaskList};
+use crate::models::{DeadList, Gene};
+use crate::{BLOCK_SIZE, utils};
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
@@ -17,7 +23,7 @@ impl<
         path: &str, revision: u16, pond_revision: u16, origin_revision: u16,
     ) -> Result<Self, ShahError> {
         ShahConfig::get();
-        let data_path = Path::new("data/").join(path);
+        let data_path = std::path::Path::new("data/").join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())
@@ -29,32 +35,32 @@ impl<
 
         let mut db = Self {
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: EntityDb::new(&format!("{path}/index"), pond_revision)?,
-            origins: EntityDb::new(&format!("{path}/origin"), origin_revision)?,
-            items: EntityDb::<Dk, DkO, DkS>::new(path, revision)?,
+            item: EntityDb::<Dk, DkO, DkS>::new(path, revision)?,
+            pond: EntityDb::new(&format!("{path}/index"), pond_revision)?,
+            origin: EntityDb::new(&format!("{path}/origin"), origin_revision)?,
             tasks: TaskList::new([
-                Self::work_index,
-                Self::work_origins,
-                Self::work_items,
+                Self::work_item,
+                Self::work_pond,
+                Self::work_origin,
             ]),
             ls: format!("<PondDb {path}.{revision} />"),
         };
 
-        db.items.set_dead_list_disabled(true);
+        db.item.set_dead_list_disabled(true);
 
         Ok(db)
     }
 
-    fn work_items(&mut self) -> Result<Performed, ShahError> {
-        self.items.work()
+    fn work_item(&mut self) -> Result<Performed, ShahError> {
+        self.item.work()
     }
 
-    fn work_index(&mut self) -> Result<Performed, ShahError> {
-        self.index.work()
+    fn work_pond(&mut self) -> Result<Performed, ShahError> {
+        self.pond.work()
     }
 
-    fn work_origins(&mut self) -> Result<Performed, ShahError> {
-        self.origins.work()
+    fn work_origin(&mut self) -> Result<Performed, ShahError> {
+        self.origin.work()
     }
 }
 

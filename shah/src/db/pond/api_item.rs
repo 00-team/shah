@@ -1,4 +1,9 @@
 use super::*;
+use crate::ShahError;
+use crate::config::ShahConfig;
+use crate::db::entity::{EntityCount, EntityKochFrom};
+use crate::models::{Gene, GeneId};
+use crate::{PAGE_SIZE, SystemError};
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
@@ -18,7 +23,7 @@ impl<
         item.set_alive(true);
 
         let mut origin = Og::default();
-        self.origins.get(origene, &mut origin)?;
+        self.origin.get(origene, &mut origin)?;
         *origin.item_count_mut() += 1;
 
         let mut pond = self.half_empty_pond(&mut origin)?;
@@ -31,7 +36,7 @@ impl<
         ig.server = ShahConfig::get().server;
         crate::utils::getrandom(&mut ig.pepper);
 
-        let stack = if *pond.stack() == 0 {
+        let stack = if pond.stack() == 0 {
             let stack = self.new_stack_id()?;
             for (idx, x) in buf.iter_mut().enumerate() {
                 let xg = x.gene_mut();
@@ -47,14 +52,14 @@ impl<
             *pond.empty_mut() = PAGE_SIZE as u8 - 1;
             stack
         } else {
-            self.items.list(*pond.stack(), &mut buf)?;
+            self.item.list(pond.stack(), &mut buf)?;
 
             let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
                 if !slot.is_alive() && !sg.exhausted() {
                     let ig = item.gene_mut();
-                    ig.id = *pond.stack() + x as u64;
+                    ig.id = pond.stack() + x as u64;
                     if sg.id != 0 {
                         ig.iter = sg.iter + 1;
                         *item.growth_mut() = slot.growth() + 1;
@@ -75,12 +80,12 @@ impl<
                 return Err(SystemError::PondNoEmptySlotWasFound)?;
             }
 
-            *pond.stack()
+            pond.stack()
         };
 
-        self.items.write_buf_at(&buf, stack)?;
-        self.index.set(&mut pond)?;
-        self.origins.set(&mut origin)?;
+        self.item.write_buf_at(&buf, stack)?;
+        self.pond.set(&mut pond)?;
+        self.origin.set(&mut origin)?;
 
         Ok(())
     }
@@ -88,11 +93,11 @@ impl<
     pub fn get(
         &mut self, gene: &Gene, entity: &mut Dk,
     ) -> Result<(), ShahError> {
-        self.items.get(gene, entity)
+        self.item.get(gene, entity)
     }
 
     pub fn count(&mut self) -> Result<EntityCount, ShahError> {
-        self.items.count()
+        self.item.count()
     }
 
     pub fn set(&mut self, entity: &mut Dk) -> Result<(), ShahError> {
@@ -102,11 +107,11 @@ impl<
         }
 
         let mut old_entity = Dk::default();
-        self.items.get(entity.gene(), &mut old_entity)?;
+        self.item.get(entity.gene(), &mut old_entity)?;
 
         *entity.growth_mut() = old_entity.growth();
         *entity.pond_mut() = *old_entity.pond();
-        self.items.set_unchecked(entity)?;
+        self.item.set_unchecked(entity)?;
 
         Ok(())
     }
@@ -114,30 +119,30 @@ impl<
     pub fn del(
         &mut self, gene: &Gene, entity: &mut Dk,
     ) -> Result<(), ShahError> {
-        self.items.del(gene, entity)?;
+        self.item.del(gene, entity)?;
 
         let mut pond = Pn::default();
         let mut origin = Og::default();
 
-        self.index.get(entity.pond(), &mut pond)?;
+        self.pond.get(entity.pond(), &mut pond)?;
         *pond.alive_mut() = pond.alive().saturating_sub(1);
         // if pond.alive() > 0 {
         //     pond.alive -= 1;
         // }
 
-        self.origins.get(pond.origin(), &mut origin)?;
+        self.origin.get(pond.origin(), &mut origin)?;
         *origin.item_count_mut() = origin.item_count().saturating_sub(1);
         // if origin.items > 0 {
         //     origin.items -= 1;
         // }
 
-        if *pond.alive() == 0 {
+        if pond.alive() == 0 {
             self.add_empty_pond(&mut origin, pond)?;
         } else {
-            self.index.set(&mut pond)?;
+            self.pond.set(&mut pond)?;
         }
 
-        self.origins.set(&mut origin)?;
+        self.origin.set(&mut origin)?;
 
         Ok(())
     }
@@ -145,6 +150,6 @@ impl<
     pub fn list(
         &mut self, page: GeneId, result: &mut [Dk; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
-        self.items.list(page, result)
+        self.item.list(page, result)
     }
 }

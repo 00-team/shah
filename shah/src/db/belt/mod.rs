@@ -64,7 +64,9 @@ impl<
     BkS,
 > BeltDb<Bt, Bk, BtO, BkO, BtS, BkS>
 {
-    pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
+    pub fn new(
+        path: &str, revision: u16, buckle_revision: u16,
+    ) -> Result<Self, ShahError> {
         let data_path = Path::new("data/").join(path);
         let name = data_path
             .file_name()
@@ -77,7 +79,7 @@ impl<
 
         let db = Self {
             belt: EntityDb::new(&format!("{path}/belt"), revision)?,
-            buckle: EntityDb::new(&format!("{path}/buckle"), 0)?,
+            buckle: EntityDb::new(&format!("{path}/buckle"), buckle_revision)?,
             tasks: TaskList::new([Self::work_belt, Self::work_buckle]),
             ls: format!("<BeltDb {path} />"),
         };

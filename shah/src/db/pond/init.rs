@@ -13,7 +13,9 @@ impl<
     OgS,
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
-    pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
+    pub fn new(
+        path: &str, revision: u16, pond_revision: u16, origin_revision: u16,
+    ) -> Result<Self, ShahError> {
         ShahConfig::get();
         let data_path = Path::new("data/").join(path);
         let name = data_path
@@ -27,11 +29,8 @@ impl<
 
         let mut db = Self {
             free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            index: EntityDb::<Pn, PnO, PnS>::new(&format!("{path}/index"), 0)?,
-            origins: EntityDb::<Og, OgO, OgS>::new(
-                &format!("{path}/origin"),
-                0,
-            )?,
+            index: EntityDb::new(&format!("{path}/index"), pond_revision)?,
+            origins: EntityDb::new(&format!("{path}/origin"), origin_revision)?,
             items: EntityDb::<Dk, DkO, DkS>::new(path, revision)?,
             tasks: TaskList::new([
                 Self::work_index,

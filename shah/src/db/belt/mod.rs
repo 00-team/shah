@@ -7,6 +7,7 @@ use std::path::Path;
 
 mod belt_api;
 mod buckle;
+mod options;
 
 pub trait Buckle: EntityItem {
     fn head(&self) -> &Gene;

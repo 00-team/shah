@@ -1,6 +1,8 @@
 use super::{Duck, Origin, Pond, PondDb};
 use crate::PAGE_SIZE;
 use crate::ShahError;
+use crate::SystemError;
+use crate::db::derr;
 use crate::db::entity::EntityKochFrom;
 use std::ops::AddAssign;
 
@@ -23,6 +25,26 @@ impl<
         self.pond.get(&pond_gene, pond)?;
         self.item.list(pond.stack(), result)?;
         Ok(())
+    }
+
+    pub fn pond_set(&mut self, pond: &mut Pn) -> Result<(), ShahError> {
+        if !pond.is_alive() {
+            return derr!(self.ls, SystemError::DeadSet);
+        }
+
+        let mut old = Pn::default();
+        self.pond.get(pond.gene(), &mut old)?;
+
+        *pond.growth_mut() = old.growth();
+
+        *pond.next_mut() = *old.next();
+        *pond.past_mut() = *old.past();
+        *pond.origin_mut() = *old.origin();
+        *pond.stack_mut() = old.stack();
+        *pond.alive_mut() = old.alive();
+        *pond.empty_mut() = old.empty();
+
+        self.pond.set_unchecked(pond)
     }
 
     pub fn pond_free(&mut self, pond: &mut Pn) -> Result<(), ShahError> {

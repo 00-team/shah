@@ -21,14 +21,20 @@ impl<
         Ok(())
     }
 
-    pub fn buckle_add(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {
-        buckle.set_alive(true);
-        *buckle.belt_count_mut() = 0;
-        *buckle.growth_mut() = 0;
-        buckle.head_mut().clear();
-        buckle.tail_mut().clear();
+    pub fn buckle_init(
+        &mut self, gene: &Gene, buckle: &mut Bk,
+    ) -> Result<(), ShahError> {
+        let def = buckle.clone();
+        if gene.is_none() || self.buckle.get(gene, buckle).onf()?.is_none() {
+            buckle.clone_from(&def);
+            buckle.head_mut().clear();
+            buckle.tail_mut().clear();
+            *buckle.belt_count_mut() = 0;
 
-        self.buckle.add(buckle)
+            self.buckle.add(buckle)?;
+        }
+
+        Ok(())
     }
 
     pub fn buckle_set(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {

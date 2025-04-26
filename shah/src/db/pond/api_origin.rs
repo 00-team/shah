@@ -1,9 +1,9 @@
 use super::{Duck, Origin, Pond, PondDb};
-use crate::SystemError;
 use crate::db::derr;
 use crate::db::entity::EntityKochFrom;
 use crate::models::Gene;
 use crate::{IsNotFound, ShahError};
+use crate::{OptNotFound, SystemError};
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
@@ -17,6 +17,22 @@ impl<
     OgS,
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
+    pub fn origin_init(
+        &mut self, gene: &Gene, origin: &mut Og,
+    ) -> Result<(), ShahError> {
+        let def = origin.clone();
+        if gene.is_none() || self.origin.get(gene, origin).onf()?.is_none() {
+            origin.clone_from(&def);
+            origin.head_mut().clear();
+            origin.tail_mut().clear();
+            *origin.pond_count_mut() = 0;
+            *origin.item_count_mut() = 0;
+            self.origin.add(origin)?;
+        }
+
+        Ok(())
+    }
+
     pub fn origin_set(&mut self, origin: &mut Og) -> Result<(), ShahError> {
         if !origin.is_alive() {
             return derr!(self.ls, SystemError::DeadSet);

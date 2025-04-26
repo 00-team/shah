@@ -137,6 +137,11 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
             let set_ident = format_ident!("set_{field}");
             quote_into! {ssi +=
                 pub fn #set_ident(&mut self, value: &str) -> bool {
+                    if value.is_empty() {
+                        self.#field.fill(0);
+                        return false;
+                    }
+
                     let mut overflow = false;
                     let vlen = value.len();
                     let flen = self.#field.len();

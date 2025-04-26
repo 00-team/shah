@@ -17,6 +17,12 @@ impl<
     OgS,
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
+    pub fn origin_get(
+        &mut self, gene: &Gene, origin: &mut Og,
+    ) -> Result<(), ShahError> {
+        self.origin.get(gene, origin)
+    }
+
     pub fn origin_init(
         &mut self, gene: &Gene, origin: &mut Og,
     ) -> Result<(), ShahError> {

@@ -33,6 +33,7 @@ impl<
             origin.tail_mut().clear();
             *origin.pond_count_mut() = 0;
             *origin.item_count_mut() = 0;
+            origin.gene_mut().clear();
             self.origin.add(origin)?;
         }
 

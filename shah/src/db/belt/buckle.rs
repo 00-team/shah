@@ -30,7 +30,7 @@ impl<
             buckle.head_mut().clear();
             buckle.tail_mut().clear();
             *buckle.belt_count_mut() = 0;
-
+            buckle.gene_mut().clear();
             self.buckle.add(buckle)?;
         }
 

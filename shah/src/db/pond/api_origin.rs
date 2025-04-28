@@ -26,7 +26,7 @@ impl<
     pub fn origin_init(
         &mut self, gene: &Gene, origin: &mut Og,
     ) -> Result<(), ShahError> {
-        let def = origin.clone();
+        let def = *origin;
         if gene.is_none() || self.origin.get(gene, origin).onf()?.is_none() {
             origin.clone_from(&def);
             origin.head_mut().clear();

@@ -24,7 +24,7 @@ impl<
     pub fn buckle_init(
         &mut self, gene: &Gene, buckle: &mut Bk,
     ) -> Result<(), ShahError> {
-        let def = buckle.clone();
+        let def = *buckle;
         if gene.is_none() || self.buckle.get(gene, buckle).onf()?.is_none() {
             buckle.clone_from(&def);
             buckle.head_mut().clear();

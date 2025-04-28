@@ -63,7 +63,7 @@ mod eapi {
         state: &mut State, _: (), (out,): (&mut ExtraRoot,),
     ) -> Result<(), ErrorCode> {
         out.zeroed();
-        state.extra.buckle_add(out)?;
+        state.extra.buckle_init(&Gene::NONE, out)?;
         Ok(())
     }
 

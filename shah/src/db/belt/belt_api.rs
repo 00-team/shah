@@ -12,10 +12,10 @@ impl<
     pub fn belt_add(
         &mut self, buckle_gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
-        belt.set_alive(true);
-
         let mut buckle = Bk::default();
         self.buckle.get(buckle_gene, &mut buckle)?;
+
+        belt.set_alive(true);
 
         *belt.buckle_mut() = *buckle.gene();
         *belt.growth_mut() = 0;
@@ -35,6 +35,38 @@ impl<
         if self.belt.get(&old_tail_gene, belt).onf()?.is_some() {
             *belt.next_mut() = *buckle.tail();
             self.belt.set(belt)?;
+        }
+
+        self.buckle.set(&mut buckle)
+    }
+
+    pub fn belt_add_bulk(
+        &mut self, buckle_gene: &Gene, belts: &mut [&mut Bt],
+    ) -> Result<(), ShahError> {
+        let mut buckle = Bk::default();
+        self.buckle.get(buckle_gene, &mut buckle)?;
+
+        for belt in belts {
+            belt.set_alive(true);
+            *belt.buckle_mut() = *buckle.gene();
+            *belt.growth_mut() = 0;
+            *belt.past_mut() = *buckle.tail();
+            belt.next_mut().clear();
+
+            self.belt.add(belt)?;
+            if buckle.head().is_none() {
+                *buckle.head_mut() = *belt.gene();
+            }
+
+            let old_tail_gene = *buckle.tail();
+            *buckle.tail_mut() = *belt.gene();
+            *buckle.belt_count_mut() += 1;
+
+            let mut tail = Bt::default();
+            if self.belt.get(&old_tail_gene, &mut tail).onf()?.is_some() {
+                *tail.next_mut() = *buckle.tail();
+                self.belt.set(&mut tail)?;
+            }
         }
 
         self.buckle.set(&mut buckle)

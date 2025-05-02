@@ -41,7 +41,7 @@ impl<
     }
 
     pub fn belt_add_bulk(
-        &mut self, buckle_gene: &Gene, belts: &mut [&mut Bt],
+        &mut self, buckle_gene: &Gene, belts: &mut [Bt],
     ) -> Result<(), ShahError> {
         let mut buckle = Bk::default();
         self.buckle.get(buckle_gene, &mut buckle)?;

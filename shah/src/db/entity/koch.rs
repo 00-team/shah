@@ -111,12 +111,14 @@ impl<T: EntityItem> EntityKochDb<T> {
 
         utils::validate_db_name(name)?;
 
+        let open_path = path.join(format!("{name}.{revision}.shah"));
+        log::debug!("opening: {open_path:?} for koching");
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(false)
             .create(false)
             .truncate(false)
-            .open(path.join(format!("{name}.{revision}.shah")))?;
+            .open(open_path)?;
 
         let mut db = Self {
             file,

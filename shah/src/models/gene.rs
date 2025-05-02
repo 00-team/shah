@@ -211,36 +211,40 @@ impl serde::Serialize for Gene {
 struct StrVisitor;
 #[cfg(feature = "serde")]
 impl serde::de::Visitor<'_> for StrVisitor {
-    type Value = String;
+    type Value = Option<String>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("a hex string with 32 length")
     }
 
-    // fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
-    //     Ok(None)
-    // }
+    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(None)
+    }
 
     fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        Ok(Some(v.to_string()))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Gene {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let Some(v) = Option::<String>::deserialize(de)? else {
+            return Ok(Gene::default());
+        };
+
         if v.len() != Gene::S * 2 {
-            return Err(E::custom(format!(
+            return Err(serde::de::Error::custom(format!(
                 "invalid length {}, expected {}",
                 v.len(),
                 Gene::S * 2
             )));
         }
 
-        Ok(v.to_string())
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for Gene {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        match deserializer.deserialize_str(StrVisitor)?.parse::<Gene>() {
+        match v.parse::<Gene>() {
             Ok(v) => Ok(v),
             Err(_) => Err(serde::de::Error::custom("expected string")),
         }

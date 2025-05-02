@@ -26,46 +26,46 @@ impl PartialEq<u64> for GeneId {
 impl Mul for GeneId {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        Self(self.0 * rhs.0)
+        Self(self.0.saturating_mul(rhs.0))
     }
 }
 
 impl Mul<u64> for GeneId {
     type Output = Self;
     fn mul(self, rhs: u64) -> Self::Output {
-        Self(self.0 * rhs)
+        Self(self.0.saturating_mul(rhs))
     }
 }
 
 impl AddAssign for GeneId {
     fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0
+        self.0 = self.0.saturating_add(rhs.0);
     }
 }
 
 impl AddAssign<u64> for GeneId {
     fn add_assign(&mut self, rhs: u64) {
-        self.0 += rhs
+        self.0 = self.0.saturating_add(rhs);
     }
 }
 
 impl Add for GeneId {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+        Self(self.0.saturating_add(rhs.0))
     }
 }
 
 impl Add<u64> for GeneId {
     type Output = Self;
     fn add(self, rhs: u64) -> Self::Output {
-        Self(self.0 + rhs)
+        Self(self.0.saturating_add(rhs))
     }
 }
 
 impl SubAssign<u64> for GeneId {
     fn sub_assign(&mut self, rhs: u64) {
-        self.0 -= rhs;
+        self.0 = self.0.saturating_sub(rhs)
     }
 }
 

@@ -103,7 +103,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     ) -> Result<(), ShahError> {
         entity.set_alive(false);
         self.set_unchecked(entity)?;
-        self.add_dead(entity.gene());
+        self.dead_add(entity.gene());
         Ok(())
     }
 

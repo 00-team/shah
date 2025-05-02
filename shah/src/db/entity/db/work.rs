@@ -5,10 +5,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 {
     pub(super) fn inspection(&mut self, entity: &T) {
         // log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
-        if !self.dead_list.disabled() && !entity.is_alive() {
+
+        if !entity.is_alive() {
             let gene = entity.gene();
-            log::debug!("{} inspector dead entity: {:?}", self.ls, gene.id);
-            self.add_dead(gene);
+            self.dead_add(gene);
+            log::debug!("{} found dead: {} | {}", self.ls, gene.id, self.live);
         }
 
         if let Some(ei) = &self.inspector {
@@ -23,19 +24,13 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             return Ok(Performed(false));
         }
 
-        if self.inspector.is_none()
-            && (self.dead_list.disabled() || self.dead_list.is_full())
-        {
-            return Ok(Performed(false));
-        }
-
         let mut entity = T::default();
         let mut performed = false;
         for _ in 0..10 {
             let Some(id) = self.setup_prog.next() else { break };
             performed = true;
-            if let Err(e) = self.read_at(&mut entity, id) {
-                e.not_found_ok()?;
+
+            if self.read_at(&mut entity, id).onf()?.is_none() {
                 self.setup_prog.end();
                 log::warn!(
                     "{} work_setup_task read_at not found {id:?}",

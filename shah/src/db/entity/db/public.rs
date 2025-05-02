@@ -16,7 +16,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
                 let mut oldie = koch.get(gene)?;
                 self.set_unchecked(&mut oldie)?;
                 if !oldie.is_alive() {
-                    self.add_dead(oldie.gene());
+                    self.dead_add(oldie.gene());
                     return Err(NotFound::EntityNotAlive)?;
                 }
                 entity.clone_from(&oldie);
@@ -128,7 +128,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
                 self.set_unchecked(&mut old)?;
                 if !old.is_alive() {
-                    self.add_dead(old.gene());
+                    self.dead_add(old.gene());
                 }
                 item.clone_from(&old);
             }

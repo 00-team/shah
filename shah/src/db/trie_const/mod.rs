@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::models::Binary;
-use crate::{utils, NotFound, ShahError, SystemError};
+use crate::{NotFound, ShahError, SystemError, utils};
 
 pub use meta::*;
 
@@ -44,12 +44,12 @@ impl<const INDEX: usize> Default for TrieConstKey<INDEX> {
 }
 
 impl<
-        const ABC_LEN: usize,
-        const INDEX: usize,
-        const CACHE: usize,
-        Abc: TrieAbc,
-        Val: Binary + Default + Copy + Debug,
-    > TrieConst<ABC_LEN, INDEX, CACHE, Abc, Val>
+    const ABC_LEN: usize,
+    const INDEX: usize,
+    const CACHE: usize,
+    Abc: TrieAbc,
+    Val: Binary + Default + Copy + Debug,
+> TrieConst<ABC_LEN, INDEX, CACHE, Abc, Val>
 {
     /// size of file position which is 8 byes
     const PS: u64 = core::mem::size_of::<u64>() as u64;
@@ -120,6 +120,25 @@ impl<
 
     pub fn file_size(&mut self) -> Result<u64, ShahError> {
         Ok(self.file.seek(SeekFrom::End(0))?)
+    }
+
+    pub fn raw_key(
+        &self, raw: &[usize],
+    ) -> Result<TrieConstKey<INDEX>, ShahError> {
+        assert_eq!(raw.len(), CACHE + INDEX);
+
+        let mut tckey = TrieConstKey::<INDEX>::default();
+
+        for (i, x) in raw[..CACHE].iter().rev().enumerate() {
+            assert!(*x < ABC_LEN, "raw must be < ABC_LEN");
+            tckey.cache += (ABC_LEN.pow(i as u32) * *x) as u64;
+        }
+
+        for (i, x) in raw[CACHE..].iter().enumerate() {
+            tckey.index[i] = *x;
+        }
+
+        Ok(tckey)
     }
 
     pub fn convert_key(

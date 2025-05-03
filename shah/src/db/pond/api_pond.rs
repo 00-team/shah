@@ -1,4 +1,5 @@
 use super::{Duck, Origin, Pond, PondDb};
+use crate::models::Gene;
 use crate::PAGE_SIZE;
 use crate::ShahError;
 use crate::SystemError;
@@ -25,6 +26,12 @@ impl<
         self.pond.get(&pond_gene, pond)?;
         self.item.list(pond.stack(), result)?;
         Ok(())
+    }
+
+    pub fn pond_get(
+        &mut self, gene: &Gene, pond: &mut Pn,
+    ) -> Result<(), ShahError> {
+        self.pond.get(gene, pond)
     }
 
     pub fn pond_set(&mut self, pond: &mut Pn) -> Result<(), ShahError> {

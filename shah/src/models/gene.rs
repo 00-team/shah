@@ -208,25 +208,6 @@ impl serde::Serialize for Gene {
 }
 
 #[cfg(feature = "serde")]
-struct StrVisitor;
-#[cfg(feature = "serde")]
-impl serde::de::Visitor<'_> for StrVisitor {
-    type Value = Option<String>;
-
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("a hex string with 32 length")
-    }
-
-    fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
-        Ok(None)
-    }
-
-    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        Ok(Some(v.to_string()))
-    }
-}
-
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Gene {
     fn deserialize<D>(de: D) -> Result<Self, D::Error>
     where

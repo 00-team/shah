@@ -147,8 +147,46 @@ impl<
         self.belt.list(page, result)
     }
 
-    /// put the head as tail and return the head
-    pub fn recycle(&mut self, _recycled: &mut Bt) -> Result<(), ShahError> {
-        todo!("make this")
+    pub fn move_to_tail(
+        &mut self, gene: &Gene, belt: &mut Bt,
+    ) -> Result<(), ShahError> {
+        self.belt.get(gene, belt)?;
+        let mut buckle = Bk::default();
+        self.buckle.get(belt.buckle(), &mut buckle)?;
+
+        if buckle.tail() == belt.gene() {
+            return Ok(());
+        }
+
+        let mut old = Bt::default();
+
+        if self.belt.get(belt.past(), &mut old).onf()?.is_some() {
+            *old.next_mut() = *belt.next_mut();
+            self.belt.set_unchecked(&mut old)?;
+        }
+
+        if self.belt.get(belt.next(), &mut old).onf()?.is_some() {
+            if buckle.head() == belt.gene() {
+                *buckle.head_mut() = *old.gene();
+            }
+
+            *old.past_mut() = *belt.past_mut();
+            self.belt.set_unchecked(&mut old)?;
+        }
+
+        belt.next_mut().clear();
+        belt.past_mut().clear();
+
+        if self.belt.get(buckle.tail(), &mut old).onf()?.is_some() {
+            *old.next_mut() = *belt.gene();
+            *belt.past_mut() = *old.gene();
+            self.belt.set_unchecked(&mut old)?;
+        }
+
+        *buckle.tail_mut() = *belt.gene();
+        self.belt.set_unchecked(belt)?;
+        self.buckle.set_unchecked(&mut buckle)?;
+
+        Ok(())
     }
 }

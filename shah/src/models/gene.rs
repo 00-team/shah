@@ -4,7 +4,10 @@ use std::{
 };
 
 use super::{Binary, Schema, ShahSchema};
-use crate::error::{NotFound, ShahError, SystemError};
+use crate::{
+    config::ShahConfig,
+    error::{NotFound, ShahError, SystemError},
+};
 
 #[derive(Default, Debug, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
 pub struct GeneId(pub u64);
@@ -93,6 +96,15 @@ impl ShahSchema for Gene {
 impl Gene {
     pub const NONE: Self =
         Self { id: GeneId(0), iter: 0, server: 0, pepper: [0, 0, 0] };
+
+    pub fn keyed(id: u64, pepper: [u8; 3]) -> Self {
+        Self {
+            id: GeneId(id),
+            iter: 0,
+            pepper,
+            server: ShahConfig::get().server,
+        }
+    }
 
     #[cfg(feature = "serde")]
     pub fn as_hex(&self) -> String {

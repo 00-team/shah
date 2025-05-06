@@ -7,8 +7,7 @@ use self::coords::MAX_ZOOM;
 use super::entity::EntityDb;
 use crate::{
     ShahError,
-    config::ShahConfig,
-    models::{Gene, GeneId, Performed, Task, TaskList, Worker},
+    models::{Gene, Performed, Task, TaskList, Worker},
     utils,
 };
 
@@ -57,18 +56,10 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         std::fs::create_dir_all(&data_path)?;
 
-        let conf = ShahConfig::get();
-        let root = Gene {
-            id: GeneId(1),
-            iter: 0,
-            pepper: [42, 0, 69],
-            server: conf.server,
-        };
-
         let db = Self {
             tiles: EntityDb::new(&format!("{path}/apex"), 0)?,
             tasks: TaskList::new([Self::work_tiles]),
-            root,
+            root: Gene::keyed(1, [59, 77, 69]),
         };
 
         Ok(db)

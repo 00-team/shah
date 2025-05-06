@@ -73,6 +73,19 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         self.set_unchecked(entity)
     }
 
+    pub fn keyed(
+        &mut self, key: &Gene, entity: &mut T,
+    ) -> Result<(), ShahError> {
+        if self.get(key, entity).onf()?.is_none() {
+            entity.zeroed();
+            entity.set_alive(true);
+            *entity.gene_mut() = *key;
+            self.set_unchecked(entity)?;
+        }
+
+        Ok(())
+    }
+
     pub fn del(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {

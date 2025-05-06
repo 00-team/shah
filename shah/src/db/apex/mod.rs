@@ -6,8 +6,10 @@ pub use self::coords::ApexCoords;
 use self::coords::MAX_ZOOM;
 use super::entity::EntityDb;
 use crate::{
-    models::{Gene, Performed, Task, TaskList, Worker},
-    utils, ShahError,
+    ShahError,
+    config::ShahConfig,
+    models::{Gene, GeneId, Performed, Task, TaskList, Worker},
+    utils,
 };
 
 #[derive(shah::ShahSchema)]
@@ -26,6 +28,7 @@ struct ApexTile<const S: usize> {
 pub struct ApexDb<const LVL: usize, const LEN: usize, const SIZ: usize> {
     tiles: EntityDb<ApexTile<SIZ>>,
     tasks: TaskList<1, Task<Self>>,
+    root: Gene,
 }
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
@@ -54,9 +57,18 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         std::fs::create_dir_all(&data_path)?;
 
+        let conf = ShahConfig::get();
+        let root = Gene {
+            id: GeneId(1),
+            iter: 0,
+            pepper: [42, 0, 69],
+            server: conf.server,
+        };
+
         let db = Self {
             tiles: EntityDb::new(&format!("{path}/apex"), 0)?,
             tasks: TaskList::new([Self::work_tiles]),
+            root,
         };
 
         Ok(db)

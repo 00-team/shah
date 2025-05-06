@@ -1,9 +1,6 @@
 use super::{ApexDb, ApexTile, coords::IntoApexCoords};
-use crate::{
-    OptNotFound, ShahError,
-    db::entity::Entity,
-    models::{Binary, Gene},
-};
+use crate::db::entity::Entity;
+use crate::{OptNotFound, ShahError, models::Gene};
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ApexDb<LVL, LEN, SIZ>
@@ -13,7 +10,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<Gene, ShahError> {
         let key = ac.into()?.full_key()?;
 
-        let mut gene = Gene::ROOT;
+        let mut gene = self.root;
         let mut tile = ApexTile::<SIZ>::default();
 
         for x in key.key().iter() {
@@ -29,7 +26,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<usize, ShahError> {
         let key = ac.into()?.display_key();
 
-        let mut gene = Gene::ROOT;
+        let mut gene = self.root;
         let mut tile = ApexTile::<SIZ>::default();
 
         for x in key.key().iter() {
@@ -59,7 +56,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ) -> Result<Gene, ShahError> {
         let key = ac.into()?.full_key()?;
         let mut tile_tree = [ApexTile::<SIZ>::default(); LEN];
-        self.tiles.get(&Gene::ROOT, &mut tile_tree[0])?;
+        self.tiles.keyed(&self.root, &mut tile_tree[0])?;
 
         for (i, x) in key.key_branch().iter().enumerate() {
             let gene = tile_tree[i].tiles[*x];
@@ -97,18 +94,19 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         let mut parent = ApexTile::<SIZ>::default();
         let mut curnet = ApexTile::<SIZ>::default();
 
-        if self.tiles.get(&Gene::ROOT, &mut parent).onf()?.is_none() {
-            parent.zeroed();
-            parent.level = 0;
-            parent.gene = Gene::ROOT;
-            parent.set_alive(true);
-            self.tiles.set_unchecked(&mut parent)?;
-
-            parent.tiles[key.root()] = self.add(key.tree(), *value)?;
-            self.tiles.set_unchecked(&mut parent)?;
-
-            return Ok(None);
-        };
+        self.tiles.keyed(&self.root, &mut parent)?;
+        // if self.tiles.get(&Gene::ROOT, &mut parent).onf()?.is_none() {
+        //     parent.zeroed();
+        //     parent.level = 0;
+        //     parent.gene = Gene::ROOT;
+        //     parent.set_alive(true);
+        //     self.tiles.set_unchecked(&mut parent)?;
+        //
+        //     parent.tiles[key.root()] = self.add(key.tree(), *value)?;
+        //     self.tiles.set_unchecked(&mut parent)?;
+        //
+        //     return Ok(None);
+        // };
 
         let keykey = key.key();
         for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {

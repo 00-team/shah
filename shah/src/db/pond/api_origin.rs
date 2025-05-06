@@ -17,22 +17,16 @@ impl<
     OgS,
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
-    pub fn origin_root(&mut self) -> Result<(), ShahError> {
-        let mut origin = Og::default();
-        if self.origin.get(&Gene::ROOT, &mut origin).onf()?.is_none() {
-            origin.zeroed();
-            origin.set_alive(true);
-            *origin.gene_mut() = Gene::ROOT;
-            self.origin.set_unchecked(&mut origin)?;
-        }
-
-        Ok(())
-    }
-
     pub fn origin_get(
         &mut self, gene: &Gene, origin: &mut Og,
     ) -> Result<(), ShahError> {
         self.origin.get(gene, origin)
+    }
+
+    pub fn origin_keyed(
+        &mut self, gene: &Gene, origin: &mut Og,
+    ) -> Result<(), ShahError> {
+        self.origin.keyed(gene, origin)
     }
 
     pub fn origin_init(

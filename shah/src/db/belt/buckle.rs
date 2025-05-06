@@ -9,18 +9,6 @@ impl<
     BkS,
 > BeltDb<Bt, Bk, BtO, BkO, BtS, BkS>
 {
-    pub fn buckle_root(&mut self) -> Result<(), ShahError> {
-        let mut buckle = Bk::default();
-        if self.buckle.get(&Gene::ROOT, &mut buckle).onf()?.is_none() {
-            buckle.zeroed();
-            buckle.set_alive(true);
-            *buckle.gene_mut() = Gene::ROOT;
-            self.buckle.set_unchecked(&mut buckle)?;
-        }
-
-        Ok(())
-    }
-
     pub fn buckle_init(
         &mut self, gene: &Gene, buckle: &mut Bk,
     ) -> Result<(), ShahError> {
@@ -58,6 +46,12 @@ impl<
         &mut self, gene: &Gene, buckle: &mut Bk,
     ) -> Result<(), ShahError> {
         self.buckle.get(gene, buckle)
+    }
+
+    pub fn buckle_keyed(
+        &mut self, gene: &Gene, buckle: &mut Bk,
+    ) -> Result<(), ShahError> {
+        self.buckle.keyed(gene, buckle)
     }
 
     pub fn buckle_count(&mut self) -> Result<EntityCount, ShahError> {

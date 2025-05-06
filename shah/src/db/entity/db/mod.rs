@@ -17,7 +17,7 @@ use crate::*;
 mod dead;
 mod init;
 mod options;
-mod public;
+mod api;
 mod util;
 mod work;
 

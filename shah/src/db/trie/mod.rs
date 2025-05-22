@@ -16,7 +16,25 @@ type Pos = u64;
 
 pub trait TrieAbc {
     const ABC: &str;
+
     fn convert_char(&self, c: char) -> Option<usize>;
+
+    /// if you your key is raw u8 set this to `true`
+    fn is_raw() -> bool {
+        false
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrieBinAbc;
+impl TrieAbc for TrieBinAbc {
+    const ABC: &str = "";
+    fn convert_char(&self, _: char) -> Option<usize> {
+        unreachable!()
+    }
+    fn is_raw() -> bool {
+        true
+    }
 }
 
 #[shah::model]
@@ -55,7 +73,9 @@ impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
     Trie<ABC_LEN, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
-        assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
+        if !Abc::is_raw() {
+            assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
+        }
 
         std::fs::create_dir_all("data/")?;
         let data_path = PathBuf::from(format!("data/{name}.shah"));

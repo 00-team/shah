@@ -1,7 +1,6 @@
+use super::TrieAbc;
 use crate::models::{DbHead, ShahMagic, ShahMagicDb};
 use crate::{AsUtf8Str, DbError, ShahError};
-
-use super::TrieAbc;
 
 pub const TRIE_VERSION: u16 = 1;
 pub const TRIE_MAGIC: ShahMagic =
@@ -12,23 +11,41 @@ pub const TRIE_MAGIC: ShahMagic =
 pub struct TrieMeta {
     pub db: DbHead,
     pub abc_len: u64,
-    pub abc: [u8; 4096],
+    pub abc_raw: bool,
+    pub abc: [u8; 4095],
 }
 
 impl TrieMeta {
     pub fn init<Abc: TrieAbc>(&mut self, name: &str) {
-        let chars = Abc::ABC;
         self.db.init(TRIE_MAGIC, 0, name, TRIE_VERSION);
-        self.abc_len = chars.len() as u64;
-        self.abc = [0; 4096];
-        self.abc[..chars.len()].clone_from_slice(chars.as_bytes());
+        self.abc = [0; 4095];
+        self.abc_raw = Abc::is_raw();
+        self.abc_len = 0;
+
+        if !self.abc_raw {
+            let chars = Abc::ABC;
+            self.abc_len = chars.len() as u64;
+            self.abc[..chars.len()].clone_from_slice(chars.as_bytes());
+        }
     }
 
     pub fn check<Abc: TrieAbc>(&self, ls: &str) -> Result<(), ShahError> {
         self.db.check(ls, TRIE_MAGIC, 0, TRIE_VERSION)?;
 
+        if self.abc_raw != Abc::is_raw() {
+            log::error!(
+                "{ls} abc_raw chaged. {} != {}",
+                self.abc_raw,
+                Abc::is_raw()
+            );
+            return Err(DbError::InvalidDbMeta)?;
+        }
+        if self.abc_raw {
+            return Ok(());
+        }
+
         let abc = Abc::ABC;
-        assert!(abc.len() < 4096);
+        assert!(abc.len() < 4095);
 
         if self.abc_len != abc.len() as u64 {
             log::error!(

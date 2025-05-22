@@ -14,20 +14,26 @@ pub struct TrieConstMeta {
     pub index: u64,
     pub cache: u64,
     pub abc_len: u64,
-    pub abc: [u8; 4096],
+    pub abc_raw: bool,
+    pub abc: [u8; 4095],
 }
 
 impl TrieConstMeta {
     pub fn init<Abc: TrieAbc>(
         &mut self, name: &str, index: usize, cache: usize,
     ) {
-        let abc = Abc::ABC;
         self.db.init(TRIE_CONST_MAGIC, 0, name, TRIE_CONST_VERSION);
         self.index = index as u64;
         self.cache = cache as u64;
-        self.abc_len = abc.len() as u64;
-        self.abc = [0; 4096];
-        self.abc[..abc.len()].clone_from_slice(abc.as_bytes());
+        self.abc_raw = Abc::is_raw();
+        self.abc_len = 0;
+        self.abc = [0; 4095];
+
+        if !self.abc_raw {
+            let abc = Abc::ABC;
+            self.abc_len = abc.len() as u64;
+            self.abc[..abc.len()].clone_from_slice(abc.as_bytes());
+        }
     }
 
     pub fn check<Abc: TrieAbc>(
@@ -43,6 +49,18 @@ impl TrieConstMeta {
         if self.cache != cache as u64 {
             log::error!("{ls} cache value chaged. {} != {cache}", self.cache);
             return Err(DbError::InvalidDbMeta)?;
+        }
+
+        if self.abc_raw != Abc::is_raw() {
+            log::error!(
+                "{ls} abc_raw chaged. {} != {}",
+                self.abc_raw,
+                Abc::is_raw()
+            );
+            return Err(DbError::InvalidDbMeta)?;
+        }
+        if self.abc_raw {
+            return Ok(());
         }
 
         let chars = Abc::ABC;

@@ -5,6 +5,7 @@ use crate::{
 };
 use std::path::Path;
 
+pub mod cloth;
 mod belt_api;
 mod buckle;
 mod options;

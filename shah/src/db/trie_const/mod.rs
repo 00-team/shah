@@ -9,18 +9,23 @@ use std::{
 };
 
 use crate::models::Binary;
-use crate::{NotFound, ShahError, SystemError, utils};
+use crate::{NotFound, ShahError, utils};
 
 pub use meta::*;
 
-use super::trie::TrieAbc;
+pub trait TrieConstAbc<const DEPTH: usize> {
+    type Item;
+    const ABC: &'static str;
+    fn convert(&self, key: Self::Item) -> Result<[usize; DEPTH], ShahError>;
+}
 
 #[derive(Debug)]
 pub struct TrieConst<
     const ABC_LEN: usize,
     const INDEX: usize,
     const CACHE: usize,
-    Abc: TrieAbc,
+    const INDEX_PLUS_CACHE: usize,
+    Abc: TrieConstAbc<INDEX_PLUS_CACHE>,
     Val: Binary + Default + Copy,
 > {
     abc: Abc,
@@ -47,9 +52,10 @@ impl<
     const ABC_LEN: usize,
     const INDEX: usize,
     const CACHE: usize,
-    Abc: TrieAbc,
+    const INDEX_PLUS_CACHE: usize,
+    Abc: TrieConstAbc<INDEX_PLUS_CACHE>,
     Val: Binary + Default + Copy + Debug,
-> TrieConst<ABC_LEN, INDEX, CACHE, Abc, Val>
+> TrieConst<ABC_LEN, INDEX, CACHE, INDEX_PLUS_CACHE, Abc, Val>
 {
     /// size of file position which is 8 byes
     const PS: u64 = core::mem::size_of::<u64>() as u64;
@@ -65,10 +71,7 @@ impl<
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
         assert!(CACHE > 0, "TrieConst CACHE must be at least 1");
         assert!(INDEX > 0, "TrieConst INDEX must be at least 1");
-
-        if !Abc::is_raw() {
-            assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
-        }
+        assert!(INDEX_PLUS_CACHE == INDEX + CACHE, "bad INDEX_PLUS_CACHE");
 
         std::fs::create_dir_all("data/")?;
         let data_path = PathBuf::from(format!("data/{name}.shah"));
@@ -99,10 +102,10 @@ impl<
         if let Err(e) = self.read_at(&mut meta, 0) {
             e.not_found_ok()?;
 
-            meta.init::<Abc>(&self.name, INDEX, CACHE);
+            meta.init::<INDEX_PLUS_CACHE, Abc>(&self.name, INDEX, CACHE);
             self.file.write_all_at(meta.as_binary(), 0)?;
         } else {
-            meta.check::<Abc>(&self.ls, INDEX, CACHE)?;
+            meta.check::<INDEX_PLUS_CACHE, Abc>(&self.ls, INDEX, CACHE)?;
         }
 
         let cache_size = self.cache_len * Self::PS;
@@ -124,49 +127,28 @@ impl<
         Ok(self.file.seek(SeekFrom::End(0))?)
     }
 
-    pub fn raw_key(
-        &self, raw: &[usize],
+    pub fn key(
+        &self, key: Abc::Item,
     ) -> Result<TrieConstKey<INDEX>, ShahError> {
-        assert_eq!(raw.len(), CACHE + INDEX);
-
+        let indices = self.abc.convert(key)?;
         let mut tckey = TrieConstKey::<INDEX>::default();
 
-        for (i, x) in raw[..CACHE].iter().rev().enumerate() {
-            assert!(*x < ABC_LEN, "raw must be < ABC_LEN");
-            tckey.cache += (ABC_LEN.pow(i as u32) * *x) as u64;
-        }
-
-        for (i, x) in raw[CACHE..].iter().enumerate() {
-            tckey.index[i] = *x;
-        }
-
-        Ok(tckey)
-    }
-
-    pub fn convert_key(
-        &self, key: &str,
-    ) -> Result<TrieConstKey<INDEX>, ShahError> {
-        assert_eq!(key.len(), CACHE + INDEX);
-
-        let mut tckey = TrieConstKey::<INDEX>::default();
-
-        let cache_key = &key[0..CACHE];
-        let index_key = &key[CACHE..];
-
-        for (i, c) in cache_key.chars().rev().enumerate() {
-            let Some(x) = self.abc.convert_char(c) else {
-                log::error!("{} convert_key: bad trie key", self.ls);
-                return Err(SystemError::BadTrieKey)?;
-            };
+        for (i, x) in indices[..CACHE].iter().enumerate() {
+            assert!(
+                *x < ABC_LEN,
+                "{} convert: (x: {x}) cannot be bigger than ABC_LEN",
+                self.ls
+            );
             tckey.cache += (ABC_LEN.pow(i as u32) * x) as u64;
         }
 
-        for (i, c) in index_key.chars().enumerate() {
-            let Some(x) = self.abc.convert_char(c) else {
-                log::error!("{} convert_key: bad trie key", self.ls);
-                return Err(SystemError::BadTrieKey)?;
-            };
-            tckey.index[i] = x;
+        for (i, x) in indices[CACHE..].iter().enumerate() {
+            assert!(
+                *x < ABC_LEN,
+                "{} convert: (x: {x}) cannot be bigger than ABC_LEN",
+                self.ls
+            );
+            tckey.index[i] = *x;
         }
 
         Ok(tckey)

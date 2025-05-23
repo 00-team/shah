@@ -1,6 +1,6 @@
 mod meta;
 
-use crate::{NotFound, ShahError, ShahModel, SystemError, utils};
+use crate::{NotFound, ShahError, ShahModel, utils};
 use crate::{OptNotFound, models::Binary};
 use std::{
     fmt::Debug,
@@ -14,27 +14,9 @@ pub use meta::*;
 
 type Pos = u64;
 
-pub trait TrieAbc {
-    const ABC: &str;
-
-    fn convert_char(&self, c: char) -> Option<usize>;
-
-    /// if you your key is raw u8 set this to `true`
-    fn is_raw() -> bool {
-        false
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct TrieBinAbc;
-impl TrieAbc for TrieBinAbc {
-    const ABC: &str = "";
-    fn convert_char(&self, _: char) -> Option<usize> {
-        unreachable!()
-    }
-    fn is_raw() -> bool {
-        true
-    }
+pub trait TrieAbc<T> {
+    const ABC: &'static str;
+    fn convert(&self, key: T) -> Result<TrieKey, ShahError>;
 }
 
 #[shah::model]
@@ -47,7 +29,8 @@ struct Node<const ABC_LEN: usize, Val: ShahModel> {
 #[derive(Debug)]
 pub struct Trie<
     const ABC_LEN: usize,
-    Abc: TrieAbc,
+    AbcItem,
+    Abc: TrieAbc<AbcItem>,
     Val: Binary + Default + Copy,
 > {
     abc: Abc,
@@ -55,6 +38,7 @@ pub struct Trie<
     name: String,
     ls: String,
     _val: PhantomData<Val>,
+    _abc_item: PhantomData<AbcItem>,
 }
 
 #[derive(Debug)]
@@ -64,19 +48,15 @@ pub struct TrieKey {
 }
 
 impl TrieKey {
-    fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         Self { root: 0, tree: Vec::with_capacity(capacity) }
     }
 }
 
-impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
-    Trie<ABC_LEN, Abc, Val>
+impl<const ABC_LEN: usize, AbcItem, Abc: TrieAbc<AbcItem>, Val: ShahModel>
+    Trie<ABC_LEN, AbcItem, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
-        if !Abc::is_raw() {
-            assert_eq!(Abc::ABC.chars().count(), ABC_LEN, "invalid ABC_LEN");
-        }
-
         std::fs::create_dir_all("data/")?;
         let data_path = PathBuf::from(format!("data/{name}.shah"));
 
@@ -92,7 +72,8 @@ impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
             abc,
             name: name.to_string(),
             ls: format!("<Trie {name} />"),
-            _val: PhantomData::<Val>,
+            _val: PhantomData,
+            _abc_item: PhantomData,
         };
 
         db.init()?;
@@ -105,10 +86,10 @@ impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
         if let Err(e) = self.read_at(&mut meta, 0) {
             e.not_found_ok()?;
 
-            meta.init::<Abc>(&self.name);
+            meta.init::<AbcItem, Abc>(&self.name);
             self.file.write_all_at(meta.as_binary(), 0)?;
         } else {
-            meta.check::<Abc>(&self.ls)?;
+            meta.check::<AbcItem, Abc>(&self.ls)?;
         }
 
         let nn = Node::<ABC_LEN, Val>::N;
@@ -124,34 +105,23 @@ impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
         Ok(self.file.seek(SeekFrom::End(0))?)
     }
 
-    pub fn key(&self, key: &str) -> Result<TrieKey, ShahError> {
-        if key.is_empty() {
-            return Err(SystemError::TrieKeyEmpty)?;
-        }
+    pub fn key(&self, key: AbcItem) -> Result<TrieKey, ShahError> {
+        let tk = self.abc.convert(key)?;
 
-        let mut tkey = TrieKey::new(key.len());
-
-        for (i, ch) in key.chars().enumerate() {
-            let Some(x) = self.abc.convert_char(ch) else {
-                log::error!("{} convert_key: bad trie key", self.ls);
-                return Err(SystemError::BadTrieKey)?;
-            };
-
+        assert!(
+            tk.root < ABC_LEN,
+            "{} convert: root cannot be bigger than ABC_LEN",
+            self.ls
+        );
+        for x in tk.tree.iter() {
             assert!(
-                x < ABC_LEN,
-                "{} convert_key: x cannot be bigger than ABC_LEN",
+                *x < ABC_LEN,
+                "{} convert: x cannot be bigger than ABC_LEN",
                 self.ls
             );
-
-            if i == 0 {
-                tkey.root = x;
-                continue;
-            }
-
-            tkey.tree.push(x);
         }
 
-        Ok(tkey)
+        Ok(tk)
     }
 
     fn read_at<T: Binary>(

@@ -14,9 +14,10 @@ use crate::{NotFound, ShahError, utils};
 pub use meta::*;
 
 pub trait TrieConstAbc<const DEPTH: usize> {
-    type Item;
+    type Item<'a>;
     const ABC: &'static str;
-    fn convert(&self, key: Self::Item) -> Result<[usize; DEPTH], ShahError>;
+    fn convert(&self, key: Self::Item<'_>)
+    -> Result<[usize; DEPTH], ShahError>;
 }
 
 #[derive(Debug)]
@@ -128,7 +129,7 @@ impl<
     }
 
     pub fn key(
-        &self, key: Abc::Item,
+        &self, key: Abc::Item<'_>,
     ) -> Result<TrieConstKey<INDEX>, ShahError> {
         let indices = self.abc.convert(key)?;
         let mut tckey = TrieConstKey::<INDEX>::default();

@@ -14,9 +14,10 @@ pub use meta::*;
 
 type Pos = u64;
 
-pub trait TrieAbc<T> {
-    const ABC: &'static str;
-    fn convert(&self, key: T) -> Result<TrieKey, ShahError>;
+pub trait TrieAbc {
+    type Item<'a>;
+    const ABC: &str;
+    fn convert(&self, key: Self::Item<'_>) -> Result<TrieKey, ShahError>;
 }
 
 #[shah::model]
@@ -29,8 +30,8 @@ struct Node<const ABC_LEN: usize, Val: ShahModel> {
 #[derive(Debug)]
 pub struct Trie<
     const ABC_LEN: usize,
-    AbcItem,
-    Abc: TrieAbc<AbcItem>,
+    // AbcItem,
+    Abc: TrieAbc,
     Val: Binary + Default + Copy,
 > {
     abc: Abc,
@@ -38,7 +39,7 @@ pub struct Trie<
     name: String,
     ls: String,
     _val: PhantomData<Val>,
-    _abc_item: PhantomData<AbcItem>,
+    // _abc_item: PhantomData<AbcItem>,
 }
 
 #[derive(Debug)]
@@ -53,8 +54,8 @@ impl TrieKey {
     }
 }
 
-impl<const ABC_LEN: usize, AbcItem, Abc: TrieAbc<AbcItem>, Val: ShahModel>
-    Trie<ABC_LEN, AbcItem, Abc, Val>
+impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
+    Trie<ABC_LEN, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
         std::fs::create_dir_all("data/")?;
@@ -73,7 +74,7 @@ impl<const ABC_LEN: usize, AbcItem, Abc: TrieAbc<AbcItem>, Val: ShahModel>
             name: name.to_string(),
             ls: format!("<Trie {name} />"),
             _val: PhantomData,
-            _abc_item: PhantomData,
+            // _abc_item: PhantomData,
         };
 
         db.init()?;
@@ -86,10 +87,10 @@ impl<const ABC_LEN: usize, AbcItem, Abc: TrieAbc<AbcItem>, Val: ShahModel>
         if let Err(e) = self.read_at(&mut meta, 0) {
             e.not_found_ok()?;
 
-            meta.init::<AbcItem, Abc>(&self.name);
+            meta.init::<Abc>(&self.name);
             self.file.write_all_at(meta.as_binary(), 0)?;
         } else {
-            meta.check::<AbcItem, Abc>(&self.ls)?;
+            meta.check::<Abc>(&self.ls)?;
         }
 
         let nn = Node::<ABC_LEN, Val>::N;
@@ -105,7 +106,7 @@ impl<const ABC_LEN: usize, AbcItem, Abc: TrieAbc<AbcItem>, Val: ShahModel>
         Ok(self.file.seek(SeekFrom::End(0))?)
     }
 
-    pub fn key(&self, key: AbcItem) -> Result<TrieKey, ShahError> {
+    pub fn key(&self, key: Abc::Item<'_>) -> Result<TrieKey, ShahError> {
         let tk = self.abc.convert(key)?;
 
         assert!(

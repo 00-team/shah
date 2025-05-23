@@ -1,10 +1,13 @@
+use shah::ShahError;
 use shah::db::trie::TrieAbc;
 use shah::models::Gene;
-use shah::ShahError;
 
 pub(crate) mod db {
 
-    use shah::db::trie::Trie;
+    use shah::{
+        SystemError,
+        db::trie::{Trie, TrieKey},
+    };
 
     use super::*;
 
@@ -12,22 +15,42 @@ pub(crate) mod db {
     pub struct UsernameAbc;
 
     impl TrieAbc for UsernameAbc {
-        const ABC: &str = "abcdefghijklmnopqrstuvwxyz_0123456789";
+        type Item<'a> = &'a str;
+        const ABC: &'static str = "abcdefghijklmnopqrstuvwxyz_0123456789";
 
-        fn convert_char(&self, c: char) -> Option<usize> {
-            if c == '_' {
-                return Some(26);
+        fn convert(&self, key: Self::Item<'_>) -> Result<TrieKey, ShahError> {
+            if key.is_empty() {
+                return Err(SystemError::TrieKeyEmpty)?;
             }
-            if c.is_ascii_digit() {
-                return Some(((c as u8 - b'0') + 27) as usize);
+
+            fn cv(c: char) -> Result<usize, ShahError> {
+                if c == '_' {
+                    return Ok(26);
+                }
+                if c.is_ascii_digit() {
+                    return Ok(((c as u8 - b'0') + 27) as usize);
+                }
+                if c.is_ascii_uppercase() {
+                    return Ok((c as u8 - b'A') as usize);
+                }
+                if c.is_ascii_lowercase() {
+                    return Ok((c as u8 - b'a') as usize);
+                }
+                Err(SystemError::BadTrieKey)?
             }
-            if c.is_ascii_uppercase() {
-                return Some((c as u8 - b'A') as usize);
+
+            let mut tk = TrieKey::new(key.len());
+            let mut cs = key.chars();
+            let Some(first) = cs.next() else {
+                return Err(SystemError::BadTrieKey)?;
+            };
+            tk.root = cv(first)?;
+
+            for ch in cs {
+                tk.tree.push(cv(ch)?);
             }
-            if c.is_ascii_lowercase() {
-                return Some((c as u8 - b'a') as usize);
-            }
-            None
+
+            Ok(tk)
         }
     }
 
@@ -42,8 +65,8 @@ pub(crate) mod db {
     #[cfg(test)]
     mod tests {
         use shah::{
-            models::{Gene, GeneId},
             ShahError,
+            models::{Gene, GeneId},
         };
 
         use super::{UsernameAbc, UsernameDb};

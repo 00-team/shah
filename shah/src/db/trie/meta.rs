@@ -15,7 +15,7 @@ pub struct TrieMeta {
 }
 
 impl TrieMeta {
-    pub fn init<AbcItem, Abc: TrieAbc<AbcItem>>(&mut self, name: &str) {
+    pub fn init<Abc: TrieAbc>(&mut self, name: &str) {
         self.db.init(TRIE_MAGIC, 0, name, TRIE_VERSION);
         let chars = Abc::ABC;
         self.abc_len = chars.len() as u64;
@@ -23,9 +23,7 @@ impl TrieMeta {
         self.abc[..chars.len()].clone_from_slice(chars.as_bytes());
     }
 
-    pub fn check<AbcItem, Abc: TrieAbc<AbcItem>>(
-        &self, ls: &str,
-    ) -> Result<(), ShahError> {
+    pub fn check<Abc: TrieAbc>(&self, ls: &str) -> Result<(), ShahError> {
         self.db.check(ls, TRIE_MAGIC, 0, TRIE_VERSION)?;
 
         let abc = Abc::ABC;

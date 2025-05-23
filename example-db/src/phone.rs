@@ -1,8 +1,8 @@
 use crate::models::{ExampleError, State};
-use shah::db::trie::TrieAbc;
 use shah::db::trie_const::TrieConst;
 use shah::models::Gene;
 use shah::{ErrorCode, ShahError};
+use shah::{SystemError, db::trie_const::TrieConstAbc};
 
 pub(crate) mod db {
 
@@ -11,19 +11,30 @@ pub(crate) mod db {
     #[derive(Debug)]
     pub struct PhoneAbc;
 
-    impl TrieAbc for PhoneAbc {
+    impl TrieConstAbc<9> for PhoneAbc {
         const ABC: &str = "0123456789";
+        type Item<'a> = &'a str;
 
-        fn convert_char(&self, c: char) -> Option<usize> {
-            if !c.is_ascii_digit() {
-                return None;
+        fn convert(&self, key: Self::Item<'_>) -> Result<[usize; 9], ShahError> {
+            let mut out = [0; 9];
+            if key.chars().count() != 9 {
+                return Err(SystemError::BadTrieKey)?;
             }
-            Some((c as u8 - b'0') as usize)
+
+            for (i, ch) in key.chars().enumerate() {
+                if !ch.is_ascii_digit() {
+                    return Err(SystemError::BadTrieKey)?;
+                }
+                out[i] = (ch as u8 - b'0') as usize;
+            }
+
+            Ok(out)
         }
     }
 
     // const PHONE_ABC: &str = "0123456789";
-    pub type PhoneDb = TrieConst<{ PhoneAbc::ABC.len() }, 2, 7, PhoneAbc, Gene>;
+    pub type PhoneDb =
+        TrieConst<{ PhoneAbc::ABC.len() }, 2, 7, 9, PhoneAbc, Gene>;
 
     #[allow(dead_code)]
     pub(crate) fn setup() -> Result<PhoneDb, ShahError> {
@@ -33,11 +44,11 @@ pub(crate) mod db {
     #[cfg(test)]
     mod tests {
         use super::PhoneAbc;
+        use shah::ShahError;
         use shah::db::trie_const::TrieConst;
         use shah::models::{Gene, GeneId};
-        use shah::ShahError;
 
-        type PhoneDb = TrieConst<10, 2, 7, PhoneAbc, Gene>;
+        type PhoneDb = TrieConst<10, 2, 7, 9, PhoneAbc, Gene>;
 
         #[test]
         fn phone_db() {
@@ -56,7 +67,7 @@ pub(crate) mod db {
                 let i = i as u64;
                 let a = Gene { id: GeneId(i + 3), ..Default::default() };
                 let b = Gene { id: GeneId((i + 3) * 2), ..Default::default() };
-                let k = db.convert_key(phone).expect("convert key");
+                let k = db.key(phone).expect("convert key");
                 assert_eq!(k.cache, *cache);
                 assert_eq!(k.index, *index);
 
@@ -87,7 +98,7 @@ mod eapi {
         let Ok(phone) = core::str::from_utf8(&inp.0[..11]) else {
             return Err(ExampleError::BadStr)?;
         };
-        let key = state.phone.convert_key(&phone[2..11])?;
+        let key = state.phone.key(&phone[2..11])?;
 
         let old = state.phone.set(&key, *inp.1)?.unwrap_or_default();
 

@@ -17,7 +17,7 @@ pub(crate) mod db {
 
         fn convert(&self, key: Self::Item<'_>) -> Result<[usize; 9], ShahError> {
             let mut out = [0; 9];
-            if key.chars().count() != 9 {
+            if key.len() != 9 {
                 return Err(SystemError::BadTrieKey)?;
             }
 
@@ -27,6 +27,8 @@ pub(crate) mod db {
                 }
                 out[i] = (ch as u8 - b'0') as usize;
             }
+
+            println!("in: {key} | out: {out:?}");
 
             Ok(out)
         }

@@ -34,6 +34,7 @@ pub fn routes(code: TokenStream) -> TokenStream {
     for p in paths {
         let si = p.to_token_stream().to_string();
         quote_into! {s +=
+            assert!(#p::api::SCOPE < #len, concat!("scope of ", #si, "is out of bounds"));
             if let Some(scope) = &routes[#p::api::SCOPE] {
                 panic!(
                     "scope: \x1b[32m{}\x1b[m is already is use by: \x1b[93m{}\x1b[m and cannot be used for: \x1b[93m{}\x1b[m",

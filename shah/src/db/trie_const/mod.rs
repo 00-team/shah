@@ -134,7 +134,7 @@ impl<
         let indices = self.abc.convert(key)?;
         let mut tckey = TrieConstKey::<INDEX>::default();
 
-        for (i, x) in indices[..CACHE].iter().enumerate() {
+        for (i, x) in indices[..CACHE].iter().rev().enumerate() {
             assert!(
                 *x < ABC_LEN,
                 "{} convert: (x: {x}) cannot be bigger than ABC_LEN",

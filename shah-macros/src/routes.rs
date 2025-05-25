@@ -11,6 +11,7 @@
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
+use quote::ToTokens;
 use quote_into::quote_into;
 
 type IdentList = syn::punctuated::Punctuated<syn::Path, syn::Token![,]>;
@@ -25,24 +26,23 @@ pub fn routes(code: TokenStream) -> TokenStream {
     let len = paths.len() - 1;
     let mut paths = paths.iter();
     let state = paths.next().unwrap();
-    let idents = paths.map(|p| &p.segments[0].ident);
 
     let mut s = TokenStream2::new();
     quote_into! {s +=
         let mut routes: [Option<#ci::models::Scope<#state>>; #len] = [const {None}; #len];
     };
-    for i in idents {
-        let si = i.to_string();
+    for p in paths {
+        let si = p.to_token_stream().to_string();
         quote_into! {s +=
-            if let Some(scope) = &routes[#i::api::SCOPE] {
+            if let Some(scope) = &routes[#p::api::SCOPE] {
                 panic!(
                     "scope: \x1b[32m{}\x1b[m is already is use by: \x1b[93m{}\x1b[m and cannot be used for: \x1b[93m{}\x1b[m",
-                    #i::api::SCOPE, scope.name, #si
+                    #p::api::SCOPE, scope.name, #si
                 );
             }
-            routes[#i::api::SCOPE] = Some(#ci::models::Scope::<#state> {
-                routes: #i::api::ROUTES.as_slice(),
-                scope: #i::api::SCOPE,
+            routes[#p::api::SCOPE] = Some(#ci::models::Scope::<#state> {
+                routes: #p::api::ROUTES.as_slice(),
+                scope: #p::api::SCOPE,
                 name: #si,
             });
         };

@@ -9,7 +9,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         if !entity.is_alive() {
             let gene = entity.gene();
             self.dead_add(gene);
-            log::debug!("{} found dead: {} | {}", self.ls, gene.id, self.live);
+            // log::debug!("{} found dead: {} | {}", self.ls, gene.id, self.live);
         }
 
         if let Some(ei) = &self.inspector {

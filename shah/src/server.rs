@@ -153,7 +153,9 @@ impl<
 
         if route.input_size != order_body.len() {
             log::warn!(
-                "invalid input size: {} != {}",
+                "{}::{} invalid input size: {} != {}",
+                scope.name,
+                route.name,
                 order_body.len(),
                 route.input_size,
             );

@@ -229,7 +229,7 @@ impl<'de> serde::Deserialize<'de> for Gene {
 
         if v.len() != Gene::S * 2 {
             return Err(serde::de::Error::custom(format!(
-                "invalid length {}, expected {}",
+                "gene invalid length {}, expected {}",
                 v.len(),
                 Gene::S * 2
             )));

@@ -1,6 +1,6 @@
 use crate::err;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use quote_into::quote_into;
 use syn::{punctuated::Punctuated, spanned::Spanned};
 
@@ -119,13 +119,15 @@ pub(crate) fn api(
 
         let x = inp.iter().map(|(_, t)| t.into_token_stream().to_string());
         let cis_ty = x.collect::<Vec<_>>().join(", ");
-        let cis_err =
-            format!("input size exceeds the maximum at: {ident}(inp: {cis_ty})");
+        let cis_err = format!(
+            "input size exceeds the maximum at: {ident}(inp: {cis_ty})"
+        );
 
         let x = out.iter().map(|(_, t)| t.into_token_stream().to_string());
         let cos_ty = x.collect::<Vec<_>>().join(", ");
-        let cos_err =
-            format!("output size exceeds the maximum at: {ident}(out: {cos_ty})");
+        let cos_err = format!(
+            "output size exceeds the maximum at: {ident}(out: {cos_ty})"
+        );
 
         quote_into! {a +=
             const _: () = {
@@ -147,10 +149,13 @@ pub(crate) fn api(
     }
 
     let mut routes_api = TokenStream2::new();
-    for Route { api_ident, ident, inp, .. } in routes.iter() {
+    for Route { api_ident, ident, inp, out, .. } in routes.iter() {
         let mut is = TokenStream2::new();
         quote_into!(is += 0);
         inp.iter().for_each(|(_, t)| quote_into!(is += + <#t as #bin>::S));
+
+        let mut cos = quote!(0);
+        out.iter().for_each(|(_, t)| quote_into!(cos += + <#t as #bin>::S));
 
         let name = ident.to_string();
         quote_into! {routes_api +=
@@ -158,6 +163,7 @@ pub(crate) fn api(
                 name: #name,
                 caller: #api_ident,
                 input_size: #is,
+                max_output_size: #cos,
             },
         }
     }

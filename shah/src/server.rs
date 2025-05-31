@@ -166,6 +166,7 @@ impl<
         // let reply_head = ReplyHead::from_binary_mut(reply_head);
         // let reply_body = &mut reply_body[..route.output_size];
 
+        reply.body[..route.max_output_size].fill(0);
         let result = (route.caller)(self.state, order_body, &mut reply.body);
         reply.head.elapsed = time.elapsed().as_micros() as u64;
 

@@ -9,8 +9,9 @@ type ApiCaller<State> = fn(
 #[derive(Debug)]
 pub struct Api<State> {
     pub name: &'static str,
-    pub input_size: usize,
     pub caller: ApiCaller<State>,
+    pub input_size: usize,
+    pub max_output_size: usize,
 }
 
 #[derive(Debug)]

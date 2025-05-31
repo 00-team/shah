@@ -24,14 +24,32 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         Ok(GeneId((file_size - ENTITY_META) / T::N - 1))
     }
 
-    pub(super) fn id_to_pos(id: GeneId) -> u64 {
-        ENTITY_META + (id * T::N).0
+    pub(super) fn id_to_pos(id: GeneId) -> Result<u64, ShahError> {
+        if id == 0 {
+            return Err(NotFound::GeneIdZero)?;
+        }
+        let pos = ENTITY_META + (id * T::N).0;
+        if pos < ENTITY_META + T::N {
+            log::warn!(
+                "wtf pos: {ENTITY_META} + ({id:?} * {}) == {pos} wtf",
+                T::N
+            );
+            return Err(NotFound::OutOfBounds)?;
+        }
+        if pos >= ShahConfig::MAX_POS {
+            log::warn!(
+                "wtf pos: {ENTITY_META} + ({id:?} * {}) == {pos} bigger than MAX_POS",
+                T::N
+            );
+            return Err(NotFound::OutOfBounds)?;
+        }
+        Ok(pos)
     }
 
     pub(crate) fn write_buf_at<B: Binary>(
         &self, buf: &B, id: GeneId,
     ) -> Result<(), ShahError> {
-        let pos = Self::id_to_pos(id);
+        let pos = Self::id_to_pos(id)?;
         self.file.write_all_at(buf.as_binary(), pos)?;
         Ok(())
     }
@@ -40,7 +58,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         &self, buf: &mut B, id: GeneId,
     ) -> Result<(), ShahError> {
         let pos = Self::id_to_pos(id);
-        match self.file.read_exact_at(buf.as_binary_mut(), pos) {
+        match self.file.read_exact_at(buf.as_binary_mut(), pos?) {
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {
                 ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,

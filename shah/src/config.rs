@@ -23,6 +23,9 @@ pub struct ShahConfig {
 }
 
 impl ShahConfig {
+    /// MAX_POS is 100TB
+    pub const MAX_POS: u64 = 100 * 1024 * 1024 * 1024 * 1024;
+
     pub fn get() -> &'static Self {
         static STATE: OnceLock<ShahConfig> = OnceLock::new();
         let server: u32 = eint!("SHAH_SERVER_INDEX", u32);

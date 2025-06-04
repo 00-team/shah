@@ -142,9 +142,9 @@ impl<
     }
 
     pub fn belt_list(
-        &mut self, page: GeneId, result: &mut [Bt],
+        &mut self, id: GeneId, result: &mut [Bt],
     ) -> Result<usize, ShahError> {
-        self.belt.list(page, result)
+        self.belt.list(id, result)
     }
 
     pub fn move_to_tail(

@@ -1,6 +1,6 @@
 use super::BeltDb;
 use crate::db::entity::Entity;
-use crate::{AsUtf8Str, IsNotFound, OptNotFound};
+use crate::{AsUtf8Str, IsNotFound, OptNotFound, ShahError};
 use crate::{ClientError, Taker, models::Gene};
 
 #[derive(shah::ShahSchema)]
@@ -117,4 +117,77 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
 
         Ok(())
     }
+}
+
+pub fn get<const S: usize>(
+    db: &mut BeltClothDb<S>, bg: &Gene,
+) -> Result<String, ShahError> {
+    let mut buckle = ClothBuckle::default();
+    db.buckle_get(bg, &mut buckle)?;
+
+    let mut data = Vec::with_capacity(buckle.chunks as usize * S);
+
+    let mut gene = buckle.head;
+    loop {
+        if gene.is_none() {
+            break;
+        }
+
+        let mut cloth = ClothBelt::<S>::default();
+        if db.belt_get(&gene, &mut cloth).onf()?.is_none() {
+            break;
+        }
+
+        let len = (cloth.length as usize).min(cloth.data.len());
+        data.extend_from_slice(&cloth.data[..len]);
+        gene = cloth.next;
+        if cloth.is_end() {
+            data.push(0);
+            break;
+        }
+    }
+
+    Ok(data[..].as_utf8_str_null_terminated().to_string())
+}
+
+pub fn set<const S: usize>(
+    db: &mut BeltClothDb<S>, bg: &Gene, data: &str,
+) -> Result<(), ShahError> {
+    let data = data.as_bytes();
+
+    let mut buckle = ClothBuckle::default();
+    db.buckle_get(bg, &mut buckle)?;
+    buckle.length = data.len() as u32;
+    db.buckle_set(&mut buckle)?;
+
+    let mut gene = buckle.head;
+    let mut cloth = ClothBelt::<S>::default();
+    let mut it = data.chunks(S).peekable();
+
+    loop {
+        let Some(x) = it.next() else { break };
+        cloth.data[x.len()..].fill(0);
+        cloth.data[..x.len()].copy_from_slice(x);
+        cloth.length = x.len() as u16;
+        cloth.set_alive(true);
+        cloth.set_is_end(it.peek().is_none());
+
+        if gene.is_none() {
+            cloth.gene.clear();
+            db.belt_add(&buckle.gene, &mut cloth)?;
+            continue;
+        }
+
+        cloth.gene = gene;
+        match db.belt_set(&mut cloth).onf()? {
+            Some(_) => gene = cloth.next,
+            None => {
+                gene.clear();
+                cloth.gene.clear();
+                db.belt_add(&buckle.gene, &mut cloth)?;
+            }
+        }
+    }
+
+    Ok(())
 }

@@ -148,8 +148,8 @@ impl<
     }
 
     pub fn list(
-        &mut self, page: GeneId, result: &mut [Dk; PAGE_SIZE],
+        &mut self, id: GeneId, result: &mut [Dk; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
-        self.item.list(page, result)
+        self.item.list(id, result)
     }
 }

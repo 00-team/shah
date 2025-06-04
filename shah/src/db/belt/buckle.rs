@@ -59,9 +59,9 @@ impl<
     }
 
     pub fn buckle_list(
-        &mut self, page: GeneId, result: &mut [Bk; PAGE_SIZE],
+        &mut self, id: GeneId, result: &mut [Bk; PAGE_SIZE],
     ) -> Result<usize, ShahError> {
-        self.buckle.list(page, result)
+        self.buckle.list(id, result)
     }
 
     /// this will cascade all the belts under this buckle

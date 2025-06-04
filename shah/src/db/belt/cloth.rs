@@ -42,6 +42,7 @@ pub type BeltClothDb<const S: usize> = BeltDb<ClothBelt<S>, ClothBuckle>;
 type C<Ok, E> = Result<Ok, ClientError<E>>;
 pub struct ClothClient<E: IsNotFound + From<u16> + Copy, const S: usize> {
     pub buckle_get: fn(&Taker, &Gene) -> C<ClothBuckle, E>,
+    pub buckle_set: fn(&Taker, &ClothBuckle) -> C<ClothBuckle, E>,
     pub belt_get: fn(&Taker, &Gene) -> C<ClothBelt<S>, E>,
     pub belt_set: fn(&Taker, &ClothBelt<S>) -> C<ClothBelt<S>, E>,
     pub belt_add: fn(&Taker, &Gene, &ClothBelt<S>) -> C<ClothBelt<S>, E>,
@@ -81,7 +82,9 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
         bg.validate()?;
         let data = data.as_bytes();
 
-        let buckle = (self.buckle_get)(taker, bg)?;
+        let mut buckle = (self.buckle_get)(taker, bg)?;
+        buckle.length = data.len() as u32;
+        (self.buckle_set)(taker, &buckle)?;
 
         let mut gene = buckle.head;
         let mut cloth = ClothBelt::<S>::default();

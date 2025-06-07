@@ -28,13 +28,14 @@ impl<
             *buckle.head_mut() = *belt.gene();
         }
 
+        let mut sib = Bt::default();
         let old_tail_gene = *buckle.tail();
         *buckle.tail_mut() = *belt.gene();
         *buckle.belt_count_mut() += 1;
 
-        if self.belt.get(&old_tail_gene, belt).onf()?.is_some() {
-            *belt.next_mut() = *buckle.tail();
-            self.belt.set(belt)?;
+        if self.belt.get(&old_tail_gene, &mut sib).onf()?.is_some() {
+            *sib.next_mut() = *buckle.tail();
+            self.belt.set(&mut sib)?;
         }
 
         self.buckle.set(&mut buckle)

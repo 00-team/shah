@@ -7,7 +7,9 @@ custom database engine
 - [x] custom bin command. enum for matching and executing
 - [ ] do a benchmark test https://www.youtube.com/watch?v=R7jBtnrUmYI
 - [x] chained data like have memory pages works. double-linked entity with 4096 bytes string
-- [ ] handle signals correctly.
+- [x] handle signals correctly.
+- [ ] when the dead list becomes empty again and if there is dead item
+      re setup again
 
 ## Concept
 

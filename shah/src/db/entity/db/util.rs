@@ -57,16 +57,19 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub(super) fn read_buf_at<B: Binary>(
         &self, buf: &mut B, id: GeneId,
     ) -> Result<(), ShahError> {
-        let pos = Self::id_to_pos(id);
-        match self.file.read_exact_at(buf.as_binary_mut(), pos?) {
+        let pos = Self::id_to_pos(id)?;
+        match self.file.read_exact_at(buf.as_binary_mut(), pos) {
             Ok(_) => Ok(()),
-            Err(e) => match e.kind() {
-                ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
-                _ => {
-                    log::error!("{} read_buf_at: {e:?}", self.ls);
-                    Err(e)?
+            Err(e) => {
+                buf.zeroed();
+                match e.kind() {
+                    ErrorKind::UnexpectedEof => Err(NotFound::OutOfBounds)?,
+                    _ => {
+                        log::error!("{} read_buf_at: {e:?}", self.ls);
+                        Err(e)?
+                    }
                 }
-            },
+            }
         }
     }
 

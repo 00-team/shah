@@ -86,6 +86,7 @@ impl<
         self.item.write_buf_at(&buf, stack)?;
         self.pond.set(&mut pond)?;
         self.origin.set(&mut origin)?;
+        self.item.live += 1;
 
         Ok(())
     }

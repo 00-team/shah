@@ -55,7 +55,7 @@ pub struct EntityDb<
     Is = (),
 > {
     file: File,
-    live: GeneId,
+    pub live: GeneId,
     dead_list: DeadList<GeneId, BLOCK_SIZE>,
     revision: u16,
     name: String,

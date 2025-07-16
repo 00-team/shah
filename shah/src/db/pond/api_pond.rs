@@ -63,6 +63,7 @@ impl<
             if item.is_alive() {
                 item.growth_mut().add_assign(1);
                 item.set_alive(false);
+                self.item.live -= 1;
             }
             if !item.gene().exhausted() {
                 *pond.empty_mut() += 1;

@@ -100,18 +100,10 @@ impl<
         self.belt.set_unchecked(belt)
     }
 
-    pub fn belt_del(
-        &mut self, gene: &Gene, belt: &mut Bt,
+    fn del_link(
+        &mut self, belt: &mut Bt, buckle: &mut Bk,
     ) -> Result<(), ShahError> {
-        self.belt.get(gene, belt)?;
-
-        let mut buckle = Bk::default();
-        self.buckle.get(belt.buckle(), &mut buckle)?;
-
         *buckle.belt_count_mut() = buckle.belt_count().saturating_sub(1);
-        // if buckle.belts > 0 {
-        //     buckle.belts -= 1;
-        // }
 
         if buckle.head() == belt.gene() {
             *buckle.head_mut() = *belt.next();
@@ -121,25 +113,35 @@ impl<
             *buckle.tail_mut() = *belt.past();
         }
 
-        let mut sibling = Bt::default();
+        let mut temp = Bt::default();
 
-        if let Err(e) = self.belt.get(belt.past(), &mut sibling) {
-            e.not_found_ok()?;
-        } else {
-            *sibling.next_mut() = *belt.next();
-            self.belt.set_unchecked(&mut sibling)?;
+        if self.belt.get(belt.past(), &mut temp).onf()?.is_some() {
+            *temp.next_mut() = *belt.next_mut();
+            self.belt.set_unchecked(&mut temp)?;
         }
 
-        if let Err(e) = self.belt.get(belt.next(), &mut sibling) {
-            e.not_found_ok()?;
-        } else {
-            *sibling.past_mut() = *belt.past();
-            self.belt.set_unchecked(&mut sibling)?;
+        if self.belt.get(belt.next(), &mut temp).onf()?.is_some() {
+            *temp.past_mut() = *belt.past_mut();
+            self.belt.set_unchecked(&mut temp)?;
         }
+
+        Ok(())
+    }
+
+    pub fn belt_del(
+        &mut self, gene: &Gene, belt: &mut Bt,
+    ) -> Result<(), ShahError> {
+        self.belt.get(gene, belt)?;
+
+        let mut buckle = Bk::default();
+        self.buckle.get(belt.buckle(), &mut buckle)?;
+
+        self.del_link(belt, &mut buckle)?;
+        self.buckle.set_unchecked(&mut buckle)?;
 
         self.belt.del_unchecked(belt)?;
 
-        self.buckle.set_unchecked(&mut buckle)
+        Ok(())
     }
 
     pub fn belt_list(
@@ -151,42 +153,62 @@ impl<
     pub fn move_to_tail(
         &mut self, gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
-        self.belt.get(gene, belt)?;
         let mut buckle = Bk::default();
+        let mut temp = Bt::default();
+
+        self.belt.get(gene, belt)?;
         self.buckle.get(belt.buckle(), &mut buckle)?;
 
         if buckle.tail() == belt.gene() {
             return Ok(());
         }
 
-        let mut old = Bt::default();
-
-        if self.belt.get(belt.past(), &mut old).onf()?.is_some() {
-            *old.next_mut() = *belt.next_mut();
-            self.belt.set_unchecked(&mut old)?;
-        }
-
-        if self.belt.get(belt.next(), &mut old).onf()?.is_some() {
-            if buckle.head() == belt.gene() {
-                *buckle.head_mut() = *old.gene();
-            }
-
-            *old.past_mut() = *belt.past_mut();
-            self.belt.set_unchecked(&mut old)?;
-        }
+        self.del_link(belt, &mut buckle)?;
 
         belt.next_mut().clear();
         belt.past_mut().clear();
 
-        if self.belt.get(buckle.tail(), &mut old).onf()?.is_some() {
-            *old.next_mut() = *belt.gene();
-            *belt.past_mut() = *old.gene();
-            self.belt.set_unchecked(&mut old)?;
+        if self.belt.get(buckle.tail(), &mut temp).onf()?.is_some() {
+            *temp.next_mut() = *belt.gene();
+            *belt.past_mut() = *temp.gene();
+            self.belt.set_unchecked(&mut temp)?;
         }
 
         *buckle.tail_mut() = *belt.gene();
         self.belt.set_unchecked(belt)?;
         self.buckle.set_unchecked(&mut buckle)?;
+
+        Ok(())
+    }
+
+    pub fn change_buckle(
+        &mut self, gene: &Gene, new_buckle_gene: &Gene,
+    ) -> Result<(), ShahError> {
+        let mut belt = Bt::default();
+        let mut temp = Bt::default();
+        let mut old_buckle = Bk::default();
+        let mut new_buckle = Bk::default();
+
+        self.belt.get(gene, &mut belt)?;
+        self.buckle.get(new_buckle_gene, &mut new_buckle)?;
+        self.buckle.get(belt.buckle(), &mut old_buckle)?;
+
+        self.del_link(&mut belt, &mut old_buckle)?;
+        self.buckle.set_unchecked(&mut old_buckle)?;
+
+        belt.next_mut().clear();
+        belt.past_mut().clear();
+
+        if self.belt.get(new_buckle.tail(), &mut temp).onf()?.is_some() {
+            *temp.next_mut() = *belt.gene();
+            *belt.past_mut() = *temp.gene();
+            self.belt.set_unchecked(&mut temp)?;
+        }
+
+        *new_buckle.belt_count_mut() += 1;
+        *new_buckle.tail_mut() = *belt.gene();
+        self.belt.set_unchecked(&mut belt)?;
+        self.buckle.set_unchecked(&mut new_buckle)?;
 
         Ok(())
     }

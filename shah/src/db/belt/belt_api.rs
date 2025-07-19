@@ -182,18 +182,17 @@ impl<
     }
 
     pub fn change_buckle(
-        &mut self, gene: &Gene, new_buckle_gene: &Gene,
+        &mut self, gene: &Gene, new_buckle_gene: &Gene, belt: &mut Bt,
     ) -> Result<(), ShahError> {
-        let mut belt = Bt::default();
         let mut temp = Bt::default();
         let mut old_buckle = Bk::default();
         let mut new_buckle = Bk::default();
 
-        self.belt.get(gene, &mut belt)?;
+        self.belt.get(gene, belt)?;
         self.buckle.get(new_buckle_gene, &mut new_buckle)?;
         self.buckle.get(belt.buckle(), &mut old_buckle)?;
 
-        self.del_link(&mut belt, &mut old_buckle)?;
+        self.del_link(belt, &mut old_buckle)?;
         self.buckle.set_unchecked(&mut old_buckle)?;
 
         belt.next_mut().clear();
@@ -207,7 +206,7 @@ impl<
 
         *new_buckle.belt_count_mut() += 1;
         *new_buckle.tail_mut() = *belt.gene();
-        self.belt.set_unchecked(&mut belt)?;
+        self.belt.set_unchecked(belt)?;
         self.buckle.set_unchecked(&mut new_buckle)?;
 
         Ok(())

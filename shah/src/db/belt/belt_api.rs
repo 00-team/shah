@@ -204,8 +204,14 @@ impl<
             self.belt.set_unchecked(&mut temp)?;
         }
 
+        if new_buckle.head().is_none() {
+            *new_buckle.head_mut() = *belt.gene();
+        }
+
         *new_buckle.belt_count_mut() += 1;
         *new_buckle.tail_mut() = *belt.gene();
+        *belt.buckle_mut() = *new_buckle.gene();
+
         self.belt.set_unchecked(belt)?;
         self.buckle.set_unchecked(&mut new_buckle)?;
 

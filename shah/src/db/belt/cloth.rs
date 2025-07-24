@@ -123,6 +123,7 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
     pub fn get(
         &self, taker: &Taker, buckle_gene: &Gene,
     ) -> Result<String, ClientError<E>> {
+        buckle_gene.validate()?;
         let buckle = (self.buckle_get)(taker, buckle_gene)?;
         let mut data = Vec::with_capacity(buckle.chunks as usize * S);
 

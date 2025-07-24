@@ -7,21 +7,21 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         self.file.seek(SeekFrom::End(0))
     }
 
-    pub(super) fn total(&mut self) -> Result<GeneId, ShahError> {
+    pub(super) fn total(&mut self) -> Result<(GeneId, u64), ShahError> {
         let file_size = self.file_size()?;
         if file_size < ENTITY_META {
             log::warn!("{} total file_size is less than ENTITY_META", self.ls);
-            return Ok(GeneId(0));
+            return Ok((GeneId(0), file_size));
         }
         if file_size < ENTITY_META + T::N {
             log::warn!(
                 "{} total file_size is less than ENTITY_META + T::N",
                 self.ls
             );
-            return Ok(GeneId(0));
+            return Ok((GeneId(0), file_size));
         }
 
-        Ok(GeneId((file_size - ENTITY_META) / T::N - 1))
+        Ok((GeneId((file_size - ENTITY_META) / T::N - 1), file_size))
     }
 
     pub(super) fn id_to_pos(id: GeneId) -> Result<u64, ShahError> {

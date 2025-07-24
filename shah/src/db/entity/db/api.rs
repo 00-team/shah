@@ -52,7 +52,8 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     pub fn count(&mut self) -> Result<EntityCount, ShahError> {
-        Ok(EntityCount { total: self.total()?, alive: self.live })
+        let (total, size) = self.total()?;
+        Ok(EntityCount { total, alive: self.live, size })
     }
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {

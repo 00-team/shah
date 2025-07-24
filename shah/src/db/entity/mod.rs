@@ -14,4 +14,5 @@ pub use meta::*;
 pub struct EntityCount {
     pub alive: GeneId,
     pub total: GeneId,
+    pub size: u64
 }

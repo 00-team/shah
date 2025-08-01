@@ -22,11 +22,7 @@ impl Perms for [u8] {
     type Error = ();
 
     fn perm_check(&self, perm: Perm) -> Result<(), Self::Error> {
-        if self.perm_get(perm) {
-            Ok(())
-        } else {
-            Err(())
-        }
+        if self.perm_get(perm) { Ok(()) } else { Err(()) }
     }
 
     fn perm_any(&self) -> bool {
@@ -34,14 +30,18 @@ impl Perms for [u8] {
     }
 
     fn perm_get(&self, (byte, bit): Perm) -> bool {
-        assert!(self.len() > byte);
+        if self.len() <= byte {
+            return false;
+        }
         let n = self[byte];
         let f = 1 << bit;
         (n & f) == f
     }
 
     fn perm_set(&mut self, (byte, bit): Perm, value: bool) {
-        assert!(self.len() > byte);
+        if self.len() <= byte {
+            return;
+        }
         let f = 1 << bit;
         if value {
             self[byte] |= f;

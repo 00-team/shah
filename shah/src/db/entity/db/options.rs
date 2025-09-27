@@ -14,7 +14,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
 
         if self.live < koch.total {
-            self.live = koch.total;
+            self.live = GeneId(koch.total.0.saturating_sub(1));
             utils::falloc(&self.file, ENTITY_META, (koch.total * T::N).0)?;
         }
 

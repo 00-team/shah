@@ -24,9 +24,12 @@ pub trait Binary: Sized + Copy + Send {
     }
 
     fn from_binary_mut(data: &mut [u8]) -> &mut Self {
+        // println!("from bin: {} -> {}", data.len(), Self::S);
         unsafe { &mut *(data.as_mut_ptr() as *mut Self) }
-        //let (_, model, _) = unsafe { data.align_to_mut::<Self>() };
-        //&mut model[0]
+        // let (head, model, tail) = unsafe { data.align_to_mut::<Self>() };
+        // assert!(head.is_empty(), "head is not empty");
+        // assert!(tail.is_empty(), "tail is not empty");
+        // &mut model[0]
     }
 
     fn zeroed(&mut self) {

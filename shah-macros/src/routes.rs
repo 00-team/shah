@@ -34,16 +34,16 @@ pub fn routes(code: TokenStream) -> TokenStream {
     for p in paths {
         let si = p.to_token_stream().to_string();
         quote_into! {s +=
-            assert!(#p::api::SCOPE < #len, concat!("scope of ", #si, "is out of bounds"));
-            if let Some(scope) = &routes[#p::api::SCOPE] {
+            assert!(#p::gen_api::SCOPE < #len, concat!("scope of ", #si, "is out of bounds"));
+            if let Some(scope) = &routes[#p::gen_api::SCOPE] {
                 panic!(
                     "scope: \x1b[32m{}\x1b[m is already is use by: \x1b[93m{}\x1b[m and cannot be used for: \x1b[93m{}\x1b[m",
-                    #p::api::SCOPE, scope.name, #si
+                    #p::gen_api::SCOPE, scope.name, #si
                 );
             }
-            routes[#p::api::SCOPE] = Some(#ci::models::Scope::<#state> {
-                routes: #p::api::ROUTES.as_slice(),
-                scope: #p::api::SCOPE,
+            routes[#p::gen_api::SCOPE] = Some(#ci::models::Scope::<#state> {
+                routes: #p::gen_api::ROUTES.as_slice(),
+                scope: #p::gen_api::SCOPE,
                 name: #si,
             });
         };

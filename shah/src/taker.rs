@@ -63,7 +63,7 @@ impl Taker {
         let mut elapsed = self.elapsed.lock().unwrap();
 
         *count = count.wrapping_add(1);
-        let order_head = OrderHead::from_binary_mut(order);
+        let order_head = OrderHead::from_binary_mut(&mut order[..OrderHead::S]);
         order_head.id = *count;
 
         if let Err(e) = self.conn.send(order) {

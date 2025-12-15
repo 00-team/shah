@@ -162,7 +162,7 @@ pub(crate) fn api(
             #ci::models::Api::<#state> {
                 name: #name,
                 caller: #api_ident,
-                input_size: #is,
+                input_size: #is + (8 - (#is) % 8),
                 max_output_size: #cos,
             },
         }
@@ -222,7 +222,7 @@ pub(crate) fn api(
             pub fn #ident(
                 taker: &#ci::Taker, #fn_inp
             ) -> Result<#out_ty, #ci::ClientError<#user_error>> {
-                let mut __order = [0u8; #is + <#ci::models::OrderHead as #bin>::S];
+                let mut __order = [0u8; #is + (8 - (#is) % 8) + <#ci::models::OrderHead as #bin>::S];
                 let (__order_head, __order_body) = __order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
                 let __order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(__order_head);
                 __order_head.scope = ( #api_scope ) as u16;
@@ -239,12 +239,63 @@ pub(crate) fn api(
         }
     }
 
+    let mut at = TokenStream2::new();
+    for Route { ident, inp, out, .. } in routes.iter() {
+        let mut is = TokenStream2::new();
+        quote_into!(is += 0);
+        inp.iter().for_each(|(_, t)| quote_into!(is += + <#t as #bin>::S));
+
+        let mut bf = TokenStream2::new();
+        quote_into! {bf += 0};
+        let mut input_vars = TokenStream2::new();
+        for (_, t) in inp.iter() {
+            let ts = t.to_token_stream().to_string();
+            quote_into! {input_vars +=
+                println!("{}::from_binary: {} + {} / {}", #ts, #bf, <#t as #bin>::S, __order_body.len());
+                // let _ = <#t as #bin>::as_binary(&#t::default());
+                let _ = <#t as #bin>::from_binary(&__order_body[#bf..#bf + <#t as #bin>::S]);
+            };
+            quote_into! {bf += + <#t as #bin>::S};
+        }
+
+        let mut bf = quote!(0);
+        let mut output_res = TokenStream2::new();
+        for (_, t) in out.iter() {
+            let ts = t.to_token_stream().to_string();
+            quote_into! {output_res +=
+                println!("{}::from_binary: {} + {} / {}", #ts, #bf, <#t as #bin>::S, __reply.body.len());
+                let _ = <#t as #bin>::from_binary(&__reply.body[#bf..#bf + <#t as #bin>::S]);
+            };
+            quote_into! {bf += + <#t as #bin>::S};
+        }
+
+        quote_into! {at +=
+            #[test]
+            pub fn #ident() {
+                println!("\n");
+
+                let mut __order = [0u8; #is + (8 - (#is) % 8) + <#ci::models::OrderHead as #bin>::S];
+                let (__order_head, __order_body) = __order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
+                let __order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(__order_head);
+                __order_head.size = ( #is ) as u32;
+
+                println!("inputs");
+                #input_vars
+
+                let __reply = shah::models::Reply::default();
+                println!("outputs");
+                #output_res
+
+            }
+        }
+    }
+
     let routes_len = routes.len();
 
     quote_into! {s +=
         #item
 
-        pub(crate) mod api {
+        pub(crate) mod gen_api {
 
             #![allow(unused_imports)]
             #use_list
@@ -261,6 +312,14 @@ pub(crate) fn api(
             #use_list
 
             #c
+        }
+
+        #[cfg(test)]
+        mod api_tests {
+            #![allow(unused_imports)]
+            #use_list
+
+            #at
         }
     };
 

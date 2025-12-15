@@ -92,20 +92,20 @@ mod eapi {
     use super::*;
 
     pub(crate) fn phone_add(
-        state: &mut State, inp: (&[u8; 12], &Gene),
-        out: (&mut [u8; 12], &mut Gene),
+        state: &mut State, inp: (&Gene, &[u8; 12], ),
+        out: (&mut Gene, &mut [u8; 12], ),
     ) -> Result<(), ErrorCode> {
         println!("phone_add: {inp:#?}");
 
-        let Ok(phone) = core::str::from_utf8(&inp.0[..11]) else {
+        let Ok(phone) = core::str::from_utf8(&inp.1[..11]) else {
             return Err(ExampleError::BadStr)?;
         };
         let key = state.phone.key(&phone[2..11])?;
 
-        let old = state.phone.set(&key, *inp.1)?.unwrap_or_default();
+        let old = state.phone.set(&key, *inp.0)?.unwrap_or_default();
 
-        out.0.copy_from_slice(inp.0);
-        out.1.clone_from(&old);
+        out.1.copy_from_slice(inp.1);
+        out.0.clone_from(&old);
 
         Ok(())
     }

@@ -225,8 +225,8 @@ pub(crate) fn api(
                 let mut __order = [0u8; #is + <#ci::models::OrderHead as #bin>::S];
                 let (__order_head, __order_body) = __order.split_at_mut(<#ci::models::OrderHead as #bin>::S);
                 let __order_head = <#ci::models::OrderHead as #bin>::from_binary_mut(__order_head);
-                __order_head.scope = ( #api_scope ) as u8;
-                __order_head.route = ( #rdx ) as u8;
+                __order_head.scope = ( #api_scope ) as u16;
+                __order_head.route = ( #rdx ) as u16;
                 __order_head.size = ( #is ) as u32;
 
                 #inp_res

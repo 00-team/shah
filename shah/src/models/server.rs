@@ -4,9 +4,8 @@ use crate::REPLY_BODY_SIZE;
 #[derive(Debug)]
 pub struct OrderHead {
     pub size: u32,
-    pub scope: u8,
-    pub route: u8,
-    _pad: [u8; 2],
+    pub scope: u16,
+    pub route: u16,
     pub id: u64,
 }
 

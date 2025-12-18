@@ -3,6 +3,19 @@ use super::*;
 impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     EntityDb<T, O, S, Is>
 {
+    pub fn get_or_add(
+        &mut self, gene: &Gene, entity: &mut T,
+    ) -> Result<(), ShahError> {
+        let def = *entity;
+        if gene.is_none() || self.get(gene, entity).onf()?.is_none() {
+            entity.clone_from(&def);
+            entity.gene_mut().clear();
+            self.add(entity)?;
+        }
+
+        Ok(())
+    }
+
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {

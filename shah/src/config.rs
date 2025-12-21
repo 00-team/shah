@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::{io::ErrorKind, sync::OnceLock};
 
 macro_rules! evar {
     ($name:literal) => {
@@ -20,6 +20,7 @@ macro_rules! eint {
 /// Shah Config
 pub struct ShahConfig {
     pub server: u32,
+    pub data_dir: std::path::PathBuf,
 }
 
 impl ShahConfig {
@@ -28,11 +29,24 @@ impl ShahConfig {
 
     pub fn get() -> &'static Self {
         static STATE: OnceLock<ShahConfig> = OnceLock::new();
+
+        let data_dir =
+            std::env::var("SHAH_DATA_DIR").unwrap_or("data".to_string());
+
+        let data_dir = std::path::Path::new(&data_dir);
+        match std::fs::create_dir_all(data_dir) {
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
+            Err(e) => {
+                panic!("could not create shah data dir: {data_dir:?}\n{e:#?}")
+            }
+            _ => {}
+        }
+
         let server: u32 = eint!("SHAH_SERVER_INDEX", u32);
         if server == 0 {
             panic!("SHAH_SERVER_INDEX env must not be 0");
         }
 
-        STATE.get_or_init(|| Self { server })
+        STATE.get_or_init(|| Self { server, data_dir: data_dir.into() })
     }
 }

@@ -4,8 +4,8 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     EntityDb<T, O, S, Is>
 {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
-        ShahConfig::get();
-        let data_path = Path::new("data/").join(path);
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())

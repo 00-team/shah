@@ -3,11 +3,11 @@ use std::fs::File;
 use std::io::{ErrorKind, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
-use std::path::Path;
 
-use super::{id_iter, EntityHead, EntityItem, ENTITY_META};
+use super::{ENTITY_META, EntityHead, EntityItem, id_iter};
+use crate::config::ShahConfig;
 use crate::models::{Binary, Gene, GeneId};
-use crate::{utils, DbError, NotFound, ShahError, SystemError};
+use crate::{DbError, NotFound, ShahError, SystemError, utils};
 
 // =========== EntityKochFrom trait ===========
 
@@ -103,7 +103,8 @@ pub struct EntityKochDb<T: EntityItem> {
 
 impl<T: EntityItem> EntityKochDb<T> {
     pub fn new(path: &str, revision: u16) -> Result<Self, ShahError> {
-        let path = Path::new("data/").join(path);
+        let conf = ShahConfig::get();
+        let path = conf.data_dir.join(path);
         let name = path
             .file_name()
             .and_then(|v| v.to_str())

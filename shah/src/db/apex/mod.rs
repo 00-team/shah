@@ -6,9 +6,7 @@ pub use self::coords::ApexCoords;
 use self::coords::MAX_ZOOM;
 use super::entity::EntityDb;
 use crate::{
-    ShahError,
-    models::{Gene, Performed, Task, TaskList, Worker},
-    utils,
+    ShahError, config::ShahConfig, models::{Gene, Performed, Task, TaskList, Worker}, utils
 };
 
 #[derive(shah::ShahSchema)]
@@ -46,7 +44,8 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         );
         ApexTile::<SIZ>::__assert_padding();
 
-        let data_path = std::path::Path::new("data/").join(path);
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())

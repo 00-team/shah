@@ -22,8 +22,8 @@ impl<
     pub fn new(
         path: &str, revision: u16, pond_revision: u16, origin_revision: u16,
     ) -> Result<Self, ShahError> {
-        ShahConfig::get();
-        let data_path = std::path::Path::new("data/").join(path);
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())

@@ -5,11 +5,10 @@ use std::{
     io::{ErrorKind, Seek, SeekFrom, Write},
     marker::PhantomData,
     os::unix::fs::FileExt,
-    path::PathBuf,
 };
 
-use crate::models::Binary;
 use crate::{NotFound, ShahError, utils};
+use crate::{config::ShahConfig, models::Binary};
 
 pub use meta::*;
 
@@ -74,8 +73,8 @@ impl<
         assert!(INDEX > 0, "TrieConst INDEX must be at least 1");
         assert!(INDEX_PLUS_CACHE == INDEX + CACHE, "bad INDEX_PLUS_CACHE");
 
-        std::fs::create_dir_all("data/")?;
-        let data_path = PathBuf::from(format!("data/{name}.shah"));
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(format!("{name}.shah"));
 
         let file = std::fs::OpenOptions::new()
             .read(true)

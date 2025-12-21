@@ -2,17 +2,17 @@ mod api;
 mod free;
 
 use super::entity::{EntityDb, EntityInspector};
+use crate::config::ShahConfig;
 use crate::models::{
     Binary, DbHead, Gene, Performed, ShahMagic, ShahMagicDb, Task, TaskList,
     Worker,
 };
-use crate::{utils, AsStatic, Entity, BLOCK_SIZE};
+use crate::{AsStatic, BLOCK_SIZE, Entity, utils};
 use crate::{NotFound, ShahError, SystemError};
 use std::os::unix::fs::FileExt;
 use std::{
     fs::File,
     io::{Seek, SeekFrom},
-    path::Path,
 };
 
 /// TOLERABLE CAPACITY DIFFERENCE
@@ -58,7 +58,8 @@ pub struct SnakeDb {
 
 impl SnakeDb {
     pub fn new(path: &str) -> Result<Self, ShahError> {
-        let data_path = Path::new("data/").join(path);
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(path);
         let name = data_path
             .file_name()
             .and_then(|v| v.to_str())

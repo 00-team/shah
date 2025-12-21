@@ -1,5 +1,6 @@
 mod meta;
 
+use crate::config::ShahConfig;
 use crate::{NotFound, ShahError, ShahModel, utils};
 use crate::{OptNotFound, models::Binary};
 use std::{
@@ -7,7 +8,6 @@ use std::{
     io::{ErrorKind, Seek, SeekFrom},
     marker::PhantomData,
     os::unix::fs::FileExt,
-    path::PathBuf,
 };
 
 pub use meta::*;
@@ -58,8 +58,8 @@ impl<const ABC_LEN: usize, Abc: TrieAbc, Val: ShahModel>
     Trie<ABC_LEN, Abc, Val>
 {
     pub fn new(name: &str, abc: Abc) -> Result<Self, ShahError> {
-        std::fs::create_dir_all("data/")?;
-        let data_path = PathBuf::from(format!("data/{name}.shah"));
+        let conf = ShahConfig::get();
+        let data_path = conf.data_dir.join(format!("{name}.shah"));
 
         let file = std::fs::OpenOptions::new()
             .read(true)

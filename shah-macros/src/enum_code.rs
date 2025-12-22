@@ -11,11 +11,11 @@ pub(crate) fn enum_code(code: TokenStream) -> TokenStream {
 
     let mut ecty = syn::Ident::new("u16", proc_macro2::Span::call_site());
     for attr in item.attrs.iter() {
-        if let syn::Meta::List(ml) = &attr.meta {
-            if ml.path.is_ident("enum_code") {
-                ecty = syn::parse(ml.tokens.clone().into()).unwrap();
-                break;
-            }
+        if let syn::Meta::List(ml) = &attr.meta
+            && ml.path.is_ident("enum_code")
+        {
+            ecty = syn::parse(ml.tokens.clone().into()).unwrap();
+            break;
         }
     }
 

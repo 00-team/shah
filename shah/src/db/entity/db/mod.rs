@@ -1,7 +1,6 @@
 use std::cell::{RefCell, RefMut};
 use std::marker::PhantomData;
 use std::ops::AddAssign;
-use std::path::Path;
 use std::{
     fmt::Debug,
     fs::File,
@@ -14,10 +13,10 @@ use crate::config::ShahConfig;
 use crate::models::*;
 use crate::*;
 
+mod api;
 mod dead;
 mod init;
 mod options;
-mod api;
 mod util;
 mod work;
 

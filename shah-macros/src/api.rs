@@ -401,16 +401,16 @@ fn returns_output_size(span: Span, rt: &syn::ReturnType) -> syn::Result<bool> {
     let syn::PathArguments::AngleBracketed(a) = args else { return e!() };
     let syn::GenericArgument::Type(t) = &a.args[0] else { return e!() };
 
-    if let syn::Type::Tuple(tp) = t {
-        if tp.elems.is_empty() {
-            return Ok(false);
-        }
+    if let syn::Type::Tuple(tp) = t
+        && tp.elems.is_empty()
+    {
+        return Ok(false);
     }
 
-    if let syn::Type::Path(p) = t {
-        if p.to_token_stream().to_string() == "usize" {
-            return Ok(true);
-        }
+    if let syn::Type::Path(p) = t
+        && p.to_token_stream().to_string() == "usize"
+    {
+        return Ok(true);
     }
 
     e!()
@@ -459,26 +459,24 @@ impl Route {
         let prefix = if mm { "o" } else { "i" };
         let mut has_names = false;
 
-        if !mm {
-            if let syn::Pat::Tuple(pt) = &(*fnarg.pat) {
-                if pt.elems.len() != tt.elems.len() {
-                    return err!(
-                        pt.span(),
-                        "you must specify a name for all the types"
-                    );
-                }
-
-                for e in pt.elems.iter() {
-                    let syn::Pat::Ident(ei) = e else {
-                        return err!(e.span(), "all names must be idents");
-                    };
-                    if ei.ident == "taker" {
-                        return err!(ei.span(), "taker is a reserved ident");
-                    }
-                    names.push(&ei.ident);
-                }
-                has_names = true
+        if !mm && let syn::Pat::Tuple(pt) = &(*fnarg.pat) {
+            if pt.elems.len() != tt.elems.len() {
+                return err!(
+                    pt.span(),
+                    "you must specify a name for all the types"
+                );
             }
+
+            for e in pt.elems.iter() {
+                let syn::Pat::Ident(ei) = e else {
+                    return err!(e.span(), "all names must be idents");
+                };
+                if ei.ident == "taker" {
+                    return err!(ei.span(), "taker is a reserved ident");
+                }
+                names.push(&ei.ident);
+            }
+            has_names = true
         }
 
         for (idx, t) in tt.elems.iter().enumerate() {

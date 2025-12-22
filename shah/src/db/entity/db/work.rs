@@ -12,10 +12,10 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             // log::debug!("{} found dead: {} | {}", self.ls, gene.id, self.live);
         }
 
-        if let Some(ei) = &self.inspector {
-            if let Err(e) = ei.call(entity) {
-                log::error!("{} inspection failed: {e:#?}", self.ls);
-            }
+        if let Some(ei) = &self.inspector
+            && let Err(e) = ei.call(entity)
+        {
+            log::error!("{} inspection failed: {e:#?}", self.ls);
         }
     }
 

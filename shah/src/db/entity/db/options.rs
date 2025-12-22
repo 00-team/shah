@@ -4,8 +4,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     EntityDb<T, O, S, Is>
 {
     pub fn set_koch(
-        &mut self, koch: EntityKoch<T, O, S>,
+        &mut self, koch: Option<EntityKoch<T, O, S>>,
     ) -> Result<(), ShahError> {
+        let Some(koch) = koch else { return Ok(()) };
         self.koch_prog.total = koch.total;
 
         if !self.koch_prog.ended() {

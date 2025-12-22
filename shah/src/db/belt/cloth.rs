@@ -81,8 +81,7 @@ impl<const S: usize> BeltClothDb<S> {
         let mut cloth = ClothBelt::<S>::default();
         let mut it = data.chunks(S).peekable();
 
-        loop {
-            let Some(x) = it.next() else { break };
+        while let Some(x) = it.next() {
             cloth.data[x.len()..].fill(0);
             cloth.data[..x.len()].copy_from_slice(x);
             cloth.length = x.len() as u16;
@@ -162,8 +161,7 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
         let mut cloth = ClothBelt::<S>::default();
         let mut it = data.chunks(S).peekable();
 
-        loop {
-            let Some(x) = it.next() else { break };
+        while let Some(x) = it.next() {
             cloth.data[x.len()..].fill(0);
             cloth.data[..x.len()].copy_from_slice(x);
             cloth.length = x.len() as u16;

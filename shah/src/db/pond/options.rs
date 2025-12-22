@@ -16,19 +16,19 @@ impl<
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
     pub fn set_koch(
-        &mut self, koch: EntityKoch<Dk, DkO, DkS>,
+        &mut self, koch: Option<EntityKoch<Dk, DkO, DkS>>,
     ) -> Result<(), ShahError> {
         self.item.set_koch(koch)
     }
 
     pub fn set_pond_koch(
-        &mut self, koch: EntityKoch<Pn, PnO, PnS>,
+        &mut self, koch: Option<EntityKoch<Pn, PnO, PnS>>,
     ) -> Result<(), ShahError> {
         self.pond.set_koch(koch)
     }
 
     pub fn set_origin_koch(
-        &mut self, koch: EntityKoch<Og, OgO, OgS>,
+        &mut self, koch: Option<EntityKoch<Og, OgO, OgS>>,
     ) -> Result<(), ShahError> {
         self.origin.set_koch(koch)
     }

@@ -57,14 +57,24 @@ where
     New: EntityItem + EntityKochFrom<Old, State>,
     Old: EntityItem,
 {
-    pub fn new(from: EntityKochDb<Old>, state: State) -> Self {
-        Self {
+    pub fn new(
+        from: Result<EntityKochDb<Old>, ShahError>, state: State,
+    ) -> Option<Self> {
+        let from = match from {
+            Ok(db) => db,
+            Err(e) => {
+                log::error!("failed to init koch db: {e:#?}");
+                return None;
+            }
+        };
+
+        Some(Self {
             // prog: 0,
             total: from.total,
             from,
             state: RefCell::new(state),
             _new: PhantomData::<New>,
-        }
+        })
     }
 
     pub fn get_id(&self, gene_id: GeneId) -> Result<New, ShahError> {

@@ -1,6 +1,5 @@
 use std::{
-    fmt::Display,
-    ops::{Add, AddAssign, Mul, SubAssign},
+    fmt::Display, hash::Hash, ops::{Add, AddAssign, Mul, SubAssign}
 };
 
 use super::{Binary, Schema, ShahSchema};
@@ -79,12 +78,28 @@ impl ShahSchema for GeneId {
 }
 
 #[crate::model]
-#[derive(Debug, PartialEq, Hash, Eq)]
+#[derive(Debug, Eq)]
 pub struct Gene {
     pub id: GeneId,
     pub iter: u8,
     pub pepper: [u8; 3],
     pub server: u32,
+}
+
+impl PartialEq for Gene {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.iter == other.iter
+            && self.pepper == other.pepper
+    }
+}
+
+impl Hash for Gene {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.iter.hash(state);
+        self.pepper.hash(state);
+    }
 }
 
 impl ShahSchema for Gene {

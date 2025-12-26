@@ -79,17 +79,22 @@ impl<
     pub(super) fn half_empty_pond(
         &mut self, origin: &mut Og,
     ) -> Result<Pn, ShahError> {
-        let mut pond_gene = *origin.head();
-        let mut pond = Pn::default();
+        let mut last = Pn::default();
+        let mut pond_gene = *origin.tail();
+        let mut temp = Pn::default();
         loop {
-            if self.pond.get(&pond_gene, &mut pond).onf()?.is_none() {
+            if self.pond.get(&pond_gene, &mut temp).onf()?.is_none() {
                 break;
             }
 
-            if pond.empty() > 0 {
-                return Ok(pond);
+            if temp.gene() == origin.tail() {
+                last.clone_from(&temp);
             }
-            pond_gene = *pond.next();
+
+            if temp.empty() > 0 {
+                return Ok(temp);
+            }
+            pond_gene = *temp.past();
         }
 
         let mut new = Pn::default();
@@ -110,11 +115,11 @@ impl<
 
         *origin.pond_count_mut() += 1;
 
-        if pond.is_alive() {
-            *pond.next_mut() = *new.gene();
+        if last.is_alive() {
+            *last.next_mut() = *new.gene();
             *new.past_mut() = *origin.tail();
             *origin.tail_mut() = *new.gene();
-            self.pond.set(&mut pond)?;
+            self.pond.set(&mut last)?;
         } else {
             new.past_mut().clear();
             *origin.head_mut() = *new.gene();

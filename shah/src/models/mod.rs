@@ -1,3 +1,6 @@
+mod menum;
+mod string;
+
 pub mod api;
 pub mod binary;
 pub mod db;
@@ -14,8 +17,10 @@ pub use binary::Binary;
 pub use db::*;
 pub use dead_list::DeadList;
 pub use gene::*;
+pub use menum::ShahEnum;
 pub use perms::*;
 pub use schema::*;
 pub use server::*;
 pub use state::*;
+pub use string::ShahString;
 pub use task_list::*;

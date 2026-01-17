@@ -1,8 +1,18 @@
-#[derive(Debug)]
 pub struct DeadList<T, const CAP: usize> {
     len: usize,
     arr: Box<[Option<T>; CAP]>,
     disabled: bool,
+}
+
+impl<T: Copy + PartialEq, const CAP: usize> std::fmt::Debug
+    for DeadList<T, CAP>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeadList")
+            .field("len", &self.len)
+            .field("disabled", &self.disabled)
+            .finish()
+    }
 }
 
 impl<T: Copy + PartialEq, const CAP: usize> Default for DeadList<T, CAP> {

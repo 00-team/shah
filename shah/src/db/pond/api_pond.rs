@@ -1,10 +1,10 @@
 use super::{Duck, Origin, Pond, PondDb};
-use crate::models::Gene;
 use crate::PAGE_SIZE;
 use crate::ShahError;
 use crate::SystemError;
 use crate::db::derr;
 use crate::db::entity::EntityKochFrom;
+use crate::models::Gene;
 use std::ops::AddAssign;
 
 impl<

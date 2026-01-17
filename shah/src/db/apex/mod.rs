@@ -6,7 +6,10 @@ pub use self::coords::ApexCoords;
 use self::coords::MAX_ZOOM;
 use super::entity::EntityDb;
 use crate::{
-    ShahError, config::ShahConfig, models::{Gene, Performed, Task, TaskList, Worker}, utils
+    ShahError,
+    config::ShahConfig,
+    models::{Gene, Performed, Task, TaskList, Worker},
+    utils,
 };
 
 #[derive(shah::ShahSchema)]

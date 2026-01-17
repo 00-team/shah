@@ -1,6 +1,8 @@
 use super::{SnakeDb, SnakeHead};
 use crate::{
-    db::entity::Entity, models::{Binary, Gene}, NotFound, ShahError, SystemError
+    NotFound, ShahError, SystemError,
+    db::entity::Entity,
+    models::{Binary, Gene},
 };
 use std::io::{Read, Seek, SeekFrom, Write};
 

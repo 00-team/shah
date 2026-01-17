@@ -1,4 +1,4 @@
-use crate::{DbError, ShahError, SHAH_VERSION};
+use crate::{DbError, SHAH_VERSION, ShahError};
 
 #[crate::model]
 #[derive(Debug, PartialEq, Eq)]

@@ -1,5 +1,9 @@
-use super::{SnakeDb, SnakeFree, FREE_LIST_SIZE, TCD};
-use crate::{db::{entity::Entity, snake::SnakeHead}, models::Gene, ShahError};
+use super::{FREE_LIST_SIZE, SnakeDb, SnakeFree, TCD};
+use crate::{
+    ShahError,
+    db::{entity::Entity, snake::SnakeHead},
+    models::Gene,
+};
 
 impl SnakeDb {
     pub(super) fn take_free(

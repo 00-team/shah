@@ -4,7 +4,7 @@ use std::io::{ErrorKind, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
 
-use super::{ENTITY_META, EntityHead, EntityItem, id_iter};
+use super::{ENTITY_META, EntityHead, EntityItem};
 use crate::config::ShahConfig;
 use crate::models::{Binary, Gene, GeneId};
 use crate::{DbError, NotFound, ShahError, SystemError, utils};
@@ -24,19 +24,6 @@ impl<T: EntityItem, S> EntityKochFrom<T, S> for T {
 }
 
 // =========== end of EntityKochFrom trait ===========
-
-// =========== EntityKochProg struct ===========
-
-#[crate::model]
-#[derive(Debug)]
-pub struct EntityKochProg {
-    pub total: GeneId,
-    pub prog: GeneId,
-}
-
-id_iter!(EntityKochProg);
-
-// =========== end of EntityKochProg struct ===========
 
 // =========== EntityKoch struct ===========
 

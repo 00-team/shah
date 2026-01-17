@@ -15,7 +15,9 @@ pub(crate) mod db {
         const ABC: &str = "0123456789";
         type Item<'a> = &'a str;
 
-        fn convert(&self, key: Self::Item<'_>) -> Result<[usize; 9], ShahError> {
+        fn convert(
+            &self, key: Self::Item<'_>,
+        ) -> Result<[usize; 9], ShahError> {
             let mut out = [0; 9];
             if key.len() != 9 {
                 return Err(SystemError::BadTrieKey)?;
@@ -92,8 +94,8 @@ mod eapi {
     use super::*;
 
     pub(crate) fn phone_add(
-        state: &mut State, inp: (&Gene, &[u8; 12], ),
-        out: (&mut Gene, &mut [u8; 12], ),
+        state: &mut State, inp: (&Gene, &[u8; 12]),
+        out: (&mut Gene, &mut [u8; 12]),
     ) -> Result<(), ErrorCode> {
         println!("phone_add: {inp:#?}");
 

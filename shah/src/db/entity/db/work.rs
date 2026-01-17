@@ -53,7 +53,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
                 return Err(e)?;
             }
 
-            self.koch_prog = EntityKochProg::default();
+            self.koch_prog = ShahProgress::default();
             self.koch_prog_set()?;
         }
 

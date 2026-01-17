@@ -2,7 +2,6 @@ use std::cell::{RefCell, RefMut};
 use std::marker::PhantomData;
 use std::ops::AddAssign;
 use std::{
-    fmt::Debug,
     fs::File,
     io::{ErrorKind, Seek, SeekFrom},
     os::unix::fs::FileExt,
@@ -19,14 +18,6 @@ mod init;
 mod options;
 mod util;
 mod work;
-
-#[derive(Debug, Default)]
-struct SetupProg {
-    total: GeneId,
-    prog: GeneId,
-}
-
-id_iter!(SetupProg);
 
 type EntityInspectorFn<T, S> = fn(RefMut<S>, &T) -> Result<(), ShahError>;
 #[derive(Debug)]
@@ -59,8 +50,8 @@ pub struct EntityDb<
     revision: u16,
     name: String,
     koch: Option<EntityKoch<T, O, S>>,
-    koch_prog: EntityKochProg,
-    setup_prog: SetupProg,
+    koch_prog: ShahProgress,
+    setup_prog: ShahProgress,
     tasks: TaskList<2, Task<Self>>,
     ls: String,
     inspector: Option<EntityInspector<T, Is>>,

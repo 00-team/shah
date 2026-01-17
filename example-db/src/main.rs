@@ -1,7 +1,7 @@
 mod detail;
 mod extra;
-mod map;
 mod logger;
+mod map;
 mod models;
 mod note;
 mod phone;

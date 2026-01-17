@@ -1,4 +1,5 @@
 mod menum;
+mod progress;
 mod string;
 
 pub mod api;
@@ -19,6 +20,7 @@ pub use dead_list::DeadList;
 pub use gene::*;
 pub use menum::ShahEnum;
 pub use perms::*;
+pub use progress::ShahProgress;
 pub use schema::*;
 pub use server::*;
 pub use state::*;

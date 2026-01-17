@@ -1,8 +1,8 @@
+use crate::err;
 use proc_macro2::TokenStream as TokenStream2;
 use quote_into::quote_into;
 use std::collections::HashMap;
 use syn::spanned::Spanned;
-use crate::err;
 
 pub(crate) fn legacy(item: syn::ItemMod) -> syn::Result<TokenStream2> {
     let item_span = item.span();

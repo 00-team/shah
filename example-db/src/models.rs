@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use shah::{
+    ErrorCode,
     db::snake::SnakeDb,
     error::{IsNotFound, ShahError},
     models::{Performed, Task, TaskList, Worker},
-    ErrorCode,
 };
 
 use crate::{extra::db::ExtraDb, note::db::NoteDb, phone::db::PhoneDb, user};

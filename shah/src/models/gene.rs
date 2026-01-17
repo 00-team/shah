@@ -1,5 +1,7 @@
 use std::{
-    fmt::Display, hash::Hash, ops::{Add, AddAssign, Mul, SubAssign}
+    fmt::Display,
+    hash::Hash,
+    ops::{Add, AddAssign, Mul, SubAssign},
 };
 
 use super::{Binary, Schema, ShahSchema};
@@ -8,8 +10,14 @@ use crate::{
     error::{NotFound, ShahError, SystemError},
 };
 
-#[derive(Default, Debug, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
+#[derive(Default, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
 pub struct GeneId(pub u64);
+
+impl std::fmt::Debug for GeneId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
+    }
+}
 
 impl Binary for GeneId {}
 

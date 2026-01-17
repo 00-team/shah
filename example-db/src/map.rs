@@ -1,5 +1,5 @@
 pub mod db {
-    use shah::{db::apex::ApexDb, ShahError};
+    use shah::{ShahError, db::apex::ApexDb};
 
     #[derive(Debug)]
     pub struct MapDb {

@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShahString<const N: usize> {
     inner: [u8; N],
 }
@@ -7,6 +7,10 @@ pub struct ShahString<const N: usize> {
 impl<const N: usize> ShahString<N> {
     pub fn as_str(&self) -> &str {
         shah::AsUtf8Str::as_utf8_str_null_terminated(&self.inner)
+    }
+
+    pub fn clear(&mut self) {
+        self.inner.fill(0);
     }
 
     pub fn set(&mut self, value: &str) -> bool {
@@ -45,6 +49,19 @@ impl<const N: usize> From<String> for ShahString<N> {
         let mut ss = Self::default();
         ss.set(&value);
         ss
+    }
+}
+
+impl<const N: usize> core::ops::Deref for ShahString<N> {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl<const N: usize> From<ShahString<N>> for String {
+    fn from(value: ShahString<N>) -> Self {
+        value.to_string()
     }
 }
 
@@ -117,5 +134,23 @@ impl<const N: usize> super::ShahSchema for ShahString<N> {
             length: N as u64,
             kind: Box::new(super::Schema::U8),
         }
+    }
+}
+
+impl<const N: usize> PartialEq<&str> for ShahString<N> {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+impl<const N: usize> PartialEq<String> for ShahString<N> {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl<const N: usize> PartialEq<&String> for ShahString<N> {
+    fn eq(&self, other: &&String) -> bool {
+        self.as_str() == *other
     }
 }

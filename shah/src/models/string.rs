@@ -109,3 +109,13 @@ impl<'de, const N: usize> serde::Deserialize<'de> for ShahString<N> {
         Ok(Self::from(str))
     }
 }
+
+impl<const N: usize> super::ShahSchema for ShahString<N> {
+    fn shah_schema() -> super::Schema {
+        super::Schema::Array {
+            is_str: true,
+            length: N as u64,
+            kind: Box::new(super::Schema::U8),
+        }
+    }
+}

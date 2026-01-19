@@ -56,4 +56,5 @@ pub struct EntityDb<
     ls: String,
     inspector: Option<EntityInspector<T, Is>>,
     work_iter: usize,
+    // cache: HashMap<Gene, T>,
 }

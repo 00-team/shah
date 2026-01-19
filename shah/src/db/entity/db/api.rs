@@ -19,6 +19,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub fn get(
         &mut self, gene: &Gene, entity: &mut T,
     ) -> Result<(), ShahError> {
+        // if let Some(value) = self.cache.get(gene) {
+        //     entity.clone_from(value);
+        //     return Ok(());
+        // }
+
         gene.validate()?;
 
         self.read_at(entity, gene.id)?;
@@ -45,6 +50,8 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         if !entity.is_alive() {
             return Err(NotFound::EntityNotAlive)?;
         }
+
+        // self.cache.insert(*gene, *entity);
 
         Ok(())
     }
@@ -84,7 +91,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         // old_entity.gene_mut().clone_from(&gene);
 
         *entity.growth_mut() = old_entity.growth();
-        self.set_unchecked(entity)
+        self.set_unchecked(entity)?;
+
+        // self.cache.insert(*entity.gene(), *entity);
+
+        Ok(())
     }
 
     pub fn keyed(
@@ -106,7 +117,9 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         // first make sure that the entity is alive and exists
         self.get(gene, entity)?;
         // then delete unchecked
-        self.del_unchecked(entity)
+        self.del_unchecked(entity)?;
+        // self.cache.remove(gene);
+        Ok(())
     }
 
     pub fn list(

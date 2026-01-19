@@ -35,6 +35,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             ls: format!("<EntityDb {path}.{revision} />"),
             inspector: None,
             work_iter: 10,
+            // cache: HashMap::with_capacity(PAGE_SIZE),
         };
 
         db.init()?;

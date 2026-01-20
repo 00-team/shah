@@ -20,16 +20,33 @@ pub(crate) fn flags(
     let inner = &args.inner;
     item.ident = format_ident!("{}Info", item.ident);
     let info_name = &item.ident;
+    let ci = crate::crate_ident();
 
     let mut imp = TokenStream2::new();
     let mut apply = TokenStream2::new();
     let mut from_main = TokenStream2::new();
+    let mut key_val = TokenStream2::new();
+
+    let key_val_len = item.fields.len();
+    let mut do_key_val = true;
+    let mut key_val_ty = None;
 
     let mut bit_offset = 0;
-    for f in item.fields.iter() {
+    for f in item.fields.iter_mut() {
         let Some(fname) = &f.ident else { return err!(f.span(), "no name") };
         let vis = &f.vis;
         let fty = &f.ty;
+
+        if do_key_val {
+            if let Some(kvt) = &key_val_ty {
+                if fty != kvt {
+                    do_key_val = false;
+                }
+            } else {
+                key_val_ty = Some(fty.clone());
+            }
+        }
+
         let setter = format_ident!("set_{fname}");
         let mut bits = args.bits;
         let mut skip_apply = false;
@@ -41,6 +58,18 @@ pub(crate) fn flags(
             bits = pfa.bits.unwrap_or(bits);
             skip_apply = pfa.skip_apply;
         }
+        f.attrs.retain(|a| !a.path().is_ident("flags"));
+
+        if bit_offset + bits > args.max_bits {
+            return err!(
+                fname.span(),
+                format!(
+                    "maximum capacity of type: {} = {} bits has reached",
+                    quote::quote!(#inner).to_string(),
+                    args.max_bits
+                )
+            );
+        }
 
         type Fq = fn(&mut TokenStream2, usize, usize);
         let (fg, fs): (Fq, Fq) = if args.is_array {
@@ -51,13 +80,18 @@ pub(crate) fn flags(
 
         quote_into! {imp +=
             #vis fn #fname(&self) -> #fty {
-                #fty::from((#{fg(imp, bit_offset, bits)}))
+                let out = #{fg(imp, bit_offset, bits)};
+                #{if bits > 1 {
+                    quote_into!(imp += #fty::from(out as u8));
+                } else {
+                    quote_into!(imp += out);
+                }}
             }
             #vis fn #setter(&mut self, value: #fty) -> &mut Self {
                 #{if bits > 1 {
                     quote_into!(imp += let value = u8::from(value););
                 } else {
-                    quote_into!(imp += let value = bool::from(value););
+                    // quote_into!(imp += let value = bool::from(value););
                 }}
 
                 {#{fs(imp, bit_offset, bits)}};
@@ -71,7 +105,12 @@ pub(crate) fn flags(
                 quote_into! {apply += item.#setter(self.#fname);};
             }
 
-            quote_into! {from_main += #fname: item.#fname(),};
+            quote_into! {from_main += #fname: value.#fname(),};
+        }
+
+        if do_key_val {
+            let fname_str = fname.to_string();
+            quote_into! {key_val += (#fname_str, self.#fname),};
         }
 
         bit_offset += bits;
@@ -80,7 +119,7 @@ pub(crate) fn flags(
     let info_name_str = info_name.to_string();
     quote_into! {s +=
         #[repr(C)]
-        #[derive(Debug, Default, Clone, Copy)]
+        #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
         #{if args.serde {
             quote_into! {s +=
                 #[derive(serde::Serialize)]
@@ -91,8 +130,32 @@ pub(crate) fn flags(
             inner: #inner,
         }
 
+        impl From<#inner> for #name {
+            fn from(inner: #inner) -> Self {
+                Self { inner }
+            }
+        }
+
         impl #name {
             #imp
+        }
+
+        impl #ci::models::ShahSchema for #name {
+            fn shah_schema() -> #ci::models::Schema {#{if args.is_array {
+                let len = (args.max_bits / 8) as u64;
+                quote_into! {s +=
+                    #ci::models::Schema::Array {
+                        is_str: false,
+                        length: #len,
+                        kind: Box::new(#ci::models::Schema::U8),
+                    }
+                };
+            } else {
+                let syn::Type::Path(p) = args.inner else { unreachable!() };
+                let k = p.path.get_ident().unwrap().to_string().to_uppercase();
+                let kind = format_ident!("{k}");
+                quote_into! {s += #ci::models::Schema::#kind};
+            }}}
         }
     };
 
@@ -104,7 +167,15 @@ pub(crate) fn flags(
                 #vis fn apply(&self, item: &mut #name) {
                     #apply
                 }
+
+                #{if do_key_val && let Some(ty) = key_val_ty {quote_into!{s +=
+                    #vis fn key_val(&self) -> [(&'static str, #ty); #key_val_len] {
+                        [#key_val]
+                    }
+                }}}
+
             }
+
 
             impl From<#name> for #info_name {
                 fn from(value: #name) -> Self {
@@ -170,10 +241,11 @@ fn parse_args(args: Args) -> syn::Result<ParsedArgs> {
 
                         pa.is_array = true;
                         pa.max_bits = int.base10_parse::<usize>()? * 8;
-                        pa.inner = syn::Type::Path(syn::TypePath {
-                            qself: None,
-                            path: p.path,
-                        });
+                        pa.inner = syn::parse_quote!([u8; #int]);
+                        // pa.inner = syn::Type::Path(syn::TypePath {
+                        //     qself: None,
+                        //     path: p.path,
+                        // });
                     }
                     syn::Expr::Path(v) => {
                         const E: &str = "type must be a u8,u16,u32 or u64";
@@ -302,9 +374,9 @@ fn quote_array_get(s: &mut TokenStream2, offset: usize, bits: usize) {
 
 fn quote_array_set(s: &mut TokenStream2, offset: usize, bits: usize) {
     if bits == 1 {
-        let (byte, bit) = (offset / 8, offset % 8);
+        let (byte, bit) = (offset / 8, (offset % 8) as u8);
         quote_into! {s +=
-            if bool::from(value) {
+            if value {
                 self.inner[#byte] |= (1 << #bit);
             } else {
                 self.inner[#byte] &= !(1 << #bit);
@@ -315,7 +387,7 @@ fn quote_array_set(s: &mut TokenStream2, offset: usize, bits: usize) {
 
     for n in 0..bits {
         let i = offset + n;
-        let (byte, bit) = (i / 8, i % 8);
+        let (byte, bit) = (i / 8, (i % 8) as u8);
         quote_into! {s +=
             self.inner[#byte] = (
                 (self.inner[#byte] & !(1 << #bit)) | (((value >> #n) & 1) << #bit)
@@ -337,19 +409,19 @@ fn quote_get(s: &mut TokenStream2, offset: usize, bits: usize) {
 }
 
 fn quote_set(s: &mut TokenStream2, offset: usize, bits: usize) {
+    let pos = Literal::usize_unsuffixed(offset);
     if bits == 1 {
         quote_into! {s +=
-            if bool::form(value) {
-                self.inner |= (1 << #offset);
+            if value {
+                self.inner |= (1 << #pos);
             } else {
-                self.inner &= !(1 << #offset);
+                self.inner &= !(1 << #pos);
             }
         };
         return;
     }
 
     let mask = Literal::u8_unsuffixed((1 << bits) - 1);
-    let pos = Literal::usize_unsuffixed(offset);
     quote_into! {s +=
         let new = value & #mask;
         let old = self.inner & !(#mask << #pos);

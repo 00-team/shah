@@ -406,7 +406,7 @@ fn parse_flags_attr(
 ) -> syn::Result<FlagsField> {
     const ARRERR: &str = "#[flags] array value must be [u8; ...]";
     const ARGERR: &str = "#[flags(f1, fl2, bits = 2, f3)] is only valid";
-    let flag_ty = match &f.ty {
+    let (flag_ty, max_bits) = match &f.ty {
         syn::Type::Array(a) => {
             let syn::Type::Path(p) = &(*a.elem) else {
                 return err!(a.span(), ARRERR);
@@ -414,9 +414,30 @@ fn parse_flags_attr(
             if !p.path.is_ident("u8") {
                 return err!(a.span(), ARRERR);
             }
-            None
+            let syn::Expr::Lit(lit) = &a.len else {
+                return err!(a.len.span(), "array len must be literal");
+            };
+            let syn::Lit::Int(int) = &lit.lit else {
+                return err!(lit.span(), "only numbers are allowed");
+            };
+
+            (None, int.base10_parse::<usize>()? * 8)
         }
-        syn::Type::Path(p) => p.path.get_ident().cloned(),
+        syn::Type::Path(p) => {
+            let Some(tyi) = p.path.get_ident().cloned() else {
+                return err!(p.span(), "type must be a u8,u16,u32 or u64");
+            };
+
+            let max_bits = match tyi.to_string().as_str() {
+                "u8" => 8,
+                "u16" => 16,
+                "u32" => 32,
+                "u64" => 64,
+                _ => return err!(p.span(), "type must be a u8,u16,u32 or u64"),
+            };
+
+            (Some(tyi), max_bits)
+        }
         _ => return err!(f.ty.span(), "invalid type for #[flags]"),
     };
 
@@ -471,6 +492,16 @@ fn parse_flags_attr(
                     }
                     _ => return err!(ml.span(), ARGERR),
                 }
+            }
+
+            if ff.bits as usize * ff.flags.len() > max_bits {
+                return err!(
+                    attr.span(),
+                    format!(
+                        "exceeding the max limit of {} for your type",
+                        max_bits / ff.bits as usize
+                    )
+                );
             }
 
             Ok(ff)

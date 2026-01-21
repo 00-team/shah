@@ -90,9 +90,13 @@ pub(crate) fn flags(
             #vis fn #setter(&mut self, value: #fty) -> &mut Self {
                 #{if bits > 1 {
                     quote_into!(imp += let value = u8::from(value););
+                    if !args.is_array {
+                        quote_into!(imp += let value = value as #inner;);
+                    }
                 } else {
                     // quote_into!(imp += let value = bool::from(value););
                 }}
+
 
                 {#{fs(imp, bit_offset, bits)}};
 

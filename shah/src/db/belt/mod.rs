@@ -24,6 +24,7 @@ pub trait Buckle: EntityItem {
 #[derive(crate::ShahSchema)]
 #[crate::model]
 #[derive(Debug, crate::Entity, crate::Buckle)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
 pub struct ShahBuckle {
     pub gene: Gene,
     pub head: Gene,
@@ -31,6 +32,7 @@ pub struct ShahBuckle {
     pub belt_count: u64,
     growth: u64,
     entity_flags: EntityFlags,
+    #[cfg_attr(feature = "serde", serde(skip))]
     _pad: [u8; 7],
 }
 

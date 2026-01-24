@@ -192,6 +192,26 @@ pub(crate) fn flags(
                     Self {#from_main}
                 }
             }
+
+
+            impl utoipa::__dev::ComposeSchema for #name {
+                fn compose(
+                    _: Vec<utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>>,
+                ) -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+                    <#info_name as utoipa::PartialSchema>::schema()
+                }
+            }
+            
+            impl utoipa::ToSchema for #name {
+                fn schemas(
+                    schemas: &mut Vec<(
+                        String,
+                        utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>,
+                    )>,
+                ) {
+                    <#info_name as utoipa::ToSchema>::schemas(schemas)
+                }
+            }
         };
     }
 

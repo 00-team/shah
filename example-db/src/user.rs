@@ -8,6 +8,8 @@ use shah::{ErrorCode, PAGE_SIZE};
 pub use db::User;
 
 pub(crate) mod db {
+    use shah::{db::entity::EntityFlags, models::ShahString};
+
     use super::*;
 
     #[shah::model]
@@ -32,6 +34,11 @@ pub(crate) mod db {
         token: [u8; 64],
     }
 
+    #[shah::flags(inner = u8, serde = false)]
+    pub struct UserFlags {
+        pub is_banned: bool,
+    }
+
     #[derive(ShahSchema)]
     #[shah::model]
     #[derive(Entity, Debug, PartialEq)]
@@ -42,14 +49,11 @@ pub(crate) mod db {
         pub review: Gene,
         pub photo: Gene,
         pub reviews: [u64; 3],
-        #[str(set = false)]
-        phone: [u8; 12],
+        phone: ShahString<12>,
         pub cc: u16,
-        pub entity_flags: u8,
-        #[flags(is_banned)]
-        flags: u8,
-        #[str]
-        pub name: [u8; 48],
+        pub entity_flags: EntityFlags,
+        flags: UserFlags,
+        pub name: ShahString<48>,
         pub sessions: [Session; 3],
         growth: u64,
     }
@@ -64,7 +68,7 @@ pub(crate) mod db {
                 return Err(ExampleError::BadPhone);
             }
 
-            self.phone[..11].clone_from_slice(phone.as_bytes());
+            self.phone.set(phone);
 
             Ok(())
         }

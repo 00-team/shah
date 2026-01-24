@@ -6,7 +6,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub(super) fn inspection(&mut self, entity: &T) {
         // log::debug!("\x1b[36minspecting\x1b[m: {:?}", entity.gene());
 
-        if !entity.is_alive() {
+        if !entity.entity_flags().is_alive() {
             let gene = entity.gene();
             self.dead_add(gene);
             // log::debug!("{} found dead: {} | {}", self.ls, gene.id, self.live);

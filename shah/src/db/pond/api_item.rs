@@ -20,7 +20,7 @@ impl<
     pub fn add(
         &mut self, origene: &Gene, item: &mut Dk,
     ) -> Result<(), ShahError> {
-        item.set_alive(true);
+        item.entity_flags_mut().set_is_alive(true);
 
         let mut origin = Og::default();
         self.origin.get(origene, &mut origin)?;
@@ -57,7 +57,7 @@ impl<
             let mut found_empty_slot = false;
             for (x, slot) in buf.iter_mut().enumerate() {
                 let sg = slot.gene();
-                if !slot.is_alive() && !sg.exhausted() {
+                if !slot.entity_flags().is_alive() && !sg.exhausted() {
                     let ig = item.gene_mut();
                     ig.id = pond.stack() + x as u64;
                     if sg.id != 0 {
@@ -102,7 +102,7 @@ impl<
     }
 
     pub fn set(&mut self, entity: &mut Dk) -> Result<(), ShahError> {
-        if !entity.is_alive() {
+        if !entity.entity_flags().is_alive() {
             log::error!("{} deleting using the set method", self.ls);
             return Err(SystemError::DeadSet)?;
         }

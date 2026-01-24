@@ -37,7 +37,7 @@ impl<
             if !item.gene().exhausted() {
                 *pond.empty_mut() += 1;
             }
-            if item.is_alive() {
+            if item.entity_flags().is_alive() {
                 log::warn!("adding a non-free pond to free_list");
                 return Ok(());
             }
@@ -115,7 +115,7 @@ impl<
 
         *origin.pond_count_mut() += 1;
 
-        if last.is_alive() {
+        if last.entity_flags().is_alive() {
             *last.next_mut() = *new.gene();
             *new.past_mut() = *origin.tail();
             *origin.tail_mut() = *new.gene();

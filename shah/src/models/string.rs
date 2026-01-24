@@ -5,6 +5,14 @@ pub struct ShahString<const N: usize> {
 }
 
 impl<const N: usize> ShahString<N> {
+    pub(crate) fn raw(&self) -> &[u8; N] {
+        &self.inner
+    }
+
+    pub(crate) fn raw_mut(&mut self) -> &mut [u8; N] {
+        &mut self.inner
+    }
+
     pub fn as_str(&self) -> &str {
         shah::AsUtf8Str::as_utf8_str_null_terminated(&self.inner)
     }

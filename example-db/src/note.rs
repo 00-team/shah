@@ -3,6 +3,8 @@ use shah::models::Gene;
 use shah::{Duck, Entity, ShahError, ShahSchema};
 
 pub(crate) mod db {
+    use shah::{db::entity::EntityFlags, models::ShahString};
+
     use super::*;
 
     #[shah::model]
@@ -12,9 +14,8 @@ pub(crate) mod db {
         pub user: Gene,
         pub pond: Gene,
         pub growth: u64,
-        pub entity_flags: u8,
-        #[str]
-        pub note: [u8; 247],
+        pub entity_flags: EntityFlags,
+        pub note: ShahString<247>,
     }
 
     pub type NoteDb = PondDb<Note>;

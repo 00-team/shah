@@ -15,7 +15,7 @@ impl<
         let mut buckle = Bk::default();
         self.buckle.get(buckle_gene, &mut buckle)?;
 
-        belt.set_alive(true);
+        belt.entity_flags_mut().set_is_alive(true);
 
         *belt.buckle_mut() = *buckle.gene();
         *belt.growth_mut() = 0;
@@ -48,7 +48,7 @@ impl<
         self.buckle.get(buckle_gene, &mut buckle)?;
 
         for belt in belts {
-            belt.set_alive(true);
+            belt.entity_flags_mut().set_is_alive(true);
             *belt.buckle_mut() = *buckle.gene();
             *belt.growth_mut() = 0;
             *belt.past_mut() = *buckle.tail();
@@ -84,7 +84,7 @@ impl<
     }
 
     pub fn belt_set(&mut self, belt: &mut Bt) -> Result<(), ShahError> {
-        if !belt.is_alive() {
+        if !belt.entity_flags().is_alive() {
             log::error!("{} DeadSet: using set to delete", self.ls);
             return Err(SystemError::DeadSet)?;
         }

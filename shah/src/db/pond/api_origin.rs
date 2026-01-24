@@ -47,7 +47,7 @@ impl<
     }
 
     pub fn origin_set(&mut self, origin: &mut Og) -> Result<(), ShahError> {
-        if !origin.is_alive() {
+        if !origin.entity_flags().is_alive() {
             return derr!(self.ls, SystemError::DeadSet);
         }
 

@@ -122,7 +122,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     pub(crate) fn del_unchecked(
         &mut self, entity: &mut T,
     ) -> Result<(), ShahError> {
-        entity.set_alive(false);
+        entity.entity_flags_mut().set_is_alive(false);
         self.set_unchecked(entity)?;
         self.dead_add(entity.gene());
         Ok(())

@@ -33,7 +33,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
             if let Some(koch) = self.koch.as_mut() {
                 let mut oldie = koch.get(gene)?;
                 self.set_unchecked(&mut oldie)?;
-                if !oldie.is_alive() {
+                if !oldie.entity_flags().is_alive() {
                     self.dead_add(oldie.gene());
                     return Err(NotFound::EntityNotAlive)?;
                 }
@@ -47,7 +47,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
         egene.check(gene, &self.ls)?;
 
-        if !entity.is_alive() {
+        if !entity.entity_flags().is_alive() {
             return Err(NotFound::EntityNotAlive)?;
         }
 
@@ -57,7 +57,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     pub fn add(&mut self, entity: &mut T) -> Result<(), ShahError> {
-        entity.set_alive(true);
+        entity.entity_flags_mut().set_is_alive(true);
         let gene = entity.gene_mut();
         if gene.is_some() {
             log::warn!("{} entity gene is not cleared: {gene:?}", self.ls);
@@ -77,7 +77,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     pub fn set(&mut self, entity: &mut T) -> Result<(), ShahError> {
-        if !entity.is_alive() {
+        if !entity.entity_flags().is_alive() {
             log::error!("{} deleteing entity using the set method", self.ls);
             return Err(SystemError::DeadSet)?;
         }
@@ -103,7 +103,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     ) -> Result<(), ShahError> {
         if self.get(key, entity).onf()?.is_none() {
             entity.zeroed();
-            entity.set_alive(true);
+            entity.entity_flags_mut().set_is_alive(true);
             *entity.gene_mut() = *key;
             self.set_unchecked(entity)?;
         }
@@ -167,7 +167,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
                 };
 
                 self.set_unchecked(&mut old)?;
-                if !old.is_alive() {
+                if !old.entity_flags().is_alive() {
                     self.dead_add(old.gene());
                 }
                 item.clone_from(&old);

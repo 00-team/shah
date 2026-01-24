@@ -8,6 +8,7 @@ use super::entity::EntityDb;
 use crate::{
     ShahError,
     config::ShahConfig,
+    db::entity::EntityFlags,
     models::{Gene, Performed, Task, TaskList, Worker},
     utils,
 };
@@ -18,7 +19,7 @@ use crate::{
 struct ApexTile<const S: usize> {
     gene: Gene,
     growth: u64,
-    entity_flags: u8,
+    entity_flags: EntityFlags,
     level: u8, // 0 - 6 - 12
     _pad: [u8; 6],
     tiles: [Gene; S],

@@ -3,6 +3,7 @@ mod free;
 
 use super::entity::{EntityDb, EntityInspector};
 use crate::config::ShahConfig;
+use crate::db::entity::EntityFlags;
 use crate::models::{
     Binary, DbHead, Gene, Performed, ShahMagic, ShahMagicDb, Task, TaskList,
     Worker,
@@ -28,6 +29,16 @@ pub struct SnakeFree {
     capacity: u64,
 }
 
+#[cfg_attr(feature = "serde", shah::flags(inner = u8, serde = true))]
+#[cfg_attr(not(feature = "serde"), shah::flags(inner = u8, serde = false))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
+pub struct SnakeFlags {
+    is_free: bool,
+}
+
 #[derive(crate::ShahSchema)]
 #[crate::model]
 #[derive(Debug, Entity)]
@@ -37,9 +48,9 @@ pub struct SnakeHead {
     pub position: u64,
     pub length: u64,
     growth: u64,
-    entity_flags: u32,
-    #[flags(is_free)]
-    pub flags: u32,
+    entity_flags: EntityFlags,
+    pub flags: SnakeFlags,
+    _pad: [u8; 6],
 }
 
 type SnakeIndexDb = EntityDb<SnakeHead, SnakeHead, (), &'static mut SnakeDb>;
@@ -89,7 +100,7 @@ impl SnakeDb {
 
         let dbs = db.as_static();
         let ei = EntityInspector::new(dbs, |mut db, head: &SnakeHead| {
-            if head.is_free() {
+            if head.flags.is_free() {
                 db.add_free(*head)?;
             }
             Ok(())
@@ -132,7 +143,7 @@ impl SnakeDb {
         buflen: usize,
     ) -> Result<usize, ShahError> {
         self.index.get(gene, head)?;
-        if head.is_free() {
+        if head.flags.is_free() {
             return Err(NotFound::SnakeIsFree)?;
         }
         assert!(head.position >= SnakeHead::N);

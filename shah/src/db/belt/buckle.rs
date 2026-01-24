@@ -26,7 +26,7 @@ impl<
     }
 
     pub fn buckle_set(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {
-        if !buckle.is_alive() {
+        if !buckle.entity_flags().is_alive() {
             log::error!("{} DeadSet: using set to delete", self.ls);
             return Err(SystemError::DeadSet)?;
         }

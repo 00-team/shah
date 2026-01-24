@@ -1,7 +1,6 @@
 use super::{SnakeDb, SnakeHead};
 use crate::{
     NotFound, ShahError, SystemError,
-    db::entity::Entity,
     models::{Binary, Gene},
 };
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -41,7 +40,7 @@ impl SnakeDb {
         &mut self, gene: &Gene, head: &mut SnakeHead, length: u64,
     ) -> Result<(), ShahError> {
         self.index.get(gene, head)?;
-        if head.is_free() {
+        if head.flags.is_free() {
             return Err(NotFound::SnakeIsFree)?;
         }
         assert!(head.position >= SnakeHead::N);
@@ -68,12 +67,12 @@ impl SnakeDb {
         assert!(head.position >= SnakeHead::N);
         assert_ne!(head.capacity, 0);
 
-        if head.is_free() {
+        if head.flags.is_free() {
             log::warn!("freeing already free");
             return Ok(());
         }
 
-        head.set_is_free(true);
+        head.flags.set_is_free(true);
         self.index.set(&mut head)?;
         if let Err(e) = self.add_free(head) {
             log::warn!("add_free failed in free: {e:?}");
@@ -91,8 +90,8 @@ impl SnakeDb {
         }
 
         head.zeroed();
-        head.set_alive(true);
-        head.set_is_free(false);
+        head.entity_flags.set_is_alive(true);
+        head.flags.set_is_free(false);
 
         if let Some(free) = self.take_free(capacity)? {
             head.position = free.position;

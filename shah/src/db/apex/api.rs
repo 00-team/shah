@@ -1,6 +1,5 @@
 use super::{ApexDb, ApexTile, coords::IntoApexCoords};
-use crate::db::entity::Entity;
-use crate::{OptNotFound, ShahError, models::Gene};
+use crate::{OptNotFound, ShahError, db::entity::Entity, models::Gene};
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     ApexDb<LVL, LEN, SIZ>
@@ -61,7 +60,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         for (i, x) in key.key_branch().iter().enumerate() {
             let gene = tile_tree[i].tiles[*x];
             if self.tiles.get(&gene, &mut tile_tree[i + 1]).onf()?.is_none() {
-                tile_tree[i + 1].set_alive(false);
+                tile_tree[i + 1].entity_flags_mut().set_is_alive(false);
                 break;
             }
         }
@@ -70,7 +69,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         for (i, x) in key.key().iter().enumerate().rev() {
             let t = &mut tile_tree[i];
-            if !t.is_alive() {
+            if !t.entity_flags().is_alive() {
                 continue;
             }
             t.tiles[*x].clear();

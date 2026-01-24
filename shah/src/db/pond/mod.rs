@@ -1,5 +1,6 @@
 use super::entity::{EntityDb, EntityItem, EntityKochFrom};
 use crate::BLOCK_SIZE;
+use crate::db::entity::EntityFlags;
 use crate::models::task_list::{Task, TaskList};
 use crate::models::{DeadList, Gene, GeneId};
 
@@ -40,7 +41,7 @@ pub struct ShahOrigin {
     pub tail: Gene,
     pub pond_count: u64,
     pub item_count: u64,
-    entity_flags: u8,
+    entity_flags: EntityFlags,
     _pad: [u8; 7],
     growth: u64,
 }
@@ -72,7 +73,7 @@ pub struct ShahPond {
     pub origin: Gene,
     pub stack: GeneId,
     pub growth: u64,
-    pub entity_flags: u8,
+    pub entity_flags: EntityFlags,
     // NOTE: is_free flags is set but never read
     // #[flags(is_free)]
     // pub flags: u8,

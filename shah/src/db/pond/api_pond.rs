@@ -35,7 +35,7 @@ impl<
     }
 
     pub fn pond_set(&mut self, pond: &mut Pn) -> Result<(), ShahError> {
-        if !pond.is_alive() {
+        if !pond.entity_flags().is_alive() {
             return derr!(self.ls, SystemError::DeadSet);
         }
 
@@ -60,9 +60,9 @@ impl<
 
         *pond.empty_mut() = 0;
         for item in buf.iter_mut() {
-            if item.is_alive() {
+            if item.entity_flags().is_alive() {
                 item.growth_mut().add_assign(1);
-                item.set_alive(false);
+                item.entity_flags_mut().set_is_alive(false);
                 self.item.live -= 1;
             }
             if !item.gene().exhausted() {

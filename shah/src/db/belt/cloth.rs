@@ -1,7 +1,18 @@
 use super::BeltDb;
-use crate::db::entity::Entity;
+use crate::db::entity::{Entity, EntityFlags};
+use crate::models::ShahString;
 use crate::{AsUtf8Str, IsNotFound, OptNotFound, ShahError};
 use crate::{ClientError, Taker, models::Gene};
+
+#[cfg_attr(feature = "serde", shah::flags(inner = u8, serde = true))]
+#[cfg_attr(not(feature = "serde"), shah::flags(inner = u8, serde = false))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
+pub struct ClothFlags {
+    is_end: bool,
+}
 
 #[derive(shah::ShahSchema)]
 #[shah::model]
@@ -13,12 +24,10 @@ pub struct ClothBelt<const S: usize> {
     pub buckle: Gene,
     growth: u64,
     pub length: u16,
-    entity_flags: u8,
-    #[flags(is_end)]
-    flags: u8,
+    entity_flags: EntityFlags,
+    flags: ClothFlags,
     _pad: [u8; 4],
-    #[str]
-    pub data: [u8; S],
+    pub data: ShahString<S>,
 }
 
 #[derive(shah::ShahSchema)]
@@ -32,7 +41,7 @@ pub struct ClothBuckle {
     pub chunks: u64,
     pub owner: Gene,
     pub growth: u64,
-    entity_flags: u8,
+    entity_flags: EntityFlags,
     _pad: [u8; 3],
     pub length: u32,
 }
@@ -44,7 +53,7 @@ impl<const S: usize> BeltClothDb<S> {
         let mut buckle = ClothBuckle::default();
         self.buckle_get(bg, &mut buckle)?;
 
-        let mut data = Vec::with_capacity(buckle.chunks as usize * S);
+        let mut data = Vec::with_capacity(buckle.chunks as usize * S + 10);
 
         let mut gene = buckle.head;
         loop {
@@ -58,9 +67,9 @@ impl<const S: usize> BeltClothDb<S> {
             }
 
             let len = (cloth.length as usize).min(cloth.data.len());
-            data.extend_from_slice(&cloth.data[..len]);
+            data.extend_from_slice(&cloth.data.raw()[..len]);
             gene = cloth.next;
-            if cloth.is_end() {
+            if cloth.flags.is_end() {
                 data.push(0);
                 break;
             }
@@ -82,11 +91,11 @@ impl<const S: usize> BeltClothDb<S> {
         let mut it = data.chunks(S).peekable();
 
         while let Some(x) = it.next() {
-            cloth.data[x.len()..].fill(0);
-            cloth.data[..x.len()].copy_from_slice(x);
+            cloth.data.raw_mut()[x.len()..].fill(0);
+            cloth.data.raw_mut()[..x.len()].copy_from_slice(x);
             cloth.length = x.len() as u16;
-            cloth.set_alive(true);
-            cloth.set_is_end(it.peek().is_none());
+            cloth.entity_flags_mut().set_is_alive(true);
+            cloth.flags.set_is_end(it.peek().is_none());
 
             if gene.is_none() {
                 cloth.gene.clear();
@@ -136,9 +145,9 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
                 break;
             };
             let len = (cloth.length as usize).min(cloth.data.len());
-            data.extend_from_slice(&cloth.data[..len]);
+            data.extend_from_slice(&cloth.data.raw()[..len]);
             gene = cloth.next;
-            if cloth.is_end() {
+            if cloth.flags.is_end() {
                 data.push(0);
                 break;
             }
@@ -162,11 +171,11 @@ impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
         let mut it = data.chunks(S).peekable();
 
         while let Some(x) = it.next() {
-            cloth.data[x.len()..].fill(0);
-            cloth.data[..x.len()].copy_from_slice(x);
+            cloth.data.raw_mut()[x.len()..].fill(0);
+            cloth.data.raw_mut()[..x.len()].copy_from_slice(x);
             cloth.length = x.len() as u16;
-            cloth.set_alive(true);
-            cloth.set_is_end(it.peek().is_none());
+            cloth.entity_flags_mut().set_is_alive(true);
+            cloth.flags.set_is_end(it.peek().is_none());
 
             if gene.is_none() {
                 cloth.gene.clear();

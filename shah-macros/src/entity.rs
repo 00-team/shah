@@ -1,8 +1,6 @@
 use crate::ident;
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
-use quote_into::quote_into;
+use quote::quote;
 
 pub(crate) fn entity(code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::DeriveInput);
@@ -41,27 +39,27 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
         }
     }
 
-    const ENTITY_FLAGS: [&str; 3] = ["alive", "dep_edited", "dep_private"];
-    let mut f = TokenStream2::new();
-    for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
-        let fi = format_ident!("{flag}");
-        let get = format_ident!("is_{flag}");
-        let set = format_ident!("set_{flag}");
-        quote_into! {f +=
-            fn #get(&self) -> bool {
-                (self.#flags_ident & (1 << #i)) == (1 << #i)
-            }
-
-            fn #set(&mut self, #fi: bool) -> &mut Self {
-                if #fi {
-                    self.#flags_ident |= (1 << #i);
-                } else {
-                    self.#flags_ident &= !(1 << #i);
-                }
-                self
-            }
-        };
-    }
+    // const ENTITY_FLAGS: [&str; 3] = ["alive", "dep_edited", "dep_private"];
+    // let mut f = TokenStream2::new();
+    // for (i, flag) in ENTITY_FLAGS.iter().enumerate() {
+    //     let fi = format_ident!("{flag}");
+    //     let get = format_ident!("is_{flag}");
+    //     let set = format_ident!("set_{flag}");
+    //     quote_into! {f +=
+    //         fn #get(&self) -> bool {
+    //             (self.#flags_ident & (1 << #i)) == (1 << #i)
+    //         }
+    //
+    //         fn #set(&mut self, #fi: bool) -> &mut Self {
+    //             if #fi {
+    //                 self.#flags_ident |= (1 << #i);
+    //             } else {
+    //                 self.#flags_ident &= !(1 << #i);
+    //             }
+    //             self
+    //         }
+    //     };
+    // }
 
     quote! {
         #[automatically_derived]
@@ -80,7 +78,12 @@ pub(crate) fn entity(code: TokenStream) -> TokenStream {
                 &mut self.#growth_ident
             }
 
-            #f
+            fn entity_flags(&self) -> &#ci::db::entity::EntityFlags {
+                &self.#flags_ident
+            }
+            fn entity_flags_mut(&mut self) -> &mut #ci::db::entity::EntityFlags {
+                &mut self.#flags_ident
+            }
         }
     }
     .into()

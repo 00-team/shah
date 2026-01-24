@@ -1,4 +1,4 @@
-use crate::{DbError, SHAH_VERSION, ShahError};
+use crate::{DbError, SHAH_VERSION, ShahError, models::ShahString};
 
 #[crate::model]
 #[derive(Debug, PartialEq, Eq)]
@@ -69,8 +69,7 @@ pub struct DbHead {
     pub shah_version: (u16, u16),
     pub db_version: u16,
     pub revision: u16,
-    #[str]
-    name: [u8; 48],
+    name: ShahString<48>,
 }
 
 impl DbHead {
@@ -89,7 +88,7 @@ impl DbHead {
         self.revision = revision;
         self.shah_version = SHAH_VERSION;
         self.db_version = version;
-        self.set_name(name);
+        self.name.set(name);
     }
 
     pub fn check(

@@ -10,6 +10,8 @@ pub use db::{Extra, ExtraRoot};
 const EXTRA_DATA: usize = BLOCK_SIZE * 2 - 3;
 
 pub(crate) mod db {
+    use shah::db::entity::EntityFlags;
+
     use super::*;
 
     #[derive(shah::ShahSchema)]
@@ -21,7 +23,7 @@ pub(crate) mod db {
         pub tail: Gene,
         pub belt_count: u64,
         growth: u64,
-        entity_flags: u8,
+        entity_flags: EntityFlags,
         _pad: [u8; 3],
         pub length: u32,
     }
@@ -36,7 +38,7 @@ pub(crate) mod db {
         pub buckle: Gene,
         growth: u64,
         pub length: u16,
-        entity_flags: u8,
+        entity_flags: EntityFlags,
         pub data: [u8; EXTRA_DATA],
     }
 

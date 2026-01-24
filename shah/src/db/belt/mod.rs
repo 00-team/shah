@@ -1,5 +1,7 @@
 use crate::config::ShahConfig;
-use crate::db::entity::{EntityCount, EntityDb, EntityItem, EntityKochFrom};
+use crate::db::entity::{
+    EntityCount, EntityDb, EntityFlags, EntityItem, EntityKochFrom,
+};
 use crate::models::{Gene, GeneId, Performed, Task, TaskList, Worker};
 use crate::{
     IsNotFound, OptNotFound, PAGE_SIZE, ShahError, SystemError, utils,
@@ -28,7 +30,7 @@ pub struct ShahBuckle {
     pub tail: Gene,
     pub belt_count: u64,
     growth: u64,
-    entity_flags: u8,
+    entity_flags: EntityFlags,
     _pad: [u8; 7],
 }
 

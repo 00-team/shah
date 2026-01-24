@@ -1,9 +1,5 @@
 use super::{FREE_LIST_SIZE, SnakeDb, SnakeFree, TCD};
-use crate::{
-    ShahError,
-    db::{entity::Entity, snake::SnakeHead},
-    models::Gene,
-};
+use crate::{ShahError, db::snake::SnakeHead, models::Gene};
 
 impl SnakeDb {
     pub(super) fn take_free(
@@ -33,7 +29,7 @@ impl SnakeDb {
 
                     let mut disk = SnakeHead::default();
                     self.index.get(&free.gene, &mut disk)?;
-                    if !disk.is_free() {
+                    if !disk.flags.is_free() {
                         log::warn!("free is not even free on the disk :/ wtf");
                         return Ok(None);
                     }
@@ -84,7 +80,7 @@ impl SnakeDb {
 
             let mut disk = SnakeHead::default();
             self.index.get(&free.gene, &mut disk)?;
-            if !disk.is_free() {
+            if !disk.flags.is_free() {
                 log::warn!("free is not even free :/ wtf");
                 return Ok(None);
             }
@@ -241,8 +237,8 @@ impl SnakeDb {
             fdx += 1;
         }
 
-        head.set_is_free(true);
-        head.set_alive(true);
+        head.flags.set_is_free(true);
+        head.entity_flags.set_is_alive(true);
         self.index.set(&mut head)?;
 
         // log::error!("setting a free at: {index} | round_two: {round_two}");

@@ -142,6 +142,10 @@ pub(crate) fn flags(
 
         impl #name {
             #imp
+
+            pub fn clear(&mut self) {
+                self.inner = Default::default();
+            }
         }
 
         impl #ci::models::ShahSchema for #name {

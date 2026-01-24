@@ -11,6 +11,7 @@ use crate::{
 };
 
 #[derive(Default, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
 pub struct GeneId(pub u64);
 
 impl std::fmt::Debug for GeneId {

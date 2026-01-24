@@ -9,6 +9,14 @@ pub struct ShahEnum<I, E> {
     _ph: PhantomData<E>,
 }
 
+impl<I: Copy, E: PartialEq + From<I> + Into<I>> PartialEq<E>
+    for ShahEnum<I, E>
+{
+    fn eq(&self, other: &E) -> bool {
+        self.to_enum() == *other
+    }
+}
+
 impl<I: Display + Copy, E: Copy + From<I> + Into<I> + std::fmt::Debug>
     std::fmt::Debug for ShahEnum<I, E>
 {

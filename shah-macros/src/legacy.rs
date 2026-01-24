@@ -19,6 +19,8 @@ pub(crate) fn legacy(item: syn::ItemMod) -> syn::Result<TokenStream2> {
     let mut kozo: Vec<StructData> = Vec::with_capacity(10);
     let mut kozo_impl_from: HashMap<syn::Ident, Vec<ImplFrom>> = HashMap::new();
 
+    let mut s = TokenStream2::new();
+
     for item in content.iter() {
         match item {
             syn::Item::Struct(s) => {
@@ -41,6 +43,9 @@ pub(crate) fn legacy(item: syn::ItemMod) -> syn::Result<TokenStream2> {
                     kozo_impl_from.insert(impf.ident.clone(), vec![impf]);
                 }
             }
+            syn::Item::Use(u) => {
+                quote_into! {s += #u};
+            }
             _ => return err!(item.span(), "invalid item"),
         }
     }
@@ -48,8 +53,6 @@ pub(crate) fn legacy(item: syn::ItemMod) -> syn::Result<TokenStream2> {
     let Some(base) = base else {
         return err!(item_span, "no struct Base was found");
     };
-
-    let mut s = TokenStream2::new();
 
     for k in kozo.iter_mut() {
         let mut f = TokenStream2::new();

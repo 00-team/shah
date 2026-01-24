@@ -29,6 +29,7 @@ pub struct ClothBelt<const S: usize> {
     flags: ClothFlags,
     #[cfg_attr(feature = "serde", serde(skip))]
     _pad: [u8; 4],
+    #[schema(value_type = String)]
     pub data: ShahString<S>,
 }
 

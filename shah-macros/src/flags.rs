@@ -14,13 +14,20 @@ pub(crate) fn flags(
     // let args = syn::parse::<syn::Meta>(args)?;
     // #[shah::flags(inner = [u8; 32], bits = 2, serde = "both")]
 
+    if !item.attrs.is_empty() {
+        return err!(item.attrs.first().span(), "remove derives");
+    }
+
+    let ci = crate::crate_ident();
+
     let args = parse_args(args)?;
     let vis = item.vis.clone();
     let name = item.ident.clone();
     let inner = &args.inner;
+
     item.ident = format_ident!("{}Info", item.ident);
+
     let info_name = &item.ident;
-    let ci = crate::crate_ident();
 
     let mut imp = TokenStream2::new();
     let mut apply = TokenStream2::new();
@@ -106,7 +113,11 @@ pub(crate) fn flags(
 
         if args.serde {
             if !skip_apply {
-                quote_into! {apply += item.#setter(self.#fname);};
+                quote_into! {apply +=
+                    if let Some(v) = self.#fname {
+                        item.#setter(v);
+                    }
+                };
             }
 
             quote_into! {from_main += #fname: value.#fname(),};
@@ -119,6 +130,14 @@ pub(crate) fn flags(
 
         bit_offset += bits;
     }
+
+    let mut item_input = item.clone();
+    for f in item_input.fields.iter_mut() {
+        let ty = f.ty.clone();
+        f.ty = syn::parse_quote!(Option<#ty>);
+    }
+    item_input.ident = format_ident!("{name}Input");
+    let input_name = &item_input.ident;
 
     let info_name_str = info_name.to_string();
     quote_into! {s +=
@@ -169,16 +188,34 @@ pub(crate) fn flags(
 
     if args.serde {
         quote_into! {s +=
+            #[derive(Debug, Default, serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
+            #[allow(dead_code)]
             #item
 
-            impl #info_name {
+            #[derive(Debug, Default, serde::Deserialize, utoipa::ToSchema)]
+            #[serde(default)]
+            #[allow(dead_code)]
+            #item_input
+
+            impl #input_name {
                 #vis fn apply(&self, item: &mut #name) {
                     #apply
                 }
 
                 #{if do_key_val && let Some(ty) = key_val_ty {quote_into!{s +=
-                    #vis fn key_val(&self) -> [(&'static str, #ty); #key_val_len] {
+                    #vis fn key_val(&self) -> [(&'static str, Option<#ty>); #key_val_len] {
                         [#key_val]
+                    }
+
+                    #vis fn key_val_some(&self) -> Vec<(&'static str, #ty)> {
+                        let kv = self.key_val();
+                        let mut out = Vec::with_capacity(kv.len());
+                        for (k, v) in kv {
+                            let Some(v) = v else {continue};
+                            out.push((k, v));
+                        }
+
+                        out
                     }
                 }}}
 
@@ -205,7 +242,7 @@ pub(crate) fn flags(
                     <#info_name as utoipa::PartialSchema>::schema()
                 }
             }
-            
+
             impl utoipa::ToSchema for #name {
                 fn schemas(
                     schemas: &mut Vec<(

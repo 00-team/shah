@@ -11,8 +11,8 @@ categories.workspace = true
 license-file.workspace = true
 
 [dependencies]
-shah-macros = "1.8.0"
-# shah-macros = { path = "../shah-macros" }
+# shah-macros = "1.8.0"
+shah-macros = { path = "../shah-macros" }
 
 log = "0.4.22"
 libc = "0.2.169"

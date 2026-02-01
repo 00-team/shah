@@ -31,10 +31,6 @@ pub struct SnakeFree {
 
 #[cfg_attr(feature = "serde", shah::flags(inner = u8, serde = true))]
 #[cfg_attr(not(feature = "serde"), shah::flags(inner = u8, serde = false))]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
-)]
 pub struct SnakeFlags {
     is_free: bool,
 }

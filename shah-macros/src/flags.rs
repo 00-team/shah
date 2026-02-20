@@ -217,6 +217,19 @@ pub(crate) fn flags(
 
                         out
                     }
+
+                    #vis fn key_val_exclude(&self, cb: fn(&str) -> bool) -> Vec<(&'static str, #ty)> {
+                        let kv = self.key_val();
+                        let mut out = Vec::with_capacity(kv.len());
+                        for (k, v) in kv {
+                            if cb(k) { continue; }
+                            let Some(v) = v else {continue};
+                            out.push((k, v));
+                        }
+
+                        out
+                    }
+
                 }}}
 
             }

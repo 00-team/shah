@@ -188,11 +188,13 @@ pub(crate) fn flags(
 
     if args.serde {
         quote_into! {s +=
-            #[derive(Debug, Default, serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
+            #[derive(Debug, Default, Clone, Copy)]
+            #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
             #[allow(dead_code)]
             #item
 
-            #[derive(Debug, Default, serde::Deserialize, utoipa::ToSchema)]
+            #[derive(Debug, Default, Clone, Copy)]
+            #[derive(serde::Deserialize, utoipa::ToSchema)]
             #[serde(default)]
             #[allow(dead_code)]
             #item_input

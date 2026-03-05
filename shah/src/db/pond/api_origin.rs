@@ -1,8 +1,8 @@
 use super::{Duck, Origin, Pond, PondDb};
 use crate::db::derr;
-use crate::db::entity::EntityKochFrom;
-use crate::models::Gene;
-use crate::{IsNotFound, ShahError};
+use crate::db::entity::{EntityCount, EntityKochFrom};
+use crate::models::{Gene, GeneId};
+use crate::{IsNotFound, PAGE_SIZE, ShahError};
 use crate::{OptNotFound, SystemError};
 
 impl<
@@ -83,6 +83,28 @@ impl<
         }
 
         self.origin.del(gene, &mut origin)?;
+
+        Ok(())
+    }
+
+    pub fn origin_list(
+        &mut self, id: GeneId, result: &mut [Og; PAGE_SIZE],
+    ) -> Result<usize, ShahError> {
+        self.origin.list(id, result)
+    }
+
+    pub fn origin_count(&mut self) -> Result<EntityCount, ShahError> {
+        self.origin.count()
+    }
+
+    pub fn origin_add(&mut self, origin: &mut Og) -> Result<(), ShahError> {
+        origin.head_mut().clear();
+        origin.tail_mut().clear();
+        *origin.pond_count_mut() = 0;
+        *origin.item_count_mut() = 0;
+        origin.gene_mut().clear();
+
+        self.origin.add(origin)?;
 
         Ok(())
     }

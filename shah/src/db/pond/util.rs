@@ -17,7 +17,7 @@ impl<
 > PondDb<Dk, Pn, Og, DkO, PnO, OgO, DkS, PnS, OgS>
 {
     fn take_free(&mut self) -> Option<Gene> {
-        self.free_list.pop(|_| true)
+        self.free_list.pop()
     }
 
     pub(super) fn add_empty_pond(
@@ -93,6 +93,9 @@ impl<
 
             if temp.empty() > 0 {
                 return Ok(temp);
+            }
+            if self.insert_sequentially {
+                break;
             }
             pond_gene = *temp.past();
         }

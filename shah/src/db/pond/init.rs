@@ -2,10 +2,10 @@ use super::*;
 use crate::ShahError;
 use crate::config::ShahConfig;
 use crate::db::entity::{EntityDb, EntityKochFrom};
+use crate::models::DeadList;
 use crate::models::Worker;
 use crate::models::task_list::{Performed, Task, TaskList};
-use crate::models::{DeadList, Gene};
-use crate::{BLOCK_SIZE, utils};
+use crate::utils;
 
 impl<
     Dk: Duck + EntityKochFrom<DkO, DkS>,
@@ -34,8 +34,8 @@ impl<
         std::fs::create_dir_all(&data_path)?;
 
         let mut db = Self {
-            free_list: DeadList::<Gene, BLOCK_SIZE>::new(),
-            item: EntityDb::<Dk, DkO, DkS>::new(path, revision)?,
+            free_list: DeadList::new(),
+            item: EntityDb::new(path, revision)?,
             pond: EntityDb::new(&format!("{path}/index"), pond_revision)?,
             origin: EntityDb::new(&format!("{path}/origin"), origin_revision)?,
             tasks: TaskList::new([
@@ -43,6 +43,7 @@ impl<
                 Self::work_pond,
                 Self::work_origin,
             ]),
+            insert_sequentially: false,
             ls: format!("<PondDb {path}.{revision} />"),
         };
 

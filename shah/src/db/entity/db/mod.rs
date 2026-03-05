@@ -46,7 +46,7 @@ pub struct EntityDb<
 > {
     file: File,
     pub live: GeneId,
-    dead_list: DeadList<GeneId, BLOCK_SIZE>,
+    dead_list: DeadList<GeneId>,
     revision: u16,
     name: String,
     koch: Option<EntityKoch<T, O, S>>,

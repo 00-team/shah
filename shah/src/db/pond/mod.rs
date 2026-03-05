@@ -1,5 +1,4 @@
 use super::entity::{EntityDb, EntityItem, EntityKochFrom};
-use crate::BLOCK_SIZE;
 use crate::db::entity::EntityFlags;
 use crate::models::task_list::{Task, TaskList};
 use crate::models::{DeadList, Gene, GeneId};
@@ -110,7 +109,8 @@ pub struct PondDb<
     item: EntityDb<Dk, DkO, DkS>,
     pond: EntityDb<Pn, PnO, PnS>,
     origin: EntityDb<Og, OgO, OgS>,
-    free_list: DeadList<Gene, BLOCK_SIZE>,
+    free_list: DeadList<Gene>,
+    insert_sequentially: bool,
     ls: String,
     tasks: TaskList<3, Task<Self>>,
 }

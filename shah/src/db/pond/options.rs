@@ -36,4 +36,8 @@ impl<
     pub fn set_work_iter(&mut self, work_iter: usize) {
         self.item.set_work_iter(work_iter);
     }
+
+    pub fn set_insert_sequentially(&mut self, insert_sequentially: bool) {
+        self.insert_sequentially = insert_sequentially;
+    }
 }

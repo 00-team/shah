@@ -7,7 +7,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         if self.dead_list.disabled() {
             return GeneId(0);
         }
-        self.dead_list.pop(|_| true).unwrap_or_default()
+        self.dead_list.pop().unwrap_or_default()
     }
 
     pub(super) fn dead_add(&mut self, gene: &Gene) {

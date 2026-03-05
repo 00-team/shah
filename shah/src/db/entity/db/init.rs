@@ -24,7 +24,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
         let mut db = Self {
             live: GeneId(0),
-            dead_list: DeadList::<GeneId, BLOCK_SIZE>::new(),
+            dead_list: DeadList::new(),
             file,
             revision,
             name: name.to_string(),

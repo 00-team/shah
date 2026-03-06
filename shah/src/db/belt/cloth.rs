@@ -47,6 +47,12 @@ pub struct ClothBuckle {
     pub length: u32,
 }
 
+impl ClothBuckle {
+    pub fn new(owner: Gene) -> Self {
+        Self { owner, ..Default::default() }
+    }
+}
+
 pub type BeltClothDb<const S: usize> = BeltDb<ClothBelt<S>, ClothBuckle>;
 
 impl<const S: usize> BeltClothDb<S> {

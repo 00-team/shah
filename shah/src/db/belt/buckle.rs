@@ -25,6 +25,16 @@ impl<
         Ok(())
     }
 
+    pub fn buckle_add(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {
+        buckle.head_mut().clear();
+        buckle.tail_mut().clear();
+        *buckle.belt_count_mut() = 0;
+        buckle.gene_mut().clear();
+        self.buckle.add(buckle)?;
+
+        Ok(())
+    }
+
     pub fn buckle_set(&mut self, buckle: &mut Bk) -> Result<(), ShahError> {
         if !buckle.entity_flags().is_alive() {
             log::error!("{} DeadSet: using set to delete", self.ls);

@@ -90,9 +90,6 @@ impl<
                 break;
             }
 
-            if self.path.starts_with("topic") {
-                log::info!("pond: {pond:#?}");
-            }
             if pond.origin().is_some()
                 || pond.next().is_some()
                 || pond.past().is_some()

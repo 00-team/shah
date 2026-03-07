@@ -73,7 +73,7 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
         }
     }
 
-    pub(super) fn read_at(
+    pub(crate) fn read_at(
         &self, entity: &mut T, id: GeneId,
     ) -> Result<(), ShahError> {
         self.read_buf_at(entity, id)

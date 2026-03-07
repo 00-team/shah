@@ -1,7 +1,7 @@
 use super::entity::{EntityDb, EntityItem, EntityKochFrom};
 use crate::db::entity::EntityFlags;
 use crate::models::task_list::{Task, TaskList};
-use crate::models::{DeadList, Gene, GeneId};
+use crate::models::{DeadList, Gene, GeneId, ShahProgress};
 
 use std::fmt::Debug;
 
@@ -112,5 +112,7 @@ pub struct PondDb<
     free_list: DeadList<Gene>,
     insert_sequentially: bool,
     ls: String,
-    tasks: TaskList<3, Task<Self>>,
+    tasks: TaskList<4, Task<Self>>,
+    pond_prog: ShahProgress,
+    path: String,
 }

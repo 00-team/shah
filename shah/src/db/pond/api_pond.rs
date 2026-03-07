@@ -54,7 +54,7 @@ impl<
         self.pond.set_unchecked(pond)
     }
 
-    pub fn pond_free(&mut self, pond: &mut Pn) -> Result<(), ShahError> {
+    pub(super) fn pond_free(&mut self, pond: &mut Pn) -> Result<(), ShahError> {
         let mut buf = [Dk::default(); PAGE_SIZE];
         self.item.list(pond.stack(), &mut buf)?;
 
@@ -74,6 +74,10 @@ impl<
 
         // pond.set_is_free(true);
         *pond.alive_mut() = 0;
+
+        pond.next_mut().clear();
+        pond.past_mut().clear();
+        pond.origin_mut().clear();
 
         self.pond.set(pond)?;
         self.free_list.push(*pond.gene());

@@ -135,6 +135,12 @@ pub struct ClothClient<E: IsNotFound + From<u16> + Copy, const S: usize> {
 }
 
 impl<E: IsNotFound + From<u16> + Copy, const S: usize> ClothClient<E, S> {
+    pub const SIZE: usize = S;
+
+    pub const fn size(&self) -> usize {
+        S
+    }
+
     pub fn get(
         &self, taker: &Taker, buckle_gene: &Gene,
     ) -> Result<String, ClientError<E>> {

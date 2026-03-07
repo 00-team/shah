@@ -114,5 +114,4 @@ pub struct PondDb<
     ls: String,
     tasks: TaskList<4, Task<Self>>,
     pond_prog: ShahProgress,
-    path: String,
 }

@@ -35,7 +35,6 @@ impl<
 
         let mut db = Self {
             free_list: DeadList::new(),
-            path: path.to_string(),
             item: EntityDb::new(path, revision)?,
             pond: EntityDb::new(&format!("{path}/index"), pond_revision)?,
             origin: EntityDb::new(&format!("{path}/origin"), origin_revision)?,

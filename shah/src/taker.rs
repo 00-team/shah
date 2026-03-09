@@ -15,6 +15,12 @@ pub struct Taker {
     elapsed: Mutex<u64>,
 }
 
+impl std::fmt::Debug for Taker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Taker").field("server", &self.server).finish()
+    }
+}
+
 impl Taker {
     pub fn init(server: &str, path: &str) -> std::io::Result<Self> {
         let _ = std::fs::remove_file(path);

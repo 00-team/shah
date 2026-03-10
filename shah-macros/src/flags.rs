@@ -191,6 +191,7 @@ pub(crate) fn flags(
             #[derive(Debug, Default, Clone, Copy)]
             #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
             #[allow(dead_code)]
+            #[serde(default)]
             #item
 
             #[derive(Debug, Default, Clone, Copy)]

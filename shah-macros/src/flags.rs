@@ -187,6 +187,10 @@ pub(crate) fn flags(
     };
 
     if args.serde {
+        for f in item.fields.iter_mut() {
+            f.attrs.push(syn::parse_quote! (#[schema(required)]));
+        }
+
         quote_into! {s +=
             #[derive(Debug, Default, Clone, Copy)]
             #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]

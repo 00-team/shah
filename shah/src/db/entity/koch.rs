@@ -1,4 +1,3 @@
-use std::cell::{RefCell, RefMut};
 use std::fs::File;
 use std::io::{ErrorKind, Seek, SeekFrom};
 use std::marker::PhantomData;
@@ -12,13 +11,11 @@ use crate::{DbError, NotFound, ShahError, SystemError, utils};
 // =========== EntityKochFrom trait ===========
 
 pub trait EntityKochFrom<Old: EntityItem, State = ()>: Sized {
-    fn entity_koch_from(
-        old: Old, state: RefMut<State>,
-    ) -> Result<Self, ShahError>;
+    fn entity_koch_from(old: Old, state: &State) -> Result<Self, ShahError>;
 }
 
 impl<T: EntityItem, S> EntityKochFrom<T, S> for T {
-    fn entity_koch_from(old: T, _: RefMut<S>) -> Result<Self, ShahError> {
+    fn entity_koch_from(old: T, _: &S) -> Result<Self, ShahError> {
         Ok(old)
     }
 }
@@ -33,7 +30,7 @@ where
     New: EntityItem + EntityKochFrom<Old, State>,
 {
     pub from: EntityKochDb<Old>,
-    pub state: RefCell<State>,
+    pub state: State,
     pub total: GeneId,
     // pub prog: u64,
     _new: PhantomData<New>,
@@ -59,7 +56,7 @@ where
             // prog: 0,
             total: from.total,
             from,
-            state: RefCell::new(state),
+            state,
             _new: PhantomData::<New>,
         })
     }
@@ -71,7 +68,7 @@ where
 
         let mut old = Old::default();
         self.from.get_id(gene_id, &mut old)?;
-        New::entity_koch_from(old, self.state.borrow_mut())
+        New::entity_koch_from(old, &self.state)
     }
 
     pub fn get(&self, gene: &Gene) -> Result<New, ShahError> {
@@ -81,7 +78,7 @@ where
 
         let mut old = Old::default();
         self.from.get(gene, &mut old)?;
-        New::entity_koch_from(old, self.state.borrow_mut())
+        New::entity_koch_from(old, &self.state)
     }
 }
 

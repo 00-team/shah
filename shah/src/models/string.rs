@@ -1,8 +1,12 @@
+use crate::models::Binary;
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShahString<const N: usize> {
     inner: [u8; N],
 }
+
+impl<const N: usize> Binary for ShahString<N> {}
 
 impl<const N: usize> ShahString<N> {
     pub(crate) fn raw(&self) -> &[u8; N] {

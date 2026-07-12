@@ -10,19 +10,23 @@ pub fn perms(code: TokenStream) -> TokenStream {
 
     let mut s = TokenStream2::new();
     let mut all = TokenStream2::new();
+    let mut key_val = TokenStream2::new();
     let mut count = 0usize;
 
     for (idx, ident) in idents.iter().enumerate() {
-        if ident.to_string().starts_with('_') {
+        let ident_str = ident.to_string();
+        if ident_str.starts_with('_') {
             continue;
         }
         count += 1;
         let (byte, bit) = (idx / 8, (idx % 8) as u8);
         quote_into! {s += pub const #ident: #ci::models::Perm = (#byte, #bit); };
         quote_into! {all += #ident, };
+        quote_into! {key_val += (#ident_str, #ident), };
     }
 
     quote_into! {s += pub const ALL: [#ci::models::Perm; #count] = [#all]; };
+    quote_into! {s += pub const KEY_VAL: [(&str, #ci::models::Perm); #count] = [#key_val]; };
 
     s.into()
 }

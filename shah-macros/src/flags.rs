@@ -32,6 +32,7 @@ pub(crate) fn flags(
     let mut imp = TokenStream2::new();
     let mut apply = TokenStream2::new();
     let mut from_main = TokenStream2::new();
+    let mut into_main = TokenStream2::new();
     let mut key_val = TokenStream2::new();
 
     let key_val_len = item.fields.len();
@@ -121,6 +122,8 @@ pub(crate) fn flags(
             }
 
             quote_into! {from_main += #fname: value.#fname(),};
+            quote_into! {into_main += fout.#setter(value.#fname);};
+
         }
 
         if do_key_val {
@@ -145,8 +148,8 @@ pub(crate) fn flags(
         #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
         #{if args.serde {
             quote_into! {s +=
-                #[derive(serde::Serialize)]
-                #[serde(into = #info_name_str)]
+                #[derive(serde::Serialize, serde::Deserialize)]
+                #[serde(into = #info_name_str, from = #info_name_str)]
             };
         }}
         #vis struct #name {
@@ -239,6 +242,20 @@ pub(crate) fn flags(
 
                 }}}
 
+            }
+
+            impl From<&#info_name> for #name {
+                fn from(value: &#info_name) -> Self {
+                    let mut fout = Self::default();
+                    #into_main
+                    fout
+                }
+            }
+
+            impl From<#info_name> for #name {
+                fn from(value: #info_name) -> Self {
+                    Self::from(&value)
+                }
             }
 
 

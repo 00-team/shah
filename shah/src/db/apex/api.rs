@@ -1,48 +1,48 @@
-use super::{ApexDb, ApexTile, coords::IntoApexCoords};
-use crate::{OptNotFound, ShahError, db::entity::Entity, models::Gene};
+use super::{ApexDb, ApexTile, ApexTileData, coords::IntoApexCoords};
+use crate::{OptNotFound, ShahError, db::entity::Entity};
 
-impl<const LVL: usize, const LEN: usize, const SIZ: usize>
-    ApexDb<LVL, LEN, SIZ>
+impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
+    ApexDb<LVL, LEN, SIZ, D>
 {
     pub fn get_value<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac,
-    ) -> Result<Gene, ShahError> {
+    ) -> Result<D, ShahError> {
         let key = ac.into()?.full_key()?;
 
-        let mut gene = self.root;
-        let mut tile = ApexTile::<SIZ>::default();
+        let mut data = D::new(self.root);
+        let mut tile = ApexTile::<SIZ, D>::default();
 
         for x in key.key().iter() {
-            self.tiles.get(&gene, &mut tile)?;
-            gene = tile.tiles[*x];
+            self.tiles.get(data.gene(), &mut tile)?;
+            data = tile.tiles[*x];
         }
 
-        Ok(gene)
+        Ok(data)
     }
 
     pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, data: &mut [u8; SIZ],
+        &mut self, ac: Ac, output: &mut [u8; SIZ],
     ) -> Result<usize, ShahError> {
         let key = ac.into()?.display_key();
 
-        let mut gene = self.root;
-        let mut tile = ApexTile::<SIZ>::default();
+        let mut data = D::new(self.root);
+        let mut tile = ApexTile::<SIZ, D>::default();
 
         for x in key.key().iter() {
-            if self.tiles.get(&gene, &mut tile).onf()?.is_none() {
+            if self.tiles.get(data.gene(), &mut tile).onf()?.is_none() {
                 return Ok(0);
             }
-            gene = tile.tiles[*x];
+            data = tile.tiles[*x];
         }
 
         let (last, size) = (key.last(), key.size());
         let list = &tile.tiles[(last * size)..(last + 1) * size];
 
-        data.fill(0);
+        output.fill(0);
         for (i, g) in list.iter().enumerate() {
             let (byte, bit) = (i / 8, i % 8);
             if g.is_some() {
-                data[byte] |= 1 << bit;
+                output[byte] |= 1 << bit;
             }
             // data[i] = g.is_some();
         }
@@ -52,14 +52,19 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
     pub fn void<Ac: IntoApexCoords<LVL, LEN>>(
         &mut self, ac: Ac,
-    ) -> Result<Gene, ShahError> {
+    ) -> Result<D, ShahError> {
         let key = ac.into()?.full_key()?;
-        let mut tile_tree = [ApexTile::<SIZ>::default(); LEN];
+        let mut tile_tree = [ApexTile::<SIZ, D>::default(); LEN];
         self.tiles.keyed(&self.root, &mut tile_tree[0])?;
 
         for (i, x) in key.key_branch().iter().enumerate() {
-            let gene = tile_tree[i].tiles[*x];
-            if self.tiles.get(&gene, &mut tile_tree[i + 1]).onf()?.is_none() {
+            let data = tile_tree[i].tiles[*x];
+            if self
+                .tiles
+                .get(data.gene(), &mut tile_tree[i + 1])
+                .onf()?
+                .is_none()
+            {
                 tile_tree[i + 1].entity_flags_mut().set_is_alive(false);
                 break;
             }
@@ -85,13 +90,13 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     }
 
     pub fn mark<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, value: &Gene,
-    ) -> Result<Option<Gene>, ShahError> {
+        &mut self, ac: Ac, value: &D,
+    ) -> Result<Option<D>, ShahError> {
         assert!(value.is_some(), "use void api for voiding");
         let key = ac.into()?.full_key()?;
 
-        let mut parent = ApexTile::<SIZ>::default();
-        let mut curnet = ApexTile::<SIZ>::default();
+        let mut parent = ApexTile::<SIZ, D>::default();
+        let mut curnet = ApexTile::<SIZ, D>::default();
 
         self.tiles.keyed(&self.root, &mut parent)?;
         // if self.tiles.get(&Gene::ROOT, &mut parent).onf()?.is_none() {
@@ -109,8 +114,8 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
 
         let keykey = key.key();
         for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {
-            let gene = parent.tiles[*x];
-            if self.tiles.get(&gene, &mut curnet).onf()?.is_none() {
+            let data = parent.tiles[*x];
+            if self.tiles.get(data.gene(), &mut curnet).onf()?.is_none() {
                 parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
                 self.tiles.set_unchecked(&mut parent)?;
 
@@ -124,5 +129,40 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
         self.tiles.set_unchecked(&mut parent)?;
 
         Ok(Some(old_value))
+    }
+
+    /// mark the tile if not exists aka if its void
+    pub fn mark_void<Ac: IntoApexCoords<LVL, LEN>>(
+        &mut self, ac: Ac, value: &D,
+    ) -> Result<bool, ShahError> {
+        assert!(value.is_some(), "use void api for voiding");
+        let key = ac.into()?.full_key()?;
+
+        let mut parent = ApexTile::<SIZ, D>::default();
+        let mut curnet = ApexTile::<SIZ, D>::default();
+
+        self.tiles.keyed(&self.root, &mut parent)?;
+
+        let keykey = key.key();
+        for (i, x) in keykey[..keykey.len() - 1].iter().enumerate() {
+            let data = parent.tiles[*x];
+            if self.tiles.get(data.gene(), &mut curnet).onf()?.is_none() {
+                parent.tiles[*x] = self.add(&keykey[i + 1..], *value)?;
+                self.tiles.set_unchecked(&mut parent)?;
+
+                return Ok(false);
+            }
+            parent = curnet;
+        }
+
+        let old_value = parent.tiles[key.leaf()];
+        if old_value.is_some() {
+            return Ok(true);
+        }
+
+        parent.tiles[key.leaf()] = *value;
+        self.tiles.set_unchecked(&mut parent)?;
+
+        Ok(false)
     }
 }

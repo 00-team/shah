@@ -13,27 +13,65 @@ use crate::{
     utils,
 };
 
-#[derive(shah::ShahSchema)]
+pub trait ApexTileData: crate::ShahModel + crate::models::ShahSchema {
+    fn is_some(&self) -> bool;
+    fn is_none(&self) -> bool;
+    fn gene(&self) -> &Gene;
+    fn gene_mut(&mut self) -> &mut Gene;
+    fn new(gene: Gene) -> Self {
+        let mut d = Self::default();
+        d.gene_mut().clone_from(&gene);
+        d
+    }
+    fn clear(&mut self);
+}
+
+impl ApexTileData for Gene {
+    fn gene(&self) -> &Gene {
+        self
+    }
+    fn is_some(&self) -> bool {
+        self.is_some()
+    }
+    fn is_none(&self) -> bool {
+        self.is_none()
+    }
+    fn gene_mut(&mut self) -> &mut Gene {
+        self
+    }
+    fn new(gene: Gene) -> Self {
+        gene
+    }
+    fn clear(&mut self) {
+        self.clear();
+    }
+}
+
 #[shah::model]
-#[derive(Debug, shah::Entity)]
-struct ApexTile<const S: usize> {
+#[derive(Debug, shah::Entity, shah::ShahSchema)]
+struct ApexTile<const S: usize, D: ApexTileData> {
     gene: Gene,
     growth: u64,
     entity_flags: EntityFlags,
     level: u8, // 0 - 6 - 12
     _pad: [u8; 6],
-    tiles: [Gene; S],
+    tiles: [D; S],
 }
 
 #[derive(Debug)]
-pub struct ApexDb<const LVL: usize, const LEN: usize, const SIZ: usize> {
-    tiles: EntityDb<ApexTile<SIZ>>,
+pub struct ApexDb<
+    const LVL: usize,
+    const LEN: usize,
+    const SIZ: usize,
+    D: ApexTileData,
+> {
+    tiles: EntityDb<ApexTile<SIZ, D>>,
     tasks: TaskList<1, Task<Self>>,
     root: Gene,
 }
 
-impl<const LVL: usize, const LEN: usize, const SIZ: usize>
-    ApexDb<LVL, LEN, SIZ>
+impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
+    ApexDb<LVL, LEN, SIZ, D>
 {
     pub fn new(path: &str) -> Result<Self, ShahError> {
         assert!(LVL > 0, "LVL must be at least 1");
@@ -46,7 +84,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
             "SIZ must be equal to: {}",
             1 << (LVL * 2)
         );
-        ApexTile::<SIZ>::__assert_padding();
+        ApexTile::<SIZ, D>::__assert_padding();
 
         let conf = ShahConfig::get();
         let data_path = conf.data_dir.join(path);
@@ -82,21 +120,21 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize>
     //     Ok(Performed(false))
     // }
 
-    fn add(&mut self, tree: &[usize], value: Gene) -> Result<Gene, ShahError> {
-        let mut gene = value;
+    fn add(&mut self, tree: &[usize], value: D) -> Result<D, ShahError> {
+        let mut data = value;
         for (i, x) in tree.iter().rev().enumerate() {
-            let mut tile = ApexTile::<SIZ>::default();
-            tile.tiles[*x] = gene;
+            let mut tile = ApexTile::<SIZ, D>::default();
+            tile.tiles[*x] = data;
             tile.level = ((LEN - i - 1) * LVL) as u8;
             self.tiles.add(&mut tile)?;
-            gene = tile.gene;
+            *data.gene_mut() = tile.gene;
         }
-        Ok(gene)
+        Ok(data)
     }
 }
 
-impl<const LVL: usize, const LEN: usize, const SIZ: usize> Worker<1>
-    for ApexDb<LVL, LEN, SIZ>
+impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
+    Worker<1> for ApexDb<LVL, LEN, SIZ, D>
 {
     fn tasks(&mut self) -> &mut TaskList<1, Task<Self>> {
         &mut self.tasks

@@ -1,10 +1,10 @@
 pub mod db {
-    use shah::{ShahError, db::apex::ApexDb};
+    use shah::{ShahError, db::apex::ApexDb, models::Gene};
 
     #[derive(Debug)]
     pub struct MapDb {
         #[allow(dead_code)]
-        pub apex: ApexDb<6, 3, 4096>,
+        pub apex: ApexDb<6, 3, 4096, Gene>,
     }
 
     impl MapDb {

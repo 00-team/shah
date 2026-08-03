@@ -72,6 +72,7 @@ struct WaterfallMeta {
     count: u64,
 }
 
+#[derive(Debug)]
 pub struct WaterfallDb<
     Key: KayakKey,
     Val: ShahModel + ShahSchema,

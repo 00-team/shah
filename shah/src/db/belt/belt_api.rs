@@ -175,6 +175,7 @@ impl<
         }
 
         *buckle.tail_mut() = *belt.gene();
+        *buckle.belt_count_mut() = buckle.belt_count().saturating_add(1);
         self.belt.set_unchecked(belt)?;
         self.buckle.set_unchecked(&mut buckle)?;
 

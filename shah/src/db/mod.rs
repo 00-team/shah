@@ -5,6 +5,7 @@ pub mod pond;
 pub mod snake;
 pub mod trie;
 pub mod trie_const;
+pub mod waterfall;
 
 macro_rules! derr {
     ($ls:expr, $err:expr) => {{

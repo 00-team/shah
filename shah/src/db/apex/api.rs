@@ -1,5 +1,5 @@
 use super::{ApexDb, ApexTile, ApexTileData, coords::IntoApexCoords};
-use crate::{OptNotFound, ShahError, db::entity::Entity};
+use crate::{OptNotFound, ShahError, db::entity::Entity, models::Binary};
 
 impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
     ApexDb<LVL, LEN, SIZ, D>
@@ -21,7 +21,7 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
     }
 
     pub fn get_display<Ac: IntoApexCoords<LVL, LEN>>(
-        &mut self, ac: Ac, output: &mut [u8; SIZ],
+        &mut self, ac: Ac, output: &mut [D; SIZ],
     ) -> Result<usize, ShahError> {
         let key = ac.into()?.display_key();
 
@@ -38,12 +38,19 @@ impl<const LVL: usize, const LEN: usize, const SIZ: usize, D: ApexTileData>
         let (last, size) = (key.last(), key.size());
         let list = &tile.tiles[(last * size)..(last + 1) * size];
 
-        output.fill(0);
-        for (i, g) in list.iter().enumerate() {
-            let (byte, bit) = (i / 8, i % 8);
-            if g.is_some() {
-                output[byte] |= 1 << bit;
-            }
+        // println!(
+        //     "last: {last} | size: {size} | SIZ: {SIZ} | list.len: {}",
+        //     list.len()
+        // );
+
+        // output.fill(0);
+        output.zeroed();
+        for (i, d) in list.iter().enumerate() {
+            output[i] = *d;
+            // let (byte, bit) = (i / 8, i % 8);
+            // if g.is_some() {
+            //     output[byte] |= 1 << bit;
+            // }
             // data[i] = g.is_some();
         }
 

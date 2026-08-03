@@ -20,7 +20,7 @@ pub(crate) mod db {
 
         fn convert(&self, key: Self::Item<'_>) -> Result<TrieKey, ShahError> {
             if key.is_empty() {
-                return Err(SystemError::TrieKeyEmpty)?;
+                return Err(SystemError::KeyEmpty)?;
             }
 
             fn cv(c: char) -> Result<usize, ShahError> {

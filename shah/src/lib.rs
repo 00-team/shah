@@ -29,6 +29,18 @@ pub const ORDER_BODY_SIZE: usize = BLOCK_SIZE * 16;
 use std::fmt::Debug;
 pub trait ShahModel: models::Binary + Default + Debug {}
 
+macro_rules! impl_model {
+    ($($ty:ty),*) => {
+        $(impl ShahModel for $ty {})*
+    };
+}
+
+impl_model! {
+    u8, u16, u32, u64, usize,
+    i8, i16, i32, i64, isize,
+    f32, f64, bool
+}
+
 #[allow(unused_extern_crates)]
 extern crate self as shah;
 

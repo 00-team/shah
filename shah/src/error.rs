@@ -160,7 +160,7 @@ pub enum SystemError {
     DeadSet,
     SendTimeOut,
     PondNoEmptySlotWasFound,
-    TrieKeyEmpty,
+    KeyEmpty,
     BadCoords,
 }
 

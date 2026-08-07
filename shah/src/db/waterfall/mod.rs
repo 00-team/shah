@@ -363,7 +363,13 @@ impl<Key: KayakKey, Val: ShahModel + ShahSchema, const LEN: usize>
 
             if let Some(i) = idx {
                 let value = kayak.riders[i].value;
-                kayak.riders.copy_within(i + 1..kayak.count as usize, i);
+                let len = kayak.count as usize;
+
+                if i + 1 < len && len > 1 {
+                    kayak.riders[i] = kayak.riders[len - 1];
+                }
+
+                // kayak.riders.copy_within(i + 1..kayak.count as usize, i);
                 kayak.count -= 1;
                 self.kayak.set(&mut kayak)?;
                 self.meta.count -= 1;

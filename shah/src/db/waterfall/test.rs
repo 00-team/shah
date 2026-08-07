@@ -1,7 +1,10 @@
 #[cfg(test)]
 mod test {
     use crate::db::waterfall::*;
-    use std::{collections::HashMap, time::Instant};
+    use std::{
+        collections::{HashMap, HashSet},
+        time::Instant,
+    };
 
     #[test]
     fn test() -> Result<(), ShahError> {
@@ -43,13 +46,23 @@ mod test {
 
         println!("deleting");
         let start = Instant::now();
-        for (k, v) in check.iter() {
-            assert_eq!(&db.del(k)?, v);
+        let mut deleted = HashSet::with_capacity(check.len() / 10);
+        for (k, v) in check.clone() {
+            if rand_u64() % 10 != 7 {
+                continue;
+            }
+
+            check.remove(&k);
+            deleted.insert(k);
+            assert_eq!(db.del(&k)?, v);
         }
         println!("{} delete took: {:?}", check.len(), start.elapsed());
 
-        for k in check.keys() {
-            assert!(&db.get(k).onf()?.is_none());
+        for (k, v) in check.iter() {
+            assert_eq!(&db.get(k)?, v);
+        }
+        for k in deleted {
+            assert!(db.get(&k).onf()?.is_none());
         }
 
         Ok(())

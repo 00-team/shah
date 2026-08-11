@@ -100,10 +100,12 @@ pub(crate) fn falloc(file: &File, off: u64, len: u64) -> Result<(), ShahError> {
 
 pub(crate) fn validate_db_name(name: &str) -> Result<(), ShahError> {
     if name.is_empty() || name.len() > 64 {
+        log::error!("name is empty or bigger than 64 characters");
         return Err(DbError::InvalidDbName)?;
     }
     for c in name.chars() {
         if !c.is_ascii_alphanumeric() && c != '-' {
+            log::error!("bad char: `{c}` in db name!");
             return Err(DbError::InvalidDbName)?;
         }
     }

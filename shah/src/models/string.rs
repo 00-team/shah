@@ -1,10 +1,15 @@
 use crate::models::Binary;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShahString<const N: usize> {
     inner: [u8; N],
+}
+
+impl<const N: usize> std::borrow::Borrow<str> for ShahString<N> {
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
 }
 
 impl<const N: usize> Binary for ShahString<N> {}

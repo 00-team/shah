@@ -67,7 +67,7 @@ pub(crate) fn legacy(item: syn::ItemMod) -> syn::Result<TokenStream2> {
         quote_into!(s += #a pub struct #ki {#f});
     }
 
-    for (_, kifs) in kozo_impl_from.iter() {
+    for kifs in kozo_impl_from.values() {
         for ImplFrom { ident, from, statements, fields } in kifs.iter() {
             let mut sm = TokenStream2::new();
             let mut ff = TokenStream2::new();

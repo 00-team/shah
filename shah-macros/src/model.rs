@@ -79,28 +79,36 @@ pub(crate) fn model(mut item: syn::ItemStruct) -> syn::Result<TokenStream2> {
         }
     }
 
-    let mut default_impl = TokenStream2::new();
-    for f in item.fields.iter() {
-        let fi = &f.ident;
-        match &f.ty {
+    fn ty_to_def(ty: &syn::Type, ts: &mut TokenStream2) {
+        match ty {
             syn::Type::Path(_) => {
-                quote_into!(default_impl += #fi: ::core::default::Default::default(),)
+                quote_into!(ts += ::core::default::Default::default())
             }
             syn::Type::Array(a) => {
                 let len = &a.len;
                 let el = &a.elem;
                 // let at = &path(&a.elem).path.segments[0].ident;
-                quote_into!(default_impl += #fi: [<#el>::default(); #len],)
+                quote_into!(ts += [#{ty_to_def(el, ts)}; #len])
             }
             syn::Type::Tuple(t) => {
-                quote_into! {default_impl += #fi: (#{
-                    t.elems.iter().for_each(|e| quote_into!{default_impl += <#e>::default(),})
-                }),}
+                quote_into! {ts += (#{
+                    t.elems.iter().for_each(|e| {
+                        ty_to_def(e, ts);
+                        quote_into!(ts += ,);
+                        // quote_into!{ts += <#e>::default(),}
+                    })
+                })}
             }
             t => {
                 panic!("unknown type for default impl: {}", t.to_token_stream())
             }
         }
+    }
+
+    let mut default_impl = TokenStream2::new();
+    for f in item.fields.iter() {
+        let fi = &f.ident;
+        quote_into!(default_impl += #fi: #{ty_to_def(&f.ty, default_impl)},)
     }
 
     let mut s = quote! {

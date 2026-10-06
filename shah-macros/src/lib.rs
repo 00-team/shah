@@ -1,6 +1,7 @@
 use syn::parse_quote;
 use utils::traitor::{Traitor, TraitorField};
 
+mod add_assign;
 mod api;
 mod command;
 mod entity;
@@ -141,7 +142,6 @@ pub fn model(_args: TokenStream, code: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn flags(args: TokenStream, code: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(code as syn::ItemStruct);
-    let args = syn::parse_macro_input!(args with flags::Args::parse_terminated);
     flags::flags(args, item)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
@@ -254,6 +254,14 @@ pub fn origin(code: TokenStream) -> TokenStream {
         ],
     );
     tr.derive(inp).unwrap_or_else(syn::Error::into_compile_error).into()
+}
+
+#[proc_macro_derive(ShahAddAssign)]
+pub fn add_assign(code: TokenStream) -> TokenStream {
+    let item = syn::parse_macro_input!(code as syn::ItemStruct);
+    add_assign::add_assign(item)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_derive(ShahSchema)]

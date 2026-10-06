@@ -8,7 +8,7 @@ pub(crate) type Args =
     syn::punctuated::Punctuated<syn::MetaNameValue, syn::Token![,]>;
 
 pub(crate) fn flags(
-    args: Args, mut item: syn::ItemStruct,
+    attrs: proc_macro::TokenStream, mut item: syn::ItemStruct,
 ) -> syn::Result<TokenStream2> {
     let mut s = TokenStream2::new();
     // let args = syn::parse::<syn::Meta>(args)?;
@@ -20,7 +20,7 @@ pub(crate) fn flags(
 
     let ci = crate::crate_ident();
 
-    let args = parse_args(args)?;
+    let args = parse_args(attrs)?;
     let vis = item.vis.clone();
     let name = item.ident.clone();
     let inner = &args.inner;
@@ -123,7 +123,6 @@ pub(crate) fn flags(
 
             quote_into! {from_main += #fname: value.#fname(),};
             quote_into! {into_main += fout.#setter(value.#fname);};
-
         }
 
         if do_key_val {
@@ -141,6 +140,21 @@ pub(crate) fn flags(
     }
     item_input.ident = format_ident!("{name}Input");
     let input_name = &item_input.ident;
+
+    let item_stats = if let Some(sty) = &args.stats {
+        let mut item_stats = item.clone();
+        let mut stats_from = TokenStream2::new();
+        for f in item_stats.fields.iter_mut() {
+            let fi = &f.ident;
+            let tp = syn::TypePath { path: sty.clone(), qself: None };
+            f.ty = syn::Type::Path(tp);
+            quote_into!(stats_from += #fi: value.#fi.into(),);
+        }
+        item_stats.ident = format_ident!("{name}Stats");
+        Some((item_stats, stats_from))
+    } else {
+        None
+    };
 
     let info_name_str = info_name.to_string();
     quote_into! {s +=
@@ -293,6 +307,32 @@ pub(crate) fn flags(
         };
     }
 
+    let Some((item_stats, stats_from)) = item_stats else { return Ok(s) };
+    let stats_name = &item_stats.ident;
+
+    quote_into!(s +=
+        #[derive(Debug, Default, Clone, Copy, shah::ShahAddAssign)]
+        #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
+        #item_stats
+
+        impl From<&#name> for #stats_name {
+            fn from(value: &#name) -> Self {
+                Self { #stats_from }
+            }
+        }
+
+        impl #stats_name {
+            #vis fn add(&mut self, from: &#name) {
+                *self += Self::from(from);
+            }
+
+            #vis fn sub(&mut self, from: &#name) {
+                *self -= Self::from(from);
+            }
+        }
+
+    );
+
     Ok(s)
 }
 
@@ -300,41 +340,49 @@ struct ParsedArgs {
     inner: syn::Type,
     bits: usize,
     serde: bool,
+    stats: Option<syn::Path>,
     max_bits: usize,
     is_array: bool,
 }
 
-fn parse_args(args: Args) -> syn::Result<ParsedArgs> {
+fn parse_args(attrs: proc_macro::TokenStream) -> syn::Result<ParsedArgs> {
     let mut pa = ParsedArgs {
         inner: syn::parse_quote!(u32),
         bits: 1,
         serde: true,
         max_bits: 32,
+        stats: None,
         is_array: false,
     };
 
-    for a in args {
-        const KEY_ERR: &str = "key must be one of: inner,bits,serde";
-        let Some(id) = a.path.get_ident() else {
-            return err!(a.path.span(), KEY_ERR);
+    let parser = syn::meta::parser(|m| {
+        let Some(ident) = m.path.get_ident() else {
+            return Err(m.error("no key"));
         };
-        match id.to_string().as_str() {
+
+        match ident.to_string().as_str() {
+            "bits" => {
+                let lit: syn::LitInt = m.value()?.parse()?;
+                pa.bits = lit.base10_parse()?;
+            }
             "inner" => {
-                match a.value {
-                    syn::Expr::Repeat(v) => {
-                        let syn::Expr::Path(p) = *v.expr else {
+                let ty: syn::Type = m.value()?.parse()?;
+                match ty {
+                    syn::Type::Array(v) => {
+                        let syn::Type::Path(p) = *v.elem else {
                             return err!(v.span(), "invalid array type");
                         };
                         if !p.path.is_ident("u8") {
                             return err!(p.span(), "array type must be u8");
                         }
-                        let syn::Expr::Lit(lit) = *v.len else {
+
+                        let syn::Expr::Lit(lit) = &v.len else {
                             return err!(
                                 v.len.span(),
                                 "array len must be literal"
                             );
                         };
-                        let syn::Lit::Int(int) = lit.lit else {
+                        let syn::Lit::Int(int) = &lit.lit else {
                             return err!(
                                 lit.span(),
                                 "only numbers are allowed"
@@ -349,7 +397,7 @@ fn parse_args(args: Args) -> syn::Result<ParsedArgs> {
                         //     path: p.path,
                         // });
                     }
-                    syn::Expr::Path(v) => {
+                    syn::Type::Path(v) => {
                         const E: &str = "type must be a u8,u16,u32 or u64";
                         let Some(tp) = v.path.get_ident() else {
                             return err!(v.span(), E);
@@ -374,37 +422,20 @@ fn parse_args(args: Args) -> syn::Result<ParsedArgs> {
                     }
                 };
             }
-            "bits" => {
-                let syn::Expr::Lit(lit) = a.value else {
-                    return err!(a.value.span(), "bits must be a int literal");
-                };
-                let syn::Lit::Int(int) = lit.lit else {
-                    return err!(lit.span(), "only numbers are allowed");
-                };
-                pa.bits = int.base10_parse::<usize>()?;
-            }
             "serde" => {
-                let syn::Expr::Lit(lit) = a.value else {
-                    return err!(
-                        a.value.span(),
-                        "serde must be a bool literal"
-                    );
-                };
-                let syn::Lit::Bool(val) = lit.lit else {
-                    return err!(lit.span(), "only bool are allowed");
-                };
-                pa.serde = val.value;
+                let lit: syn::LitBool = m.value()?.parse()?;
+                pa.serde = lit.value;
             }
-            k => {
-                return err!(
-                    a.path.span(),
-                    format!(
-                        "unknown key of: {k}, must be one of: inner,bits,serde"
-                    )
-                );
+            "stats" => {
+                pa.stats = Some(m.value()?.parse()?);
             }
+            _ => return Err(m.error("invalid key")),
         }
-    }
+
+        Ok(())
+    });
+
+    syn::parse::Parser::parse(parser, attrs)?;
 
     Ok(pa)
 }

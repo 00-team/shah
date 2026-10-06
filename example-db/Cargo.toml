@@ -12,3 +12,6 @@ rand = "0.8.5"
 # [lints.rust]
 # dead_code = "allow"
 # unused = "allow"
+
+[lints.clippy]
+needless_return_with_question_mark = "allow"

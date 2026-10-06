@@ -148,7 +148,7 @@ pub(crate) fn flags(
             let fi = &f.ident;
             let tp = syn::TypePath { path: sty.clone(), qself: None };
             f.ty = syn::Type::Path(tp);
-            quote_into!(stats_from += #fi: value.#fi.into(),);
+            quote_into!(stats_from += #fi: value.#fi().into(),);
         }
         item_stats.ident = format_ident!("{name}Stats");
         Some((item_stats, stats_from))
@@ -311,7 +311,9 @@ pub(crate) fn flags(
     let stats_name = &item_stats.ident;
 
     quote_into!(s +=
-        #[derive(Debug, Default, Clone, Copy, shah::ShahAddAssign)]
+        #[shah::model]
+        #[derive(Debug)]
+        #[derive(shah::ShahAddAssign, shah::ShahSchema)]
         #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
         #item_stats
 

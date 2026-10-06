@@ -5,7 +5,8 @@ use std::os::unix::fs::FileExt;
 
 use super::{ENTITY_META, EntityHead, EntityItem};
 use crate::config::ShahConfig;
-use crate::models::{Binary, Gene, GeneId};
+use crate::db::entity::{ENTITY_META_V1, EntityHeadV1};
+use crate::models::{Binary, DbHead, Gene, GeneId};
 use crate::{DbError, NotFound, ShahError, SystemError, utils};
 
 // =========== EntityKochFrom trait ===========
@@ -91,6 +92,7 @@ pub struct EntityKochDb<T: EntityItem> {
     file: File,
     revision: u16,
     total: GeneId,
+    meta_offset: u64,
     ls: String,
     _e: PhantomData<T>,
 }
@@ -119,6 +121,7 @@ impl<T: EntityItem> EntityKochDb<T> {
             file,
             revision,
             total: GeneId(0),
+            meta_offset: 0,
             ls: format!("<EntityKochDb {name}.{revision}>"),
             _e: PhantomData::<T>,
         };
@@ -134,7 +137,7 @@ impl<T: EntityItem> EntityKochDb<T> {
 
     fn init(&mut self) -> Result<(), ShahError> {
         let file_size = self.file_size()?;
-        if file_size < ENTITY_META + T::N {
+        if file_size < ENTITY_META_V1 + T::N {
             log::error!("{} db content is not valid", self.ls);
             return Err(DbError::InvalidDbContent)?;
         }
@@ -146,10 +149,21 @@ impl<T: EntityItem> EntityKochDb<T> {
         Ok(())
     }
 
-    fn check_head(&self) -> Result<(), ShahError> {
+    fn check_head(&mut self) -> Result<(), ShahError> {
+        let mut db_head = DbHead::default();
+        self.file.read_exact_at(db_head.as_binary_mut(), 0)?;
+
+        if db_head.db_version == 1 {
+            let mut head = EntityHeadV1::default();
+            self.file.read_exact_at(head.as_binary_mut(), 0)?;
+            self.meta_offset = ENTITY_META_V1;
+            head.check::<T>(self.revision, &self.ls)?;
+            return Ok(());
+        }
+
+        self.meta_offset = ENTITY_META;
         let mut head = EntityHead::default();
         self.file.read_exact_at(head.as_binary_mut(), 0)?;
-
         head.check::<T>(self.revision, &self.ls)?;
 
         Ok(())
@@ -161,14 +175,14 @@ impl<T: EntityItem> EntityKochDb<T> {
     //     Ok(())
     // }
 
-    fn id_to_pos(id: GeneId) -> u64 {
-        ENTITY_META + (id * T::N).0
+    fn id_to_pos(&self, id: GeneId) -> u64 {
+        self.meta_offset + (id * T::N).0
     }
 
     pub fn read_buf_at<B: Binary>(
         &self, buf: &mut B, id: GeneId,
     ) -> Result<(), ShahError> {
-        let pos = Self::id_to_pos(id);
+        let pos = self.id_to_pos(id);
         match self.file.read_exact_at(buf.as_binary_mut(), pos) {
             Ok(_) => Ok(()),
             Err(e) => match e.kind() {

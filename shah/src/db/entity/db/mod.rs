@@ -1,6 +1,7 @@
 use std::cell::{RefCell, RefMut};
 use std::marker::PhantomData;
 use std::ops::AddAssign;
+use std::path::PathBuf;
 use std::{
     fs::File,
     io::{ErrorKind, Seek, SeekFrom},
@@ -45,6 +46,7 @@ pub struct EntityDb<
     Is = (),
 > {
     file: File,
+    path: PathBuf,
     pub live: GeneId,
     dead_list: DeadList<GeneId>,
     revision: u16,

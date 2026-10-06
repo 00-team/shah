@@ -144,14 +144,18 @@ pub(crate) fn flags(
     let item_stats = if let Some(sty) = &args.stats {
         let mut item_stats = item.clone();
         let mut stats_from = TokenStream2::new();
+        let mut stats_list = TokenStream2::new();
         for f in item_stats.fields.iter_mut() {
-            let fi = &f.ident;
+            let fi = f.ident.as_ref().unwrap();
+            let fis = fi.to_string();
             let tp = syn::TypePath { path: sty.clone(), qself: None };
             f.ty = syn::Type::Path(tp);
             quote_into!(stats_from += #fi: value.#fi().into(),);
+            quote_into!(stats_list += (#fis, &mut self.#fi),);
         }
         item_stats.ident = format_ident!("{name}Stats");
-        Some((item_stats, stats_from))
+
+        Some((item_stats, stats_from, sty, stats_list))
     } else {
         None
     };
@@ -307,8 +311,11 @@ pub(crate) fn flags(
         };
     }
 
-    let Some((item_stats, stats_from)) = item_stats else { return Ok(s) };
+    let Some((item_stats, stats_from, sty, stats_list)) = item_stats else {
+        return Ok(s);
+    };
     let stats_name = &item_stats.ident;
+    let fields_len = Literal::usize_unsuffixed(item_stats.fields.len());
 
     quote_into!(s +=
         #[shah::model]
@@ -330,6 +337,10 @@ pub(crate) fn flags(
 
             #vis fn sub(&mut self, from: &#name) {
                 *self -= Self::from(from);
+            }
+
+            #vis fn list(&mut self) -> [(&'static str, &mut #sty); #fields_len] {
+                [#stats_list]
             }
         }
 

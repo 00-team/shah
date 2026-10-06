@@ -15,15 +15,17 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
         std::fs::create_dir_all(&data_path)?;
 
+        let file_path = data_path.join(format!("{name}.{revision}.shah"));
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(data_path.join(format!("{name}.{revision}.shah")))?;
+            .open(&file_path)?;
 
         let mut db = Self {
             live: GeneId(0),
+            path: file_path,
             dead_list: DeadList::new(),
             file,
             revision,
@@ -77,13 +79,11 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
     }
 
     fn init_head(&mut self) -> Result<(), ShahError> {
-        let mut head = EntityHead::default();
-        if let Err(e) = self.file.read_exact_at(head.as_binary_mut(), 0) {
-            if e.kind() != ErrorKind::UnexpectedEof {
-                log::error!("{} read error: {e:?}", self.ls);
-                return Err(e)?;
-            }
+        log::info!("init head of {}", self.ls);
+        let mut db_head = DbHead::default();
 
+        let write_head = |file: &mut File| -> Result<(), ShahError> {
+            let mut head = EntityHead::default();
             head.db_head.init(
                 ENTITY_MAGIC,
                 self.revision,
@@ -93,13 +93,58 @@ impl<S, T: EntityItem + EntityKochFrom<O, S>, O: EntityItem, Is: 'static>
 
             head.item_size = T::N;
 
-            let svec = T::shah_schema().encode();
+            let svec = T::shah_schema().encode_all();
+            assert!(
+                head.schema.len() > svec.len(),
+                "fuck. entity schema len is small :/"
+            );
+            head.schema_len = svec.len() as u64;
             head.schema[0..svec.len()].clone_from_slice(&svec);
 
-            self.file.write_all_at(head.as_binary(), 0)?;
+            file.write_all_at(head.as_binary(), 0)?;
+
+            Ok(())
+        };
+
+        if let Err(e) = self.file.read_exact_at(db_head.as_binary_mut(), 0) {
+            if e.kind() != ErrorKind::UnexpectedEof {
+                log::error!("{} read error: {e:?}", self.ls);
+                return Err(e)?;
+            }
+
+            write_head(&mut self.file)?;
 
             return Ok(());
         }
+
+        if db_head.db_version == 1 {
+            let mut head = EntityHeadV1::default();
+            self.file.read_exact_at(head.as_binary_mut(), 0)?;
+            head.check::<T>(self.revision, &self.ls)?;
+
+            let ev1_path = self.path.with_added_extension("ev1");
+            std::fs::rename(&self.path, ev1_path)?;
+
+            let mut new_file = std::fs::OpenOptions::new()
+                .write(true)
+                .read(true)
+                .create_new(true)
+                .open(&self.path)?;
+
+            write_head(&mut new_file)?;
+
+            self.file.seek(SeekFrom::Start(EntityHeadV1::N))?;
+            new_file.seek(SeekFrom::Start(EntityHead::N))?;
+
+            std::io::copy(&mut self.file, &mut new_file)?;
+
+            self.file = new_file;
+
+            return Ok(());
+        }
+
+        let mut head = EntityHead::default();
+        self.file.read_exact_at(head.as_binary_mut(), 0)?;
 
         head.check::<T>(self.revision, &self.ls)?;
 

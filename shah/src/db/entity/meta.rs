@@ -5,16 +5,54 @@ use crate::models::{
 use crate::{DbError, ShahError};
 
 pub const ENTITY_META: u64 = EntityHead::N + ShahProgress::N;
-pub const ENTITY_VERSION: u16 = 1;
+pub const ENTITY_META_V1: u64 = EntityHeadV1::N + ShahProgress::N;
+pub const ENTITY_VERSION: u16 = 2;
 pub const ENTITY_MAGIC: ShahMagic =
     ShahMagic::new_const(ShahMagicDb::Entity as u16);
+
+#[crate::model]
+#[derive(Debug)]
+pub struct EntityHeadV1 {
+    pub db_head: DbHead,
+    pub item_size: u64,
+    pub schema: [u8; 4096],
+}
+
+impl EntityHeadV1 {
+    pub fn check<T: EntityItem>(
+        &self, revision: u16, ls: &str,
+    ) -> Result<(), ShahError> {
+        log::debug!("v1 head check: {ls}");
+        self.db_head.check(ls, ENTITY_MAGIC, revision, 1)?;
+
+        if self.item_size != T::N {
+            log::error!(
+                "{ls} schema.item_size != current item size. {} != {}",
+                self.item_size,
+                T::N
+            );
+            return Err(DbError::InvalidDbSchema)?;
+        }
+
+        let schema = Schema::decode(&self.schema, false)?;
+        if schema != T::shah_schema() {
+            log::error!(
+                "{ls} mismatch schema. did you forgot to update the revision?"
+            );
+            return Err(DbError::InvalidDbSchema)?;
+        }
+
+        Ok(())
+    }
+}
 
 #[crate::model]
 #[derive(Debug)]
 pub struct EntityHead {
     pub db_head: DbHead,
     pub item_size: u64,
-    pub schema: [u8; 4096],
+    pub schema_len: u64,
+    pub schema: [u8; 4096 * 16],
 }
 
 impl EntityHead {
@@ -32,7 +70,8 @@ impl EntityHead {
             return Err(DbError::InvalidDbSchema)?;
         }
 
-        let schema = Schema::decode(&self.schema)?;
+        let sml = self.schema.len().min(self.schema_len as usize);
+        let schema = Schema::decode(&self.schema[..sml], true)?;
         if schema != T::shah_schema() {
             log::error!(
                 "{ls} mismatch schema. did you forgot to update the revision?"

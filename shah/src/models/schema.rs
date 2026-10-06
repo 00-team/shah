@@ -62,7 +62,7 @@ impl PartialEq for Schema {
 }
 
 impl Schema {
-    pub fn encode(&self) -> Vec<u8> {
+    fn encode(&self) -> Vec<u8> {
         let mut out = vec![self.enum_code()];
 
         fn check_schema(out: &mut Vec<u8>, schema: &Schema) {
@@ -101,7 +101,15 @@ impl Schema {
             }
             _ => {}
         }
+
         out
+    }
+
+    pub fn encode_all(&self) -> Vec<u8> {
+        let out = self.encode();
+        let zo = zstd::encode_all(out.as_slice(), 5).expect("zstd failed");
+        log::debug!("schema before: {} -> {}", out.len(), zo.len());
+        zo
     }
 
     pub fn size(&self) -> usize {
@@ -196,8 +204,20 @@ impl Schema {
         }
     }
 
-    pub fn decode(value: &[u8]) -> Result<Self, ShahError> {
-        let Some(schema) = Self::from_iter(&mut value.iter()) else {
+    pub fn decode(value: &[u8], decode_zstd: bool) -> Result<Self, ShahError> {
+        let result = if decode_zstd {
+            let Ok(value) = zstd::decode_all(value) else {
+                log::error!("invalid zstd schema");
+                return Err(DbError::InvalidSchemaData)?;
+            };
+
+            Self::from_iter(&mut value.iter())
+        } else {
+            Self::from_iter(&mut value.iter())
+        };
+
+        let Some(schema) = result else {
+            log::error!("invalid schema");
             return Err(DbError::InvalidSchemaData)?;
         };
         Ok(schema)

@@ -1,6 +1,6 @@
 [package]
 name = "shah"
-version = "1.28.0"
+version = "1.29.0"
 description = "custom database"
 publish = true
 readme.workspace = true

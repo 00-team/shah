@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{backtrace::Backtrace, convert::Infallible};
 
 #[crate::model]
 #[derive(Debug)]
@@ -166,7 +166,7 @@ pub enum SystemError {
 
 impl From<std::io::Error> for ShahError {
     fn from(value: std::io::Error) -> Self {
-        log::warn!("IO {value:#?}");
+        log::warn!("IO {value:#?}\n{}", Backtrace::force_capture());
         Self::System(SystemError::Io)
     }
 }

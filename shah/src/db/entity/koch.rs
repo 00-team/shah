@@ -144,7 +144,8 @@ impl<T: EntityItem> EntityKochDb<T> {
 
         self.check_head()?;
 
-        self.total = GeneId((file_size - ENTITY_META) / T::N);
+        self.total =
+            GeneId((file_size.saturating_sub(self.meta_offset)) / T::N);
 
         Ok(())
     }

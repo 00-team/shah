@@ -1,5 +1,5 @@
 use crate::{
-    OptNotFound, ShahError, ShahModel,
+    OptNotFound, ShahError, ShahModel, SystemError,
     config::ShahConfig,
     db::entity::{EntityDb, EntityFlags},
     models::{
@@ -124,7 +124,9 @@ impl<Key: KayakKey, Val: ShahModel + ShahSchema, const LEN: usize>
 
     fn load_map(&mut self) -> Result<(), ShahError> {
         let mut meta = WaterfallMeta::default();
-        self.map_file.read_exact_at(meta.as_binary_mut(), 0)?;
+        if self.map_file.read_exact_at(meta.as_binary_mut(), 0).is_err() {
+            return Err(SystemError::Io)?;
+        }
 
         let buckets = (1 << meta.level) + (meta.split) as usize;
         let mut kayak_map = vec![Gene::NONE; buckets];

@@ -81,6 +81,10 @@ impl DbHead {
         head
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn init(
         &mut self, magic: ShahMagic, revision: u16, name: &str, version: u16,
     ) {

@@ -2,7 +2,7 @@ use crate::error::{DbError, ShahError};
 
 use super::{Binary, Gene};
 
-#[derive(Debug, crate::EnumCode)]
+#[derive(Debug, crate::EnumCode, Clone)]
 #[enum_code(u8)]
 pub enum Schema {
     Model(SchemaModel),
@@ -224,7 +224,7 @@ impl Schema {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SchemaModel {
     pub name: String,
     pub size: u64,

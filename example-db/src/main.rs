@@ -9,12 +9,13 @@ mod user;
 mod username;
 
 use example_db::models::ExampleError;
+use potk::Command;
 use rand::Rng;
-use shah::{Command, db::trie_const::TrieConstKey, error::ShahError};
+use shah::{db::trie_const::TrieConstKey, error::ShahError};
 
 const SOCK_PATH: &str = "/tmp/shah.example-db.sock";
 
-#[derive(Debug, Default, Command)]
+#[derive(Debug, Default, potk::Command)]
 enum Commands {
     #[default]
     Help,
@@ -114,7 +115,7 @@ fn main() -> Result<(), ShahError> {
     // }
 
     log::info!("commands");
-    match shah::command() {
+    match potk::command() {
         Commands::Help => {
             println!("{}", Commands::help())
         }

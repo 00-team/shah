@@ -1,6 +1,6 @@
 [package]
 name = "shah"
-version = "1.29.1"
+version = "1.30.0"
 description = "custom database"
 publish = true
 readme.workspace = true
@@ -11,18 +11,19 @@ categories.workspace = true
 license-file.workspace = true
 
 [dependencies]
-shah-macros = "1.14.0"
+shah-macros = "1.15.0"
 # shah-macros = { path = "../shah-macros" }
+potk = "1.0.1"
 
-log = "0.4.22"
-libc = "0.2.169"
-signal-hook = "0.3.17"
+log = "0.4"
+libc = "0.2"
+signal-hook = "0.4"
 
-serde = { version = "1.0.210", features = ["derive"], optional = true }
-faster-hex = { version = "0.10.0", optional = true, default-features = false }
+serde = { version = "1", features = ["derive"], optional = true }
+faster-hex = { version = "1", optional = true, default-features = false }
 utoipa = { version = "5.3.1", optional = true }
 
-xxhash-rust = { version = "0.8.18", features = ["xxh3"] }
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
 
 zstd = "0.14"
 

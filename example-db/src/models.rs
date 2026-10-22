@@ -69,7 +69,7 @@ impl Worker<3> for State {
 
 // pub type ExampleApi = shah::Api<State<'static>>;
 
-#[shah::enum_int(u16)]
+#[potk::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy)]
 /// example errors
 pub enum ExampleError {

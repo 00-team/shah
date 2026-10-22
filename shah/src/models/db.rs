@@ -8,7 +8,7 @@ pub struct ShahMagic {
     db: u16,
 }
 
-#[crate::enum_int(u16)]
+#[potk::enum_int(u16)]
 #[derive(Debug, Default)]
 pub enum ShahMagicDb {
     #[default]

@@ -96,7 +96,7 @@ impl From<Infallible> for ShahError {
 //     }
 // }
 
-#[shah::enum_int(u16)]
+#[potk::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum NotFound {
     #[default]
@@ -122,7 +122,7 @@ impl From<NotFound> for ErrorCode {
     }
 }
 
-#[shah::enum_int(u16)]
+#[potk::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum DbError {
     #[default]
@@ -139,7 +139,7 @@ pub enum DbError {
     NoKoch,
 }
 
-#[shah::enum_int(u16)]
+#[potk::enum_int(u16)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum SystemError {
     #[default]

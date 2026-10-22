@@ -44,21 +44,6 @@ impl_model! {
 #[allow(unused_extern_crates)]
 extern crate self as shah;
 
-pub trait Command {
-    fn parse(args: std::env::Args) -> Self;
-    fn help() -> String;
-}
-
-pub fn command<T: Command + Default>() -> T {
-    let mut args = std::env::args();
-    loop {
-        let Some(arg) = args.next() else { break T::default() };
-        if arg == "-c" {
-            break T::parse(args);
-        }
-    }
-}
-
 pub trait AsUtf8Str {
     fn as_utf8_str(&self) -> &str;
     fn as_utf8_str_null_terminated(&self) -> &str;

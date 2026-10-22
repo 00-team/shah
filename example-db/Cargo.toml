@@ -8,6 +8,7 @@ publish = false
 shah = { path = "../shah" }
 log = "0.4.22"
 rand = "0.8.5"
+potk = "1"
 
 # [lints.rust]
 # dead_code = "allow"

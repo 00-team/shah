@@ -535,6 +535,7 @@ impl Route {
         let mut route = Route {
             state: syn::Type::Never(syn::TypeNever {
                 bang_token: Default::default(),
+                attrs: Vec::new(),
             }),
             ident: sig.ident.clone(),
             api_ident: format_ident!("{}_api", sig.ident),

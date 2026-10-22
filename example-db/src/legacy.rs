@@ -8,7 +8,7 @@ struct Main {
     e: u8,
 }
 
-#[shah::legacy]
+#[potk::legacy]
 mod x {
     // use super::Main;
     #[derive(Debug, Default)]

@@ -2,7 +2,7 @@ use crate::error::{DbError, ShahError};
 
 use super::{Binary, Gene};
 
-#[derive(Debug, crate::EnumCode, Clone)]
+#[derive(Debug, potk::EnumCode, Clone)]
 #[enum_code(u8)]
 pub enum Schema {
     Model(SchemaModel),

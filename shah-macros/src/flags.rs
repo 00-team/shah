@@ -148,7 +148,7 @@ pub(crate) fn flags(
         for f in item_stats.fields.iter_mut() {
             let fi = f.ident.as_ref().unwrap();
             let fis = fi.to_string();
-            let tp = syn::TypePath { path: sty.clone(), qself: None };
+            let tp = syn::TypePath { path: sty.clone(), qself: None, attrs: Vec::new() };
             f.ty = syn::Type::Path(tp);
             quote_into!(stats_from += #fi: value.#fi().into(),);
             quote_into!(stats_list += (#fis, &mut self.#fi),);
@@ -425,6 +425,7 @@ fn parse_args(attrs: proc_macro::TokenStream) -> syn::Result<ParsedArgs> {
                         pa.inner = syn::Type::Path(syn::TypePath {
                             qself: None,
                             path: v.path,
+                            attrs: Vec::new(),
                         });
                     }
                     v => {

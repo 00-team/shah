@@ -13,19 +13,19 @@ license-file.workspace = true
 [dependencies]
 shah-macros = "=1.16.0"
 # shah-macros = { path = "../shah-macros" }
-potk = "1"
+potk = "=1.2"
 
-log = "0.4"
-libc = "0.2"
-signal-hook = "0.4"
+log = "=0.4"
+libc = "=0.2"
+signal-hook = "=0.4"
 
-serde = { version = "1", features = ["derive"], optional = true }
-faster-hex = { version = "1", optional = true, default-features = false }
-utoipa = { version = "5.3.1", optional = true }
+serde = { version = "=1", features = ["derive"], optional = true }
+faster-hex = { version = "=1", optional = true, default-features = false }
+utoipa = { version = "=5", optional = true }
 
-xxhash-rust = { version = "0.8", features = ["xxh3"] }
+xxhash-rust = { version = "=0.8", features = ["xxh3"] }
 
-zstd = "0.14"
+zstd = "=0.14"
 
 [features]
 default = ["serde"]

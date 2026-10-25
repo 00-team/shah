@@ -1,6 +1,6 @@
 [package]
 name = "shah"
-version = "1.30.2"
+version = "1.31.0"
 description = "custom database"
 publish = true
 readme.workspace = true
@@ -11,7 +11,7 @@ categories.workspace = true
 license-file.workspace = true
 
 [dependencies]
-shah-macros = "1.15.0"
+shah-macros = "=1.16.0"
 # shah-macros = { path = "../shah-macros" }
 potk = "1"
 

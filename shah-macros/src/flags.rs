@@ -320,7 +320,7 @@ pub(crate) fn flags(
     quote_into!(s +=
         #[shah::model]
         #[derive(Debug)]
-        #[derive(shah::ShahAddAssign, shah::ShahSchema)]
+        #[derive(potk::PotkAddAssign, shah::ShahSchema)]
         #[derive(serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
         #item_stats
 

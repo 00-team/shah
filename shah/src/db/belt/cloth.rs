@@ -13,7 +13,10 @@ pub struct ClothFlags {
 #[derive(shah::ShahSchema)]
 #[shah::model]
 #[derive(Debug, shah::Entity, shah::Belt)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
 pub struct ClothBelt<const S: usize> {
     pub gene: Gene,
     pub next: Gene,
@@ -32,7 +35,10 @@ pub struct ClothBelt<const S: usize> {
 #[derive(shah::ShahSchema)]
 #[shah::model]
 #[derive(Debug, shah::Entity, shah::Buckle)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
 pub struct ClothBuckle {
     pub gene: Gene,
     pub head: Gene,

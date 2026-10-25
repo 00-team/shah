@@ -34,7 +34,10 @@ pub trait Origin: EntityItem {
 #[derive(crate::ShahSchema)]
 #[crate::model]
 #[derive(Debug, crate::Entity, crate::Origin)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
 pub struct ShahOrigin {
     pub gene: Gene,
     pub head: Gene,
@@ -67,7 +70,10 @@ pub trait Pond: EntityItem {
 #[derive(crate::ShahSchema)]
 #[crate::model]
 #[derive(Debug, crate::Entity, crate::Pond)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, utoipa::ToSchema))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema)
+)]
 pub struct ShahPond {
     pub gene: Gene,
     pub next: Gene,

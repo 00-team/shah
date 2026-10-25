@@ -133,10 +133,7 @@ impl Gene {
         }
     }
 
-    #[cfg(feature = "serde")]
     pub fn as_hex(&self) -> String {
-        use super::Binary;
-
         let mut dst = [0u8; Gene::S * 2];
         let out = faster_hex::hex_encode(self.as_binary(), &mut dst).unwrap();
         out.to_string()
@@ -194,6 +191,14 @@ impl Gene {
         }
 
         Ok(())
+    }
+}
+
+impl std::fmt::Display for Gene {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut dst = [0u8; Gene::S * 2];
+        let out = faster_hex::hex_encode(self.as_binary(), &mut dst).unwrap();
+        f.write_str(out)
     }
 }
 
